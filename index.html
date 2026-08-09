@@ -282,6 +282,7 @@
   .pitch-dot.strike { background: var(--green); color: var(--green); }
   .pitch-dot.ball { background: var(--accent2); color: var(--accent2); }
   .pitch-dot.location-hit { border: 2px solid white; }
+  .pitch-dot.pending-velo { opacity:.9; box-shadow:0 0 0 3px rgba(255,255,255,.18),0 0 8px currentColor; }
 
   /* Ghost target zone highlight for result click */
   .zone-cell.awaiting-result {
@@ -1347,7 +1348,8 @@ function syncVeloMode() {
   if (!requireVelocity && pendingVelocityPitch) {
     const pending = pendingVelocityPitch;
     pendingVelocityPitch = null;
-    finalizePitch(pending.zone, pending.relX, pending.relY, pending.isStrike, pending.targetEl, pending.clickX, pending.clickY, null);
+    if (pending.previewDot) pending.previewDot.classList.remove('pending-velo');
+    finalizePitch(pending.zone, pending.relX, pending.relY, pending.isStrike, pending.targetEl, pending.clickX, pending.clickY, null, true);
   }
 }
 if (veloToggle) veloToggle.addEventListener('change', syncVeloMode);
@@ -1778,6 +1780,7 @@ function toResultPhase() {
 }
 
 function toTargetPhase() {
+  if (pendingVelocityPitch?.previewDot) pendingVelocityPitch.previewDot.remove();
   pendingVelocityPitch = null;
   state.phase = 'target';
   advancePromptShown = false;
@@ -1828,7 +1831,13 @@ function handleOuterZoneClick(e) {
 function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
   // With velocity tracking ON, capture the location first, then wait for MPH.
   if (requireVelocity) {
-    pendingVelocityPitch = { zone, relX, relY, isStrike, targetEl, clickX, clickY };
+    let previewDot = null;
+    if (targetEl && zone) {
+      previewDot = spawnDot(targetEl, relX, relY, isStrike, zone !== null && state.targetZones.has(zone), clickX, clickY, true);
+    } else if (targetEl) {
+      previewDot = spawnDot(targetEl, null, null, false, false, clickX, clickY, true);
+    }
+    pendingVelocityPitch = { zone, relX, relY, isStrike, targetEl, clickX, clickY, previewDot };
     phaseInstEl.textContent = 'LOCATION SET — ENTER VELO TO SAVE PITCH';
     phaseInstEl.className = 'phase-instruction phase-result';
     if (veloInput) {
@@ -1852,11 +1861,12 @@ function finalizePendingVelocityPitch() {
   pendingVelocityPitch = null;
   const velocity = Math.round(parsed * 10) / 10;
   veloInput.value = '';
-  finalizePitch(pending.zone, pending.relX, pending.relY, pending.isStrike, pending.targetEl, pending.clickX, pending.clickY, velocity);
+  if (pending.previewDot) pending.previewDot.classList.remove('pending-velo');
+  finalizePitch(pending.zone, pending.relX, pending.relY, pending.isStrike, pending.targetEl, pending.clickX, pending.clickY, velocity, true);
   return true;
 }
 
-function finalizePitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, velocity) {
+function finalizePitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, velocity, dotAlreadyShown=false) {
   const isOnTarget = zone !== null && state.targetZones.has(zone);
   const outerRectForPitch = outerZone.getBoundingClientRect();
   const resultX = clickX != null && outerRectForPitch.width
@@ -1878,10 +1888,12 @@ function finalizePitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, vel
 
   state.pitches.push(pitch);
 
-  if (targetEl && zone) {
-    spawnDot(targetEl, relX, relY, isStrike, isOnTarget, clickX, clickY);
-  } else if (targetEl) {
-    spawnDot(targetEl, null, null, false, false, clickX, clickY);
+  if (!dotAlreadyShown) {
+    if (targetEl && zone) {
+      spawnDot(targetEl, relX, relY, isStrike, isOnTarget, clickX, clickY);
+    } else if (targetEl) {
+      spawnDot(targetEl, null, null, false, false, clickX, clickY);
+    }
   }
 
   addToLog(pitch);
@@ -1911,9 +1923,9 @@ if (veloInput) {
   });
 }
 
-function spawnDot(containerEl, relX, relY, isStrike, isOnTarget, clientX, clientY) {
+function spawnDot(containerEl, relX, relY, isStrike, isOnTarget, clientX, clientY, pendingVelo=false) {
   const dot = document.createElement('div');
-  dot.className = 'pitch-dot ' + (isStrike ? 'strike' : 'ball') + (isOnTarget ? ' location-hit' : '');
+  dot.className = 'pitch-dot ' + (isStrike ? 'strike' : 'ball') + (isOnTarget ? ' location-hit' : '') + (pendingVelo ? ' pending-velo' : '');
 
   const rect = containerEl.getBoundingClientRect();
   const x = relX !== null ? relX * 100 : ((clientX - rect.left) / rect.width) * 100;
@@ -1931,6 +1943,7 @@ function spawnDot(containerEl, relX, relY, isStrike, isOnTarget, clientX, client
   ring.style.borderColor = isStrike ? 'var(--green)' : 'var(--accent2)';
   containerEl.appendChild(ring);
   setTimeout(() => ring.remove(), 500);
+  return dot;
 }
 
 function addToLog(pitch) {
