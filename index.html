@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BullPen">
 <meta name="theme-color" content="#0a0e14">
-<title>BullPen Tracker</title>
+<title>Pocket Bullpen</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0a0e14">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1361,8 +1361,6 @@ document.getElementById('addPlayerBtn').addEventListener('click', () => {
 
 function startBullpen(playerId) {
   state = { phase:'target', targetZones:new Set(), currentPitchType:'FB', pitches:[], pitchNum:1, activePlayerId:playerId, sessionSaved:false };
-  if (veloToggle) veloToggle.checked = false;
-  syncVeloMode();
   resetTrackingUI();
   const p=activePlayer(); const t=appData.teams.find(x=>x.id===p?.teamId);
   sessionContext.textContent = p ? `${p.name}${t?' · '+t.name:''}` : '';
@@ -1388,8 +1386,8 @@ function saveCurrentSession(notes='') {
   const strikePct=Math.round(strikes/total*100);
   const locationPct=targeted.length?Math.round(onTarget/targeted.length*100):0;
   const combinedScore=Math.round(((strikes/total)*0.5 + (targeted.length?onTarget/targeted.length:0)*0.5)*100);
-  const velocityPitches=state.pitches.filter(p=>Number.isFinite(p.velocity));
-  const avgVelocity=velocityPitches.length ? Math.round((velocityPitches.reduce((sum,p)=>sum+p.velocity,0)/velocityPitches.length)*10)/10 : null;
+  const velocityPitches=state.pitches.filter(p=>Number.isFinite(Number(p.velocity)) && Number(p.velocity) > 0);
+  const avgVelocity=velocityPitches.length ? Math.round((velocityPitches.reduce((sum,p)=>sum+Number(p.velocity),0)/velocityPitches.length)*10)/10 : null;
   const maxVelocity=velocityPitches.length ? Math.max(...velocityPitches.map(p=>p.velocity)) : null;
   appData.sessions.push({ id:uid('session'), playerId:state.activePlayerId, createdAt:new Date().toISOString(), totalPitches:total,
     strikePct, locationPct, combinedScore, velocityTracked:velocityPitches.length>0, avgVelocity, maxVelocity, notes:(notes||'').trim(), pitches:state.pitches.map(serializePitch) });
@@ -1408,7 +1406,7 @@ window.showHistory = function(playerId) {
   if(sessions.length){
     const latest=sessions[0]; const avgStr=Math.round(sessions.reduce((n,s)=>n+s.strikePct,0)/sessions.length); const avgLoc=Math.round(sessions.reduce((n,s)=>n+s.locationPct,0)/sessions.length);
     trend+=`<div class="trend-card"><div class="trend-value strike-pct ${strikeClass(latest.strikePct)}">${latest.strikePct}%</div><div class="trend-label">Latest Strike %</div></div><div class="trend-card"><div class="trend-value strike-pct ${strikeClass(avgStr)}">${avgStr}%</div><div class="trend-label">Avg Strike %</div></div>`;
-    const fbVelos=sessions.flatMap(s=>(s.pitches||[]).filter(p=>p.type==='FB' && Number.isFinite(Number(p.velocity))).map(p=>Number(p.velocity)));
+    const fbVelos=sessions.flatMap(s=>(s.pitches||[]).filter(p=>p.type==='FB' && Number.isFinite(Number(p.velocity)) && Number(p.velocity) > 0).map(p=>Number(p.velocity)));
     const avgFb=fbVelos.length ? (fbVelos.reduce((a,b)=>a+b,0)/fbVelos.length).toFixed(1) : '—';
     const highFb=fbVelos.length ? Math.max(...fbVelos).toFixed(1) : '—';
     trend+=`<div class="trend-card"><div class="trend-value">${avgFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">Avg. FB Velo</div></div><div class="trend-card"><div class="trend-value">${highFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">High FB Velo</div></div>`;
@@ -1467,7 +1465,7 @@ async function exportPlayerPdf(playerId){
     doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(30,45,60);doc.text(title,margin+4,yy);
     doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(85,95,110);doc.text(lines,margin+4,yy+6); yy+=blockH+3;
   });
-  const pages=doc.getNumberOfPages(); for(let i=1;i<=pages;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(130,140,155);doc.text('BullPen Tracker',margin,274);doc.text(`Page ${i} of ${pages}`,W-margin,274,{align:'right'});}
+  const pages=doc.getNumberOfPages(); for(let i=1;i<=pages;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(130,140,155);doc.text('Pocket Bullpen',margin,274);doc.text(`Page ${i} of ${pages}`,W-margin,274,{align:'right'});}
   const fileName=(p.name||'player').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'').toLowerCase()+'-bullpen-progress.pdf';
   doc.save(fileName);
 }
@@ -1480,7 +1478,7 @@ document.getElementById('exportBtn').addEventListener('click',()=>{
   const blob=new Blob([JSON.stringify(appData,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='bullpen-tracker-backup-'+new Date().toISOString().slice(0,10)+'.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),500);
 });
 document.getElementById('importBtn').addEventListener('click',()=>document.getElementById('importFile').click());
-document.getElementById('importFile').addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f)return; try{ const d=JSON.parse(await f.text()); if(!Array.isArray(d.teams)||!Array.isArray(d.players)||!Array.isArray(d.sessions))throw new Error(); appData=d; saveAppData(); renderManager(); alert('Backup imported.'); }catch{ alert('That does not look like a valid BullPen Tracker backup.'); } e.target.value=''; });
+document.getElementById('importFile').addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f)return; try{ const d=JSON.parse(await f.text()); if(!Array.isArray(d.teams)||!Array.isArray(d.players)||!Array.isArray(d.sessions))throw new Error(); appData=d; saveAppData(); renderManager(); alert('Backup imported.'); }catch{ alert('That does not look like a valid Pocket Bullpen backup.'); } e.target.value=''; });
 
 
 // ============================================================
@@ -1901,7 +1899,7 @@ function buildStats() {
     if (!types[p.type]) types[p.type] = { total:0, strikes:0, targeted:0, onTarget:0, velocities:[] };
     types[p.type].total++;
     if (p.isStrike) types[p.type].strikes++;
-    if (Number.isFinite(Number(p.velocity))) types[p.type].velocities.push(Number(p.velocity));
+    if (Number.isFinite(Number(p.velocity)) && Number(p.velocity) > 0) types[p.type].velocities.push(Number(p.velocity));
     if (p.targetZones.size > 0) {
       types[p.type].targeted++;
       if (p.isOnTarget) types[p.type].onTarget++;
