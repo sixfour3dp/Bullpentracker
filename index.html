@@ -1069,6 +1069,80 @@
   .session-swipe.open .session-swipe-card { transform:translateX(-92px); }
   .session-note-row-inline { padding:0 12px 10px; color:var(--text); font-size:12px; }
 
+
+  /* Wild-pitch pinch mode */
+  .outer-zone { touch-action:none; transition:border-color .18s, background .18s; }
+  .outer-zone .strike-zone { transition:width .18s, transform .18s; transform-origin:center; }
+  .wild-pitch-band {
+    display:none;
+    position:absolute;
+    inset:0;
+    border:4px solid var(--accent2);
+    border-radius:7px;
+    pointer-events:none;
+    z-index:5;
+    box-shadow:inset 0 0 22px rgba(255,92,53,.18);
+  }
+  .wild-pitch-band::before {
+    content:'WILD PITCH';
+    position:absolute;
+    top:5px;
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--accent2);
+    color:white;
+    padding:3px 9px;
+    border-radius:999px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:1.3px;
+    white-space:nowrap;
+  }
+  .outer-zone.wild-mode {
+    border-color:rgba(255,92,53,.7);
+    background:rgba(255,92,53,.035);
+  }
+  .outer-zone.wild-mode .wild-pitch-band { display:block; }
+  .outer-zone.wild-mode > .strike-zone {
+    width:74%;
+    margin-left:auto;
+    margin-right:auto;
+  }
+  .outer-zone.wild-mode .outer-zone-label {
+    color:var(--accent2);
+    top:29px;
+    animation:none;
+  }
+  .wild-hint {
+    text-align:center;
+    margin-top:6px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:10px;
+    letter-spacing:.7px;
+    color:var(--muted);
+  }
+  .wild-hint strong { color:var(--accent2); }
+  .breakdown-row { cursor:pointer; transition:background .15s,border-color .15s; }
+  .breakdown-row.pitch-filter-active {
+    background:rgba(0,212,255,.09);
+    box-shadow:inset 0 0 0 1px rgba(0,212,255,.35);
+  }
+  .pitch-filter-note {
+    text-align:center;
+    color:var(--accent);
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:10px;
+    letter-spacing:.7px;
+    margin:5px 0 2px;
+  }
+  .wild-pitch-tag {
+    color:var(--accent2);
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:900;
+    letter-spacing:.6px;
+  }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 </head>
@@ -1173,7 +1247,8 @@
         <!-- Outer zone for balls outside the zone -->
         <div class="full-zone-wrapper" id="outerZoneWrapper">
           <div class="outer-zone" id="outerZone">
-            <span class="outer-zone-label">TAP ANYWHERE — INCLUDING OUTSIDE ZONE</span>
+            <div class="wild-pitch-band" id="wildPitchBand"></div>
+            <span class="outer-zone-label" id="outerZoneLabel">TAP ANYWHERE — INCLUDING OUTSIDE ZONE</span>
             <div class="strike-zone" id="strikeZone">
               <!-- 9 cells -->
               <div class="zone-cell" data-zone="1"></div>
@@ -1202,6 +1277,7 @@
           </div>
         </div>
 
+        <div class="wild-hint">Pinch inward on the result zone to reveal the <strong>WILD PITCH</strong> border.</div>
         <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
           <div style="display:flex;align-items:center;gap:4px;">
             <div style="width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);"></div>
@@ -1358,7 +1434,7 @@ function syncVeloMode() {
     const pending = pendingVelocityPitch;
     pendingVelocityPitch = null;
     if (pending.previewDot) pending.previewDot.classList.remove('pending-velo');
-    finalizePitch(pending.zone, pending.relX, pending.relY, pending.isStrike, pending.targetEl, pending.clickX, pending.clickY, null, true, pending.resultX, pending.resultY);
+    finalizePitch(pending.zone, pending.relX, pending.relY, pending.isStrike, pending.targetEl, pending.clickX, pending.clickY, null, true, pending.resultX, pending.resultY, pending.isWildPitch);
   }
 }
 if (veloToggle) veloToggle.addEventListener('change', syncVeloMode);
@@ -1469,6 +1545,7 @@ document.getElementById('addPlayerBtn').addEventListener('click', () => {
 });
 
 function startBullpen(playerId) {
+  activePitchTypeFilter=null;
   state = { phase:'target', targetZones:new Set(), currentPitchType:'FB', pitches:[], pitchNum:1, activePlayerId:playerId, sessionSaved:false, savedSessionId:null, reportMode:null };
   resetTrackingUI();
   const p=activePlayer(); const t=appData.teams.find(x=>x.id===p?.teamId);
@@ -1496,6 +1573,7 @@ function pitchTargetZones(p){
 }
 function zoneRC(z){ return {r:Math.floor((Number(z)-1)/3), c:(Number(z)-1)%3}; }
 function pitchLocationQuality(p){
+  if(p.isWildPitch) return 2;
   const targets=pitchTargetZones(p); if(!targets.length) return p.isStrike?55:20;
   if(p.isOnTarget && p.isStrike) return 100;
   const actual=Number(p.resultZone);
@@ -1585,19 +1663,20 @@ window.showHistory = function(playerId) {
   document.getElementById('trendCards').innerHTML=trend;
   document.getElementById('historyList').innerHTML = sessions.length ? `
       <div class="history-table" style="display:block">
-        <div style="display:grid;grid-template-columns:1.2fr .7fr .8fr .8fr;padding:8px 12px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.7px;font-size:11px;border-bottom:1px solid var(--border);">
-          <div>Date</div><div>Pitches</div><div>Strike</div><div>Location</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);padding:8px 12px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.55px;font-size:10px;border-bottom:1px solid var(--border);text-align:center;">
+          <div>Pitches</div><div>Strike</div><div>Location</div><div>PB Score</div>
         </div>
         ${sessions.map(s=>{
           const note=(s.notes||'').trim();
           return `<div class="session-swipe" data-session-id="${s.id}">
             <div class="session-swipe-actions"><button type="button" class="session-view-btn">VIEW</button></div>
             <div class="session-swipe-card">
-              <div style="display:grid;grid-template-columns:1.2fr .7fr .8fr .8fr;padding:12px;align-items:center;color:var(--text);">
-                <div>${new Date(s.createdAt).toLocaleDateString()}</div>
+              <div style="padding:9px 12px 2px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.6px;">${new Date(s.createdAt).toLocaleDateString()}</div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);padding:7px 12px 12px;align-items:center;color:var(--text);text-align:center;">
                 <div>${s.totalPitches}</div>
                 <div class="strike-pct ${strikeClass(s.strikePct)}">${s.strikePct}%</div>
                 <div>${s.locationPct}%</div>
+                <div style="font-weight:800">${sessionCommandScore(s)}</div>
               </div>
               ${note?`<div class="session-note-row-inline"><span class="session-note-label">SESSION NOTES</span>${esc(note)}</div>`:''}
             </div>
@@ -1635,6 +1714,7 @@ function bindSessionHistorySwipe(){
 }
 
 function openHistoricalSession(sessionId){
+  activePitchTypeFilter=null;
   const s=appData.sessions.find(x=>x.id===sessionId);
   if(!s || !Array.isArray(s.pitches)) return;
   const p=appData.players.find(x=>x.id===s.playerId);
@@ -1791,6 +1871,38 @@ clearTargetBtn.addEventListener('click', () => {
   statsScreen.style.display='flex';
 });
 
+
+let pinchStartDistance=null;
+let wildPitchMode=false;
+function touchDistance(touches){
+  if(touches.length<2) return null;
+  const a=touches[0],b=touches[1];
+  return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+}
+function setWildPitchMode(on){
+  wildPitchMode=Boolean(on);
+  outerZone.classList.toggle('wild-mode',wildPitchMode);
+  const label=document.getElementById('outerZoneLabel');
+  if(label) label.textContent=wildPitchMode ? 'TAP RED OUTER BORDER FOR WILD PITCH' : 'TAP ANYWHERE — INCLUDING OUTSIDE ZONE';
+}
+outerZone.addEventListener('touchstart',e=>{
+  if(state.phase!=='result' || e.touches.length!==2) return;
+  pinchStartDistance=touchDistance(e.touches);
+},{passive:true});
+outerZone.addEventListener('touchmove',e=>{
+  if(state.phase!=='result' || e.touches.length!==2 || !pinchStartDistance) return;
+  const d=touchDistance(e.touches);
+  if(!d) return;
+  const ratio=d/pinchStartDistance;
+  if(ratio<.82) setWildPitchMode(true);
+  else if(ratio>1.18) setWildPitchMode(false);
+  e.preventDefault();
+},{passive:false});
+outerZone.addEventListener('touchend',e=>{
+  if(e.touches.length<2) pinchStartDistance=null;
+},{passive:true});
+
+
 // ============================================================
 // RESULT PHASE — advance from target to result
 // ============================================================
@@ -1843,6 +1955,7 @@ function showAdvancePrompt(show) {
 
 function toResultPhase() {
   state.phase = 'result';
+  setWildPitchMode(false);
   advancePromptShown = false;
 
   // Hide target zone, show outer zone
@@ -1877,6 +1990,7 @@ function toResultPhase() {
 }
 
 function toTargetPhase() {
+  setWildPitchMode(false);
   if (pendingVelocityPitch?.previewDot) pendingVelocityPitch.previewDot.remove();
   pendingVelocityPitch = null;
   state.phase = 'target';
@@ -1917,12 +2031,11 @@ function handleResultCellClick(e) {
 }
 
 function handleOuterZoneClick(e) {
-  // Make sure it's not from a cell
   if (e.target.classList.contains('zone-cell')) return;
-  const rect = e.currentTarget.getBoundingClientRect();
-  const innerZone = outerZone.querySelector('.strike-zone') || outerZone;
-  const innerRect = outerZone.querySelector('[data-zone="5"]')?.closest('.strike-zone, #strikeZone')?.getBoundingClientRect() || rect;
-  recordPitch(null, null, null, false, e.currentTarget, e.clientX, e.clientY);
+  const rect=e.currentTarget.getBoundingClientRect();
+  const edge=Math.min(e.clientX-rect.left, rect.right-e.clientX, e.clientY-rect.top, rect.bottom-e.clientY);
+  const isWild=outerZone.classList.contains('wild-mode') && edge<=34;
+  recordPitch(null, null, null, false, e.currentTarget, e.clientX, e.clientY, isWild);
 }
 
 function capturePitchPoint(clickX, clickY) {
@@ -1934,7 +2047,7 @@ function capturePitchPoint(clickX, clickY) {
   };
 }
 
-function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
+function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, isWildPitch=false) {
   const capturedPoint=capturePitchPoint(clickX,clickY);
   // With velocity tracking ON, capture the location first, then wait for MPH.
   if (requireVelocity) {
@@ -1944,7 +2057,7 @@ function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
     } else if (targetEl) {
       previewDot = spawnDot(targetEl, null, null, false, false, clickX, clickY, true);
     }
-    pendingVelocityPitch = { zone, relX, relY, isStrike, targetEl, clickX, clickY, previewDot, resultX:capturedPoint.resultX, resultY:capturedPoint.resultY };
+    pendingVelocityPitch = { zone, relX, relY, isStrike, targetEl, clickX, clickY, isWildPitch, previewDot, resultX:capturedPoint.resultX, resultY:capturedPoint.resultY };
     phaseInstEl.textContent = 'LOCATION SET — ENTER VELO TO SAVE PITCH';
     phaseInstEl.className = 'phase-instruction phase-result';
     if (veloInput) {
@@ -1959,7 +2072,7 @@ function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
     }
     return;
   }
-  finalizePitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, null, false, capturedPoint.resultX, capturedPoint.resultY);
+  finalizePitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, null, false, capturedPoint.resultX, capturedPoint.resultY, isWildPitch);
 }
 
 function finalizePendingVelocityPitch() {
@@ -1975,11 +2088,11 @@ function finalizePendingVelocityPitch() {
   const velocity = Math.round(parsed * 10) / 10;
   veloInput.value = '';
   if (pending.previewDot) pending.previewDot.classList.remove('pending-velo');
-  finalizePitch(pending.zone, pending.relX, pending.relY, pending.isStrike, pending.targetEl, pending.clickX, pending.clickY, velocity, true, pending.resultX, pending.resultY);
+  finalizePitch(pending.zone, pending.relX, pending.relY, pending.isStrike, pending.targetEl, pending.clickX, pending.clickY, velocity, true, pending.resultX, pending.resultY, pending.isWildPitch);
   return true;
 }
 
-function finalizePitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, velocity, dotAlreadyShown=false, capturedX=null, capturedY=null) {
+function finalizePitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, velocity, dotAlreadyShown=false, capturedX=null, capturedY=null, isWildPitch=false) {
   const isOnTarget = zone !== null && state.targetZones.has(zone);
   const fallbackPoint=capturePitchPoint(clickX,clickY);
   const resultX=Number.isFinite(capturedX)?capturedX:fallbackPoint.resultX;
@@ -1992,6 +2105,7 @@ function finalizePitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, vel
     resultZone: zone,
     isStrike,
     isOnTarget,
+    isWildPitch:Boolean(isWildPitch),
     velocity,
     relX, relY,
     resultX, resultY,
@@ -2193,6 +2307,7 @@ function targetZoneLabel(p){
   return zs.map(z=>`Z${z} ${ZONE_NAMES[z]||''}`).join(' · ');
 }
 
+let activePitchTypeFilter=null;
 function renderCommandHeatmap(pitches){
   const map=document.getElementById('heatmapGrid');
   const info=document.getElementById('commandPitchInfo');
@@ -2230,7 +2345,7 @@ function renderCommandHeatmap(pitches){
       (p.targetZones instanceof Set ? [...p.targetZones] : (Array.isArray(p.targetZones)?p.targetZones:[])).forEach(z=>{
         map.querySelector(`[data-command-zone="${Number(z)}"]`)?.classList.add('selected-target');
       });
-      const actual=p.resultZone ? `Z${p.resultZone} ${ZONE_NAMES[p.resultZone]||''}` : 'BALL — OUTSIDE ZONE';
+      const actual=p.isWildPitch ? 'WILD PITCH' : (p.resultZone ? `Z${p.resultZone} ${ZONE_NAMES[p.resultZone]||''}` : 'BALL — OUTSIDE ZONE');
       const velo=Number.isFinite(Number(p.velocity)) && Number(p.velocity)>0 ? ` · ${Number(p.velocity).toFixed(1)} MPH` : '';
       const legacy=pt.legacyOutside ? `<br><span style="color:var(--yellow)">Older outside-zone pitch: exact outside coordinates were not saved.</span>` : '';
       if(info) info.innerHTML=`<strong>#${p.num} ${p.type}${velo}</strong> · Actual: ${actual}<br><span class="target-copy">INTENDED: ${targetZoneLabel(p)}</span>${legacy}`;
@@ -2260,7 +2375,7 @@ function buildStats() {
   const cards = [
     { label:'STRIKE %', value: strikePct + '%', sub: `${strikes}/${total} strikes`, cls:'green' },
     { label:'LOCATION %', value: locPct + '%', sub: `${onTarget}/${withTarget.length} on target`, cls:'blue' },
-    { label:'TOTAL PITCHES', value: total, sub: strikes + ' strikes · ' + (total-strikes) + ' balls', cls:'yellow' },
+    { label:'TOTAL PITCHES', value: total, sub: strikes + ' strikes · ' + (total-strikes) + ' balls' + (pitches.filter(p=>p.isWildPitch).length ? ' · '+pitches.filter(p=>p.isWildPitch).length+' wild' : ''), cls:'yellow' },
     { label:'PB COMMAND', value: pocketCommandMetrics(pitches).score, sub: pocketCommandMetrics(pitches).grade, cls:'orange' },
   ];
 
@@ -2273,8 +2388,9 @@ function buildStats() {
   `).join('');
 
   // Command heat map: green = on target, red = off target.
-  // New pitches retain exact outer-zone coordinates, including balls.
-  renderCommandHeatmap(pitches);
+  // A selected pitch type filters only the plotted pitches/heat.
+  const plottedPitches=activePitchTypeFilter ? pitches.filter(p=>p.type===activePitchTypeFilter) : pitches;
+  renderCommandHeatmap(plottedPitches);
 
   // By pitch type
   const types = {};
@@ -2295,7 +2411,7 @@ function buildStats() {
     const avgVelo = d.velocities.length ? (d.velocities.reduce((a,b)=>a+b,0)/d.velocities.length).toFixed(1) : null;
     const highVelo = d.velocities.length ? Math.max(...d.velocities).toFixed(1) : null;
     return `
-      <div class="breakdown-row">
+      <div class="breakdown-row ${activePitchTypeFilter===type?'pitch-filter-active':''}" data-filter-type="${type}">
         <div class="breakdown-type">${type}</div>
         <div class="breakdown-bars">
           <div class="mini-bar-wrap">
@@ -2313,6 +2429,19 @@ function buildStats() {
         <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;color:var(--muted);">${d.total}p</span>
       </div>`;
   }).join('') || '<div style="text-align:center;color:var(--muted);font-size:13px;padding:12px">No pitches recorded</div>';
+  const breakdownEl=document.getElementById('pitchBreakdown');
+  if(activePitchTypeFilter){
+    breakdownEl.insertAdjacentHTML('afterbegin',`<div class="pitch-filter-note">HEAT MAP FILTER: ${activePitchTypeFilter} · TAP AGAIN TO SHOW ALL</div>`);
+  } else if(Object.keys(types).length){
+    breakdownEl.insertAdjacentHTML('afterbegin','<div class="pitch-filter-note" style="color:var(--muted)">TAP A PITCH TYPE TO FILTER THE HEAT MAP</div>');
+  }
+  breakdownEl.querySelectorAll('.breakdown-row[data-filter-type]').forEach(row=>{
+    row.addEventListener('click',()=>{
+      const type=row.dataset.filterType;
+      activePitchTypeFilter = activePitchTypeFilter===type ? null : type;
+      buildStats();
+    });
+  });
 
   // Pocket Bullpen Command Score + spread diagnostics
   const cmd=pocketCommandMetrics(pitches);
