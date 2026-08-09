@@ -1350,7 +1350,7 @@ function syncVeloMode() {
     const pending = pendingVelocityPitch;
     pendingVelocityPitch = null;
     if (pending.previewDot) pending.previewDot.classList.remove('pending-velo');
-    finalizePitch(pending.zone, pending.relX, pending.relY, pending.isStrike, pending.targetEl, pending.clickX, pending.clickY, null, true);
+    finalizePitch(pending.zone, pending.relX, pending.relY, pending.isStrike, pending.targetEl, pending.clickX, pending.clickY, null, true, pending.resultX, pending.resultY);
   }
 }
 if (veloToggle) veloToggle.addEventListener('change', syncVeloMode);
@@ -1839,7 +1839,17 @@ function handleOuterZoneClick(e) {
   recordPitch(null, null, null, false, e.currentTarget, e.clientX, e.clientY);
 }
 
+function capturePitchPoint(clickX, clickY) {
+  const rect=outerZone.getBoundingClientRect();
+  if(clickX==null || clickY==null || !rect.width || !rect.height) return {resultX:null,resultY:null};
+  return {
+    resultX:Math.max(0,Math.min(1,(clickX-rect.left)/rect.width)),
+    resultY:Math.max(0,Math.min(1,(clickY-rect.top)/rect.height))
+  };
+}
+
 function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
+  const capturedPoint=capturePitchPoint(clickX,clickY);
   // With velocity tracking ON, capture the location first, then wait for MPH.
   if (requireVelocity) {
     let previewDot = null;
@@ -1848,7 +1858,7 @@ function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
     } else if (targetEl) {
       previewDot = spawnDot(targetEl, null, null, false, false, clickX, clickY, true);
     }
-    pendingVelocityPitch = { zone, relX, relY, isStrike, targetEl, clickX, clickY, previewDot };
+    pendingVelocityPitch = { zone, relX, relY, isStrike, targetEl, clickX, clickY, previewDot, resultX:capturedPoint.resultX, resultY:capturedPoint.resultY };
     phaseInstEl.textContent = 'LOCATION SET — ENTER VELO TO SAVE PITCH';
     phaseInstEl.className = 'phase-instruction phase-result';
     if (veloInput) {
@@ -1863,7 +1873,7 @@ function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
     }
     return;
   }
-  finalizePitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, null);
+  finalizePitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, null, false, capturedPoint.resultX, capturedPoint.resultY);
 }
 
 function finalizePendingVelocityPitch() {
@@ -1879,17 +1889,15 @@ function finalizePendingVelocityPitch() {
   const velocity = Math.round(parsed * 10) / 10;
   veloInput.value = '';
   if (pending.previewDot) pending.previewDot.classList.remove('pending-velo');
-  finalizePitch(pending.zone, pending.relX, pending.relY, pending.isStrike, pending.targetEl, pending.clickX, pending.clickY, velocity, true);
+  finalizePitch(pending.zone, pending.relX, pending.relY, pending.isStrike, pending.targetEl, pending.clickX, pending.clickY, velocity, true, pending.resultX, pending.resultY);
   return true;
 }
 
-function finalizePitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, velocity, dotAlreadyShown=false) {
+function finalizePitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, velocity, dotAlreadyShown=false, capturedX=null, capturedY=null) {
   const isOnTarget = zone !== null && state.targetZones.has(zone);
-  const outerRectForPitch = outerZone.getBoundingClientRect();
-  const resultX = clickX != null && outerRectForPitch.width
-    ? Math.max(0, Math.min(1, (clickX - outerRectForPitch.left) / outerRectForPitch.width)) : null;
-  const resultY = clickY != null && outerRectForPitch.height
-    ? Math.max(0, Math.min(1, (clickY - outerRectForPitch.top) / outerRectForPitch.height)) : null;
+  const fallbackPoint=capturePitchPoint(clickX,clickY);
+  const resultX=Number.isFinite(capturedX)?capturedX:fallbackPoint.resultX;
+  const resultY=Number.isFinite(capturedY)?capturedY:fallbackPoint.resultY;
 
   const pitch = {
     num: state.pitchNum,
@@ -2071,7 +2079,7 @@ const ZONE_NAMES = {1:'UP-IN',2:'UP',3:'UP-OUT',4:'MID-IN',5:'MID',6:'MID-OUT',7
 
 function commandMapPoint(p) {
   // Exact coordinates are saved for pitches recorded by current versions.
-  if(Number.isFinite(Number(p.resultX)) && Number.isFinite(Number(p.resultY))){
+  if(p.resultX!==null && p.resultX!==undefined && p.resultY!==null && p.resultY!==undefined && Number.isFinite(Number(p.resultX)) && Number.isFinite(Number(p.resultY))){
     return {x:Number(p.resultX), y:Number(p.resultY), exact:true};
   }
   // Legacy in-zone pitches can be reconstructed from saved cell + relative click.
