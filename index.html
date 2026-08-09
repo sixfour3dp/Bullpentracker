@@ -1155,6 +1155,18 @@
     line-height:1.5;
     white-space:pre-wrap;
   }
+
+  .session-report-actions { padding-bottom:max(10px,env(safe-area-inset-bottom)); }
+  .session-report-actions .new-session-btn { margin-top:6px; margin-bottom:0; }
+  .session-report-actions .new-session-btn:first-child { margin-top:2px; }
+  #doneBtn:disabled {
+    opacity:.32;
+    filter:grayscale(.55);
+    cursor:not-allowed;
+    background:var(--surface2);
+    color:var(--muted);
+  }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 </head>
@@ -1181,7 +1193,10 @@
     </div>
     <div class="manager-scroll">
       <div class="panel">
-        <div class="panel-title">Team</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div class="panel-title">Team</div>
+          <button id="deleteTeamBtn" class="card-btn" type="button" style="border-color:rgba(255,92,53,.45);color:var(--accent2);padding:6px 9px">DELETE TEAM</button>
+        </div>
         <select id="teamSelect" class="app-select"></select>
         <div class="input-row" style="margin-top:8px">
           <input id="teamNameInput" class="app-input" placeholder="Add a team" maxlength="40">
@@ -1198,9 +1213,9 @@
       <div class="panel-title" style="padding:2px 2px 8px">Players</div>
       <div id="playerList"></div>
       <div class="utility-row">
-        <button id="exportBtn" class="card-btn">EXPORT BACKUP</button>
-        <button id="importBtn" class="card-btn">IMPORT BACKUP</button>
-        <input id="importFile" type="file" accept="application/json" style="display:none">
+        <button id="exportBtn" class="card-btn">EXPORT TEAM</button>
+        <button id="importBtn" class="card-btn">IMPORT TEAM</button>
+        <input id="importFile" type="file" accept="application/json,.json" style="display:none">
       </div>
     </div>
   </div>
@@ -1357,9 +1372,9 @@
     <div class="session-report-notes" id="sessionReportNotes">No session notes.</div>
 
     <div style="display:flex;justify-content:flex-end;padding:0 16px 10px"><button class="pdf-btn" id="sessionPdfBtn">PDF REPORT</button></div>
-    <button class="new-session-btn" id="continueSessionBtn" style="background:var(--green);color:#071018">← CONTINUE SESSION</button>
+    <div class="session-report-actions"><button class="new-session-btn" id="continueSessionBtn" style="background:var(--green);color:#071018">← CONTINUE SESSION</button>
     <button class="new-session-btn" id="newSessionBtn" style="margin-top:6px">+ NEW SESSION</button>
-    <button class="new-session-btn" id="homeBtn" style="background:var(--surface2);color:var(--text);margin-top:6px">← PLAYERS</button>
+    <button class="new-session-btn" id="homeBtn" style="background:var(--surface2);color:var(--text);margin-top:6px">← PLAYERS</button></div>
   </div>
 </div>
 
@@ -1494,6 +1509,11 @@ function renderManager() {
     return `<div class="player-swipe" data-player-id="${p.id}"><button class="player-delete" type="button">DELETE</button><div class="player-card"><div class="player-main"><div class="player-name">${esc(p.name)}</div><div class="player-meta">${sessions.length} session${sessions.length===1?'':'s'}${last ? ' · Last '+new Date(last.createdAt).toLocaleDateString() : ''}</div></div><div class="card-actions"><button class="card-btn" onclick="showHistory('${p.id}')">HISTORY</button><button class="card-btn primary" onclick="startBullpen('${p.id}')">START</button></div></div></div>`;
   }).join('') : '<div class="empty-state">Add a team and player to start saving bullpen sessions.</div>';
   setupPlayerSwipe();
+  const hasTeam=Boolean(selectedTeam());
+  const delTeamBtn=document.getElementById('deleteTeamBtn');
+  if(delTeamBtn) delTeamBtn.disabled=!hasTeam;
+  const exportTeamBtn=document.getElementById('exportBtn');
+  if(exportTeamBtn) exportTeamBtn.disabled=!hasTeam;
   saveAppData();
 }
 
@@ -1554,6 +1574,23 @@ document.getElementById('addTeamBtn').addEventListener('click', () => {
   const team={id:uid('team'),name}; appData.teams.push(team); appData.selectedTeamId=team.id; input.value=''; saveAppData(); renderManager();
 });
 teamSelect.addEventListener('change', () => { appData.selectedTeamId=teamSelect.value||null; saveAppData(); renderManager(); });
+
+document.getElementById('deleteTeamBtn').addEventListener('click',()=>{
+  const team=selectedTeam();
+  if(!team){ alert('Select a team first.'); return; }
+  const players=appData.players.filter(p=>p.teamId===team.id);
+  const playerIds=new Set(players.map(p=>p.id));
+  const sessionCount=appData.sessions.filter(s=>playerIds.has(s.playerId)).length;
+  const msg=`Delete ${team.name}, ${players.length} player${players.length===1?'':'s'}, and ${sessionCount} saved bullpen session${sessionCount===1?'':'s'}? This cannot be undone.`;
+  if(!confirm(msg)) return;
+  appData.sessions=appData.sessions.filter(s=>!playerIds.has(s.playerId));
+  appData.players=appData.players.filter(p=>p.teamId!==team.id);
+  appData.teams=appData.teams.filter(t=>t.id!==team.id);
+  appData.selectedTeamId=appData.teams[0]?.id||null;
+  saveAppData();
+  renderManager();
+});
+
 document.getElementById('addPlayerBtn').addEventListener('click', () => {
   if(!appData.selectedTeamId){ alert('Add a team first.'); return; }
   const input=document.getElementById('playerNameInput'); const name=input.value.trim(); if(!name) return;
@@ -1992,11 +2029,66 @@ document.getElementById('historyPdfBtn').addEventListener('click',()=>{ if(curre
 document.getElementById('historyBackBtn').addEventListener('click',()=>{historyScreen.style.display='none';managerScreen.style.display='flex';renderManager();});
 homeBtn.addEventListener('click',()=>{ statsScreen.style.display='none'; trackingScreen.style.display='none'; historyScreen.style.display='none'; managerScreen.style.display='flex'; renderManager(); });
 
-document.getElementById('exportBtn').addEventListener('click',()=>{
-  const blob=new Blob([JSON.stringify(appData,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='bullpen-tracker-backup-'+new Date().toISOString().slice(0,10)+'.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),500);
-});
+async function exportSelectedTeamBackup(){
+  const team=selectedTeam();
+  if(!team){ alert('Select a team first.'); return; }
+  const players=appData.players.filter(p=>p.teamId===team.id);
+  const ids=new Set(players.map(p=>p.id));
+  const sessions=appData.sessions.filter(s=>ids.has(s.playerId));
+  const backup={
+    kind:'pocket-bullpen-team-backup',
+    version:1,
+    exportedAt:new Date().toISOString(),
+    team:{...team},
+    players:players.map(p=>({...p})),
+    sessions:sessions.map(s=>JSON.parse(JSON.stringify(s)))
+  };
+  const safe=(team.name||'team').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'').toLowerCase()||'team';
+  const name=`pocket-bullpen-${safe}-${new Date().toISOString().slice(0,10)}.json`;
+  const text=JSON.stringify(backup,null,2);
+  const file=new File([text],name,{type:'application/json'});
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({title:`${team.name} Pocket Bullpen Backup`,files:[file]});
+      return;
+    }
+  }catch(err){
+    if(err?.name==='AbortError') return;
+  }
+  const url=URL.createObjectURL(file);
+  const a=document.createElement('a'); a.href=url; a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),800);
+}
+
+function importTeamBackupObject(d){
+  if(d?.kind!=='pocket-bullpen-team-backup' || !d.team || !Array.isArray(d.players) || !Array.isArray(d.sessions)) throw new Error('invalid');
+  // Always import as an independent copy so it cannot overwrite an existing team on this device.
+  const newTeamId=uid('team');
+  const newTeam={...d.team,id:newTeamId};
+  const playerMap=new Map();
+  const newPlayers=d.players.map(p=>{
+    const newId=uid('player'); playerMap.set(p.id,newId);
+    return {...p,id:newId,teamId:newTeamId};
+  });
+  const newSessions=d.sessions
+    .filter(s=>playerMap.has(s.playerId))
+    .map(s=>({...s,id:uid('session'),playerId:playerMap.get(s.playerId)}));
+  appData.teams.push(newTeam);
+  appData.players.push(...newPlayers);
+  appData.sessions.push(...newSessions);
+  appData.selectedTeamId=newTeamId;
+  saveAppData(); renderManager();
+  alert(`Imported ${newTeam.name}: ${newPlayers.length} player${newPlayers.length===1?'':'s'} and ${newSessions.length} session${newSessions.length===1?'':'s'}.`);
+}
+
+document.getElementById('exportBtn').addEventListener('click',exportSelectedTeamBackup);
 document.getElementById('importBtn').addEventListener('click',()=>document.getElementById('importFile').click());
-document.getElementById('importFile').addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f)return; try{ const d=JSON.parse(await f.text()); if(!Array.isArray(d.teams)||!Array.isArray(d.players)||!Array.isArray(d.sessions))throw new Error(); appData=d; saveAppData(); renderManager(); alert('Backup imported.'); }catch{ alert('That does not look like a valid Pocket Bullpen backup.'); } e.target.value=''; });
+document.getElementById('importFile').addEventListener('change',async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  try{ importTeamBackupObject(JSON.parse(await f.text())); }
+  catch{ alert('That does not look like a Pocket Bullpen team backup.'); }
+  e.target.value='';
+});
 
 
 // ============================================================
@@ -2160,6 +2252,7 @@ function toResultPhase() {
 
   doneBtn.textContent = 'DONE SESSION';
   doneBtn.onclick = finishSession;
+  doneBtn.disabled = true;
 
   // Mark target zones on the inner zone grid
   outerZone.querySelectorAll('.zone-cell').forEach(cell => {
@@ -2198,6 +2291,7 @@ function toTargetPhase() {
   clearTargetBtn.textContent = 'VIEW SESSION';
   doneBtn.textContent = 'DONE SESSION';
   doneBtn.onclick = finishSession;
+  doneBtn.disabled = false;
 
   // Remove result listeners
   outerZone.removeEventListener('click', handleOuterZoneClick);
@@ -2455,6 +2549,7 @@ document.getElementById('savePitchEditBtn').addEventListener('click',()=>{
 const sessionNotesModal=document.getElementById('sessionNotesModal');
 const sessionNotesInput=document.getElementById('sessionNotesInput');
 function finishSession() {
+  if(state.phase==='result' || pendingVelocityPitch){ return; }
   if (state.pitches.length === 0) { alert('No pitches recorded yet!'); return; }
   if(state.sessionSaved){ state.reportMode='finished'; buildStats(); trackingScreen.style.display='none'; statsScreen.style.display='flex'; return; }
   const existingSession=state.savedSessionId?appData.sessions.find(s=>s.id===state.savedSessionId):null;
@@ -2680,6 +2775,7 @@ continueSessionBtn.addEventListener('click',()=>{
   toTargetPhase();
   doneBtn.textContent='DONE SESSION';
   doneBtn.onclick=finishSession;
+  doneBtn.disabled=false;
   clearTargetBtn.textContent='VIEW SESSION';
   renderPitchLog();
   pitchNumEl.textContent=state.pitchNum;
