@@ -1037,6 +1037,7 @@
     -webkit-tap-highlight-color: transparent;
   }
   .command-pitch-dot.hit { background: var(--green); }
+  .command-pitch-dot.strike-miss { background: #2f80ed; color: white; }
   .command-pitch-dot.miss { background: var(--red); color: white; }
   .command-pitch-dot.selected {
     width: 24px; height: 24px; margin-left:-12px; margin-top:-12px;
@@ -1050,6 +1051,7 @@
   .command-map-legend span { display:flex; align-items:center; gap:5px; }
   .heat-key { width:12px; height:12px; border-radius:50%; display:inline-block; }
   .heat-key.good { background:var(--green); }
+  .heat-key.blue { background:#2f80ed; }
   .heat-key.bad { background:var(--red); }
   .command-pitch-info {
     margin-top:8px; min-height:54px; padding:9px 11px;
@@ -1372,8 +1374,9 @@
     <div class="stats-zone-section">
       <div class="command-map" id="heatmapGrid" aria-label="Pitch command heat map"></div>
       <div class="command-map-legend">
-        <span><i class="heat-key good"></i> ON TARGET</span>
-        <span><i class="heat-key bad"></i> OFF TARGET</span>
+        <span><i class="heat-key good"></i> ON TARGET STRIKE</span>
+        <span><i class="heat-key blue"></i> STRIKE — MISSED LOCATION</span>
+        <span><i class="heat-key bad"></i> BALL / WP</span>
       </div>
       <div class="command-pitch-info" id="commandPitchInfo">Tap any pitch dot to see its intended location.</div>
     </div>
@@ -1899,7 +1902,7 @@ function exportHistoryPdf(playerId){
     <div class="brand"><div class="logo"><span class="p">POCKET</span><span class="b">BULLPEN</span></div><div class="name">${printSafe(player.name)}</div><div class="sub">${printSafe(team?.name||'')} · Complete Bullpen History · ${sessions.length} sessions</div></div>
     <div class="cards"><div class="card"><label>Sessions</label><strong class="cyan">${sessions.length}</strong></div><div class="card"><label>Total Pitches</label><strong class="yellow">${totalPitches}</strong></div><div class="card"><label>Avg Strike %</label><strong class="green">${avgStrike}%</strong></div><div class="card"><label>Latest PB Score</label><strong class="orange">${latestPb}</strong></div></div>
     <div class="section"><h2>Strike % trend by pitch</h2>${trendSvg}</div>
-    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div></div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target locations. Red heat represents off-target locations across all saved sessions. Pitch dots are intentionally omitted for a cleaner historical view.</div></div></div></div>
+    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div></div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Pitch dots are intentionally omitted for a cleaner historical view.</div></div></div></div>
     <div class="section"><h2>Bullpen sessions</h2><table><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th><th>PB Score</th></tr></thead><tbody>${sessionRows}</tbody></table></div>
     <div class="section"><h2>Session notes</h2><div class="notes">${notes}</div></div><div class="footer">Pocket Bullpen · Player History Report</div>
     <script>
@@ -1922,7 +1925,7 @@ function heatmapBackgroundCss(pitches){
   return pitches.map(p=>{
     const pt=commandMapPoint(p);
     const x=(pt.x*100).toFixed(1), y=(pt.y*100).toFixed(1);
-    const c=p.isOnTarget ? '34,197,94' : '239,68,68';
+    const c=p.isOnTarget ? '34,197,94' : (p.isStrike ? '47,128,237' : '239,68,68');
     return `radial-gradient(circle at ${x}% ${y}%, rgba(${c},.58) 0%, rgba(${c},.32) 9%, rgba(${c},.12) 19%, rgba(${c},0) 30%)`;
   }).join(',');
 }
@@ -2002,7 +2005,7 @@ function exportSessionPdf(){
     .heat{position:relative;aspect-ratio:1;border:1px solid #ccd6e2;border-radius:12px;background-color:#0d1520;background-image:${heat||'none'};overflow:hidden}
     .zone{position:absolute;inset:15%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);border:2px solid rgba(255,255,255,.9)}
     .zone i{border:1px solid rgba(255,255,255,.28)}
-    .legend{font-size:10px;color:#617187;margin-top:5px}.good{color:#22c55e}.bad{color:#ef4444}
+    .legend{font-size:10px;color:#617187;margin-top:5px}.good{color:#22c55e}.blueheat{color:#2f80ed}.bad{color:#ef4444}
     .bars{border:1px solid #dbe3ec;border-radius:12px;padding:10px}.barrow{margin:8px 0}.barlabel,.typehead{display:flex;justify-content:space-between;font-size:10px;font-weight:800}.barlabel span,.typehead span{color:#718197;font-weight:600}
     .track{height:8px;background:#e9eef4;border-radius:99px;overflow:hidden;flex:1}.fill{height:100%;border-radius:99px}.blue,.cyan{background:#00a9d6}.green{background:#22c55e}
     .typecmd{margin:9px 0 12px}.metric{display:grid;grid-template-columns:48px 1fr 32px;gap:7px;align-items:center;font-size:9px;margin-top:5px}.metric b{text-align:right}
@@ -2024,7 +2027,7 @@ function exportSessionPdf(){
     </div>
     <h2>Command heat map</h2>
     <div class="heatwrap">
-      <div><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div></div><div class="legend"><span class="good">● On target</span> &nbsp; <span class="bad">● Off target</span> · Heat only, pitch dots omitted</div></div>
+      <div><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div></div><div class="legend"><span class="good">● On-target strike</span> &nbsp; <span style="color:#2f80ed">● Strike, missed location</span> &nbsp; <span class="bad">● Ball / WP</span> · Heat only, pitch dots omitted</div></div>
       <div class="bars"><strong style="font-size:11px">Pitch mix</strong>${mixRows||'<p>No pitch mix data.</p>'}</div>
     </div>
     <h2>Command by pitch type</h2>
@@ -2676,7 +2679,7 @@ function renderCommandHeatmap(pitches){
   // Each on-target pitch adds green energy; each miss adds red energy.
   const gradients=points.map(({p,pt})=>{
     const x=(pt.x*100).toFixed(1), y=(pt.y*100).toFixed(1);
-    const c=p.isOnTarget ? '34,197,94' : '239,68,68';
+    const c=p.isOnTarget ? '34,197,94' : (p.isStrike ? '47,128,237' : '239,68,68');
     return `radial-gradient(circle at ${x}% ${y}%, rgba(${c},.54) 0%, rgba(${c},.30) 9%, rgba(${c},.11) 18%, rgba(${c},0) 29%)`;
   });
   map.style.backgroundImage=gradients.length ? gradients.join(',') : 'none';
@@ -2690,7 +2693,7 @@ function renderCommandHeatmap(pitches){
   points.forEach(({p,pt})=>{
     const dot=document.createElement('button');
     dot.type='button';
-    dot.className='command-pitch-dot '+(p.isOnTarget?'hit':'miss');
+    dot.className='command-pitch-dot '+(p.isOnTarget?'hit':(p.isStrike?'strike-miss':'miss'));
     dot.style.left=(pt.x*100)+'%';
     dot.style.top=(pt.y*100)+'%';
     dot.textContent=p.num;
