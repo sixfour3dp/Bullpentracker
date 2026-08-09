@@ -1061,6 +1061,14 @@
   }
   .command-pitch-info .target-copy { color:var(--accent); font-weight:700; }
 
+
+  .session-swipe { position:relative; overflow:hidden; border-bottom:1px solid var(--border); }
+  .session-swipe-actions { position:absolute; inset:0 0 0 auto; width:92px; display:flex; justify-content:flex-end; background:var(--accent); }
+  .session-view-btn { width:92px; border:0; background:var(--accent); color:#071018; font-family:'Barlow Condensed',sans-serif; font-weight:900; letter-spacing:1px; }
+  .session-swipe-card { position:relative; z-index:2; background:var(--surface); transition:transform .18s ease; will-change:transform; }
+  .session-swipe.open .session-swipe-card { transform:translateX(-92px); }
+  .session-note-row-inline { padding:0 12px 10px; color:var(--text); font-size:12px; }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 </head>
@@ -1575,9 +1583,87 @@ window.showHistory = function(playerId) {
     trend+=`<div class="trend-card"><div class="trend-value">${avgFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">Avg. FB Velo</div></div><div class="trend-card"><div class="trend-value">${highFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">High FB Velo</div></div>`;
   }
   document.getElementById('trendCards').innerHTML=trend;
-  document.getElementById('historyList').innerHTML = sessions.length ? `<table class="history-table"><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th></tr></thead><tbody>${sessions.map(s=>{const note=(s.notes||'').trim(); return `<tr><td>${new Date(s.createdAt).toLocaleDateString()}</td><td>${s.totalPitches}</td><td class="strike-pct ${strikeClass(s.strikePct)}">${s.strikePct}%</td><td>${s.locationPct}%</td></tr>${note?`<tr class="session-note-row"><td colspan="4"><div class="session-note"><span class="session-note-label">SESSION NOTES</span>${esc(note)}</div></td></tr>`:''}`}).join('')}</tbody></table>` : '<div class="empty-state">No saved sessions yet.</div>';
+  document.getElementById('historyList').innerHTML = sessions.length ? `
+      <div class="history-table" style="display:block">
+        <div style="display:grid;grid-template-columns:1.2fr .7fr .8fr .8fr;padding:8px 12px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.7px;font-size:11px;border-bottom:1px solid var(--border);">
+          <div>Date</div><div>Pitches</div><div>Strike</div><div>Location</div>
+        </div>
+        ${sessions.map(s=>{
+          const note=(s.notes||'').trim();
+          return `<div class="session-swipe" data-session-id="${s.id}">
+            <div class="session-swipe-actions"><button type="button" class="session-view-btn">VIEW</button></div>
+            <div class="session-swipe-card">
+              <div style="display:grid;grid-template-columns:1.2fr .7fr .8fr .8fr;padding:12px;align-items:center;color:var(--text);">
+                <div>${new Date(s.createdAt).toLocaleDateString()}</div>
+                <div>${s.totalPitches}</div>
+                <div class="strike-pct ${strikeClass(s.strikePct)}">${s.strikePct}%</div>
+                <div>${s.locationPct}%</div>
+              </div>
+              ${note?`<div class="session-note-row-inline"><span class="session-note-label">SESSION NOTES</span>${esc(note)}</div>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>` : '<div class="empty-state">No saved sessions yet.</div>';
+  bindSessionHistorySwipe();
   managerScreen.style.display='none'; trackingScreen.style.display='none'; statsScreen.style.display='none'; historyScreen.style.display='flex';
 };
+
+
+function bindSessionHistorySwipe(){
+  document.querySelectorAll('.session-swipe').forEach(wrap=>{
+    const card=wrap.querySelector('.session-swipe-card');
+    const viewBtn=wrap.querySelector('.session-view-btn');
+    let sx=0, sy=0, base=0, drag=false;
+    card.addEventListener('touchstart',e=>{
+      const t=e.touches[0]; sx=t.clientX; sy=t.clientY; base=wrap.classList.contains('open')?-92:0; drag=true; card.style.transition='none';
+    },{passive:true});
+    card.addEventListener('touchmove',e=>{
+      if(!drag)return;
+      const t=e.touches[0], dx=t.clientX-sx, dy=t.clientY-sy;
+      if(Math.abs(dy)>Math.abs(dx)+6)return;
+      const x=Math.max(-92,Math.min(0,base+dx));
+      card.style.transform=`translateX(${x}px)`;
+    },{passive:true});
+    card.addEventListener('touchend',e=>{
+      if(!drag)return; drag=false;
+      const t=e.changedTouches[0], dx=t.clientX-sx;
+      wrap.classList.toggle('open', base+dx < -42);
+      card.style.transition=''; card.style.transform='';
+    });
+    viewBtn.addEventListener('click',()=>openHistoricalSession(wrap.dataset.sessionId));
+  });
+}
+
+function openHistoricalSession(sessionId){
+  const s=appData.sessions.find(x=>x.id===sessionId);
+  if(!s || !Array.isArray(s.pitches)) return;
+  const p=appData.players.find(x=>x.id===s.playerId);
+  state = {
+    phase:'target',
+    targetZones:new Set(),
+    currentPitchType:'FB',
+    pitches:s.pitches.map((pitch,i)=>({
+      ...pitch,
+      num:Number(pitch.num)||i+1,
+      targetZones:new Set(Array.isArray(pitch.targetZones)?pitch.targetZones:[])
+    })),
+    pitchNum:(s.pitches?.length||0)+1,
+    activePlayerId:s.playerId,
+    sessionSaved:true,
+    savedSessionId:s.id,
+    reportMode:'historical'
+  };
+  const t=appData.teams.find(x=>x.id===p?.teamId);
+  document.getElementById('statsSubtitle').textContent='';
+  if(p) sessionContext.textContent=`${p.name}${t?' · '+t.name:''}`;
+  buildStats();
+  managerScreen.style.display='none';
+  historyScreen.style.display='none';
+  trackingScreen.style.display='none';
+  statsScreen.style.display='flex';
+  const continueBtn=document.getElementById('continueSessionBtn');
+  if(continueBtn) continueBtn.textContent='← CONTINUE SESSION';
+}
 
 function sessionCombinedScore(s){ return sessionCommandScore(s); }
 function pdfSafe(s){ return String(s??'').replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').replace(/[\u2013\u2014]/g,'-').replace(/[^\x20-\x7E\n]/g,''); }
@@ -2164,7 +2250,11 @@ function buildStats() {
   const locPct = withTarget.length > 0 ? Math.round((onTarget / withTarget.length) * 100) : 0;
 
   // Subtitle
-  document.getElementById('statsSubtitle').textContent = `${total} pitches · ${new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'})}`;
+  {
+    const viewed = state.reportMode==='historical' && state.savedSessionId ? appData.sessions.find(s=>s.id===state.savedSessionId) : null;
+    const d = viewed?.createdAt ? new Date(viewed.createdAt) : new Date();
+    document.getElementById('statsSubtitle').textContent = `${total} pitches · ${d.toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'})}`;
+  }
 
   // Big stat cards
   const cards = [
