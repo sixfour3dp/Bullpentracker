@@ -1332,6 +1332,7 @@ const veloInput         = document.getElementById('veloInput');
 const veloToggle        = document.getElementById('veloToggle');
 const veloModeLabel     = document.getElementById('veloModeLabel');
 let requireVelocity = false;
+let pendingVelocityPitch = null;
 
 function syncVeloMode() {
   requireVelocity = Boolean(veloToggle && veloToggle.checked);
@@ -1342,6 +1343,11 @@ function syncVeloMode() {
   if (veloModeLabel) {
     veloModeLabel.textContent = requireVelocity ? 'ON' : 'OFF';
     veloModeLabel.classList.toggle('on', requireVelocity);
+  }
+  if (!requireVelocity && pendingVelocityPitch) {
+    const pending = pendingVelocityPitch;
+    pendingVelocityPitch = null;
+    finalizePitch(pending.zone, pending.relX, pending.relY, pending.isStrike, pending.targetEl, pending.clickX, pending.clickY, null);
   }
 }
 if (veloToggle) veloToggle.addEventListener('change', syncVeloMode);
@@ -1460,6 +1466,7 @@ function startBullpen(playerId) {
 }
 
 function resetTrackingUI() {
+  pendingVelocityPitch = null;
   if (veloInput) veloInput.value='';
   pitchNumEl.textContent='1'; pitchLogEl.innerHTML=''; logLabel.style.display='none'; advancePromptShown=false;
   strikeZoneTarget.style.display='grid'; outerZone.style.display='none'; outerZone.classList.remove('active');
@@ -1771,6 +1778,7 @@ function toResultPhase() {
 }
 
 function toTargetPhase() {
+  pendingVelocityPitch = null;
   state.phase = 'target';
   advancePromptShown = false;
 
@@ -1818,22 +1826,43 @@ function handleOuterZoneClick(e) {
 }
 
 function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
-  if (requireVelocity && (!veloInput || veloInput.value.trim() === '')) {
-    alert('Enter pitch velocity before recording this pitch.');
-    veloInput?.focus();
+  // With velocity tracking ON, capture the location first, then wait for MPH.
+  if (requireVelocity) {
+    pendingVelocityPitch = { zone, relX, relY, isStrike, targetEl, clickX, clickY };
+    phaseInstEl.textContent = 'LOCATION SET — ENTER VELO TO SAVE PITCH';
+    phaseInstEl.className = 'phase-instruction phase-result';
+    if (veloInput) {
+      veloInput.value = '';
+      setTimeout(() => { veloInput.focus(); veloInput.select?.(); }, 40);
+    }
     return;
   }
+  finalizePitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, null);
+}
+
+function finalizePendingVelocityPitch() {
+  if (!pendingVelocityPitch || !requireVelocity || !veloInput) return false;
+  const raw = veloInput.value.trim();
+  const parsed = Number(raw);
+  if (raw === '' || !Number.isFinite(parsed) || parsed <= 0 || parsed >= 150) {
+    veloInput.focus();
+    return false;
+  }
+  const pending = pendingVelocityPitch;
+  pendingVelocityPitch = null;
+  const velocity = Math.round(parsed * 10) / 10;
+  veloInput.value = '';
+  finalizePitch(pending.zone, pending.relX, pending.relY, pending.isStrike, pending.targetEl, pending.clickX, pending.clickY, velocity);
+  return true;
+}
+
+function finalizePitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, velocity) {
   const isOnTarget = zone !== null && state.targetZones.has(zone);
   const outerRectForPitch = outerZone.getBoundingClientRect();
   const resultX = clickX != null && outerRectForPitch.width
     ? Math.max(0, Math.min(1, (clickX - outerRectForPitch.left) / outerRectForPitch.width)) : null;
   const resultY = clickY != null && outerRectForPitch.height
     ? Math.max(0, Math.min(1, (clickY - outerRectForPitch.top) / outerRectForPitch.height)) : null;
-  const rawVelo = (veloInput?.value || '').trim();
-  const parsedVelo = Number(rawVelo);
-  const velocity = rawVelo !== '' && Number.isFinite(parsedVelo) && parsedVelo > 0 && parsedVelo < 150
-    ? Math.round(parsedVelo * 10) / 10 : null;
-  if (veloInput) veloInput.value = '';
 
   const pitch = {
     num: state.pitchNum,
@@ -1849,29 +1878,37 @@ function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
 
   state.pitches.push(pitch);
 
-  // Visual feedback - animate dot on zone
   if (targetEl && zone) {
     spawnDot(targetEl, relX, relY, isStrike, isOnTarget, clickX, clickY);
   } else if (targetEl) {
     spawnDot(targetEl, null, null, false, false, clickX, clickY);
   }
 
-  // Add to log
   addToLog(pitch);
-
-  // Reset for next pitch
   state.pitchNum++;
   pitchNumEl.textContent = state.pitchNum;
   state.targetZones.clear();
 
-  // Back to target phase
   setTimeout(() => {
     strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c => c.classList.remove('target'));
     updateTargetBadges();
     toTargetPhase();
-  }, 350);
+  }, 250);
 
   logLabel.style.display = 'block';
+}
+
+if (veloInput) {
+  veloInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && pendingVelocityPitch) {
+      e.preventDefault();
+      finalizePendingVelocityPitch();
+    }
+  });
+  // On iPhone, tapping Done on the numeric keyboard commonly blurs/changes the field.
+  veloInput.addEventListener('change', () => {
+    if (pendingVelocityPitch) finalizePendingVelocityPitch();
+  });
 }
 
 function spawnDot(containerEl, relX, relY, isStrike, isOnTarget, clientX, clientY) {
