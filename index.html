@@ -2375,6 +2375,10 @@ function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, isWil
     state.targetZones.clear();
     toTargetPhase();
     renderPitchLog();
+    if(state.savedSessionId){
+      const saved=appData.sessions.find(s=>s.id===state.savedSessionId);
+      if(saved){ saved.pitches=state.pitches.map(serializePitch); saveAppData(); }
+    }
     return;
   }
   // With velocity tracking ON, capture the location first, then wait for MPH.
@@ -2561,7 +2565,11 @@ function openPitchEditor(num) {
   pitchEditModal.classList.add('visible');
 }
 function applyPitchEditorBase(p){
-  applyPitchEditorBase(p);
+  p.type=document.getElementById('editPitchType').value;
+  const raw=document.getElementById('editPitchVelocity').value.trim();
+  const v=Number(raw);
+  p.velocity=raw!=='' && Number.isFinite(v) && v>0 && v<150 ? Math.round(v*10)/10 : null;
+  p.targetZones=new Set([...editTargetZones.querySelectorAll('.edit-target-btn.active')].map(b=>Number(b.dataset.zone)));
 }
 function closePitchEditor(){ pitchEditModal.classList.remove('visible'); editingPitchNum=null; }
 
@@ -2570,15 +2578,13 @@ document.getElementById('selectResultOnZoneBtn').addEventListener('click',()=>{
   if(!p) return closePitchEditor();
   applyPitchEditorBase(p);
   editingResultPitchNum=p.num;
+  const editNum=p.num;
   closePitchEditor();
 
   // Use the pitch's intended target while the user re-selects the actual result.
   state.targetZones=new Set(p.targetZones);
-  strikeZoneTarget.style.display='none';
-  outerZone.style.display='block';
-  outerZone.classList.add('active');
   toResultPhase();
-  phaseInstEl.textContent=`UPDATE PITCH #${p.num} — TAP NEW ACTUAL RESULT`;
+  phaseInstEl.textContent=`UPDATE PITCH #${editNum} — TAP NEW ACTUAL RESULT`;
   phaseInstEl.className='phase-instruction phase-result';
   clearTargetBtn.disabled=true;
 });
