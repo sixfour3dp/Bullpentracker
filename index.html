@@ -1841,8 +1841,14 @@ function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
     phaseInstEl.textContent = 'LOCATION SET — ENTER VELO TO SAVE PITCH';
     phaseInstEl.className = 'phase-instruction phase-result';
     if (veloInput) {
-      veloInput.value = '';
-      setTimeout(() => { veloInput.focus(); veloInput.select?.(); }, 40);
+      const existingRaw = veloInput.value.trim();
+      const existingVelo = Number(existingRaw);
+      if (existingRaw !== '' && Number.isFinite(existingVelo) && existingVelo > 0 && existingVelo < 150) {
+        // User entered velocity first; keep it and finalize this pitch immediately.
+        finalizePendingVelocityPitch();
+      } else {
+        setTimeout(() => { veloInput.focus(); veloInput.select?.(); }, 40);
+      }
     }
     return;
   }
