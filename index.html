@@ -1828,21 +1828,28 @@ function exportHistoryPdf(playerId){
   const win=window.open('','_blank');
   if(!win){alert('Allow pop-ups for Pocket Bullpen to create the PDF report.');return;}
   const report=`<!doctype html><html><head><meta charset="utf-8"><title>${printSafe(player.name)} — Pocket Bullpen History</title><style>
-    @page{size:letter;margin:.38in}*{box-sizing:border-box}body{margin:0;background:#080d14;color:#edf5ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    @page{size:letter;margin:.38in}
+    .preview-nav{position:sticky;top:0;z-index:999;display:flex;gap:8px;justify-content:space-between;align-items:center;padding:10px 12px;background:#080d14;border-bottom:1px solid #20344a}
+    .preview-nav button{appearance:none;border:1px solid #2b4259;border-radius:10px;padding:9px 12px;background:#0f1924;color:#edf5ff;font-weight:800;font-size:12px}
+    .preview-nav .printbtn{background:#00d4ff;color:#071018;border-color:#00d4ff}
+    *{box-sizing:border-box}body{margin:0;background:#080d14;color:#edf5ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .page{padding:12px}.brand{border:1px solid #20344a;background:#0e1722;border-radius:18px;padding:18px 20px}.logo{font-size:25px;font-weight:900}.logo .p{color:#00d4ff}.logo .b{color:#ff5c35}.name{font-size:21px;font-weight:850;margin-top:8px}.sub{color:#6686a4;font-size:11px;margin-top:3px}
     .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:13px 0}.card{background:#0f1924;border:1px solid #20344a;border-radius:14px;padding:12px}.card label{display:block;color:#6686a4;font-size:9px;letter-spacing:1px;text-transform:uppercase}.card strong{display:block;font-size:25px;margin-top:5px}.cyan{color:#00d4ff}.green{color:#22c55e}.orange{color:#ff5c35}.yellow{color:#facc15}
     .section{background:#0f1924;border:1px solid #20344a;border-radius:15px;padding:13px;margin-top:12px}.section h2{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6686a4;margin:0 0 10px}.heatgrid{display:grid;grid-template-columns:.9fr 1.1fr;gap:14px;align-items:start}.heat{position:relative;aspect-ratio:1;background-color:#0b121b;background-image:${heat||'none'};border:1px solid #294057;border-radius:13px;overflow:hidden}.zone{position:absolute;inset:15%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);border:2px solid rgba(255,255,255,.8)}.zone i{border:1px solid rgba(255,255,255,.22)}
     svg{width:100%;height:auto;background:#0b121b;border-radius:10px}.chartlegend{font-size:9px;color:#8aa0b7;margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px}
     table{width:100%;border-collapse:collapse;font-size:10px}th{color:#6686a4;text-transform:uppercase;font-size:9px;letter-spacing:.7px}th,td{padding:7px;border-bottom:1px solid #20344a;text-align:right}th:first-child,td:first-child{text-align:left}.notes{display:grid;gap:8px}.note{background:#0b121b;border:1px solid #20344a;border-radius:10px;padding:9px;font-size:10px;color:#cbd8e5}.note strong{color:#00d4ff;display:block;margin-bottom:4px}.footer{text-align:right;color:#6686a4;font-size:8px;margin-top:12px}
-    @media print{body{background:#080d14}.page{padding:0}.section,.brand,.card{break-inside:avoid}}
-  </style></head><body><div class="page">
+    @media print{.preview-nav{display:none!important}body{background:#080d14}.page{padding:0}.section,.brand,.card{break-inside:avoid}}
+  </style></head><body><div class="preview-nav"><button id="backToAppBtn">← Back to Pocket Bullpen</button><button class="printbtn" id="printPdfBtn">Print / Save PDF</button></div><div class="page">
     <div class="brand"><div class="logo"><span class="p">POCKET</span><span class="b">BULLPEN</span></div><div class="name">${printSafe(player.name)}</div><div class="sub">${printSafe(team?.name||'')} · Complete Bullpen History · ${sessions.length} sessions</div></div>
     <div class="cards"><div class="card"><label>Sessions</label><strong class="cyan">${sessions.length}</strong></div><div class="card"><label>Total Pitches</label><strong class="yellow">${totalPitches}</strong></div><div class="card"><label>Avg Strike %</label><strong class="green">${avgStrike}%</strong></div><div class="card"><label>Latest PB Score</label><strong class="orange">${latestPb}</strong></div></div>
     <div class="section"><h2>Strike % trend by pitch</h2>${trendSvg}</div>
     <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div></div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target locations. Red heat represents off-target locations across all saved sessions. Pitch dots are intentionally omitted for a cleaner historical view.</div></div></div></div>
     <div class="section"><h2>Bullpen sessions</h2><table><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th><th>PB Score</th></tr></thead><tbody>${sessionRows}</tbody></table></div>
     <div class="section"><h2>Session notes</h2><div class="notes">${notes}</div></div><div class="footer">Pocket Bullpen · Player History Report</div>
-    <script>window.onload=()=>setTimeout(()=>window.print(),300);<\/script></div></body></html>`;
+    <script>
+      document.getElementById('backToAppBtn').addEventListener('click',()=>window.close());
+      document.getElementById('printPdfBtn').addEventListener('click',()=>window.print());
+    <\/script></div></body></html>`;
   win.document.open();win.document.write(report);win.document.close();
 }
 
@@ -1923,6 +1930,10 @@ function exportSessionPdf(){
   if(!win){ alert('Allow pop-ups for Pocket Bullpen to create the PDF report.'); return; }
   const docHtml=`<!doctype html><html><head><meta charset="utf-8"><title>Pocket Bullpen Session Report</title>
   <style>
+    .preview-nav{position:sticky;top:0;z-index:999;display:flex;gap:8px;justify-content:space-between;align-items:center;padding:10px 12px;background:#080d14;border-bottom:1px solid #20344a}
+    .preview-nav button{appearance:none;border:1px solid #2b4259;border-radius:10px;padding:9px 12px;background:#0f1924;color:#edf5ff;font-weight:800;font-size:12px}
+    .preview-nav .printbtn{background:#00d4ff;color:#071018;border-color:#00d4ff}
+
     @page{size:letter;margin:.45in}
     *{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#152132;margin:0;background:white}
     .brand{background:#0a0f17;color:white;padding:18px 22px;border-radius:14px;margin-bottom:14px}
@@ -1942,8 +1953,9 @@ function exportSessionPdf(){
     table{width:100%;border-collapse:collapse;font-size:9px}th,td{padding:6px;border-bottom:1px solid #e2e8f0;text-align:right}th:first-child,td:first-child{text-align:left}th{color:#718197;text-transform:uppercase;font-size:8px}
     .notes{border:1px solid #dbe3ec;border-radius:10px;padding:10px;white-space:pre-wrap;font-size:10px;min-height:38px}
     .command{border:1px solid #dbe3ec;border-radius:10px;padding:10px;font-size:10px}.command strong{font-size:18px}.footer{font-size:8px;color:#8a98aa;margin-top:14px;text-align:right}
-    @media print{.printtip{display:none}}
+    @media print{.printtip,.preview-nav{display:none!important}}
   </style></head><body>
+    <div class="preview-nav"><button id="backToAppBtn">← Back to Pocket Bullpen</button><button class="printbtn" id="printPdfBtn">Print / Save PDF</button></div>
     <div class="brand"><div class="brandtop"><span class="pocket">POCKET</span><span class="bullpen">BULLPEN</span></div>
       <div class="player">${printSafe(player?.name||'Player')}</div>
       <div class="sub">${printSafe(team?.name||'')} · ${reportDate.toLocaleDateString()} · ${pitches.length} pitches</div>
@@ -1967,7 +1979,10 @@ function exportSessionPdf(){
     <div class="command"><strong>${cmd.score} — ${cmd.grade}</strong><br>On-location strikes: ${cmd.onTargetStrikePct}% · Overall strikes: ${cmd.strikePct}% · Location quality: ${cmd.locationQuality}</div>
     <h2>Session notes</h2><div class="notes">${notes?printSafe(notes):'No session notes.'}</div>
     <div class="footer">Pocket Bullpen Session Report</div>
-    <script>window.onload=()=>setTimeout(()=>window.print(),250);<\/script>
+    <script>
+      document.getElementById('backToAppBtn').addEventListener('click',()=>window.close());
+      document.getElementById('printPdfBtn').addEventListener('click',()=>window.print());
+    <\/script>
   </body></html>`;
   win.document.open(); win.document.write(docHtml); win.document.close();
 }
