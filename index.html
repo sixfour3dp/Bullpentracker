@@ -1663,7 +1663,8 @@ window.showHistory = function(playerId) {
   document.getElementById('trendCards').innerHTML=trend;
   document.getElementById('historyList').innerHTML = sessions.length ? `
       <div class="history-table" style="display:block">
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);padding:8px 12px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.55px;font-size:10px;border-bottom:1px solid var(--border);text-align:center;">
+        <div style="padding:8px 12px 2px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.7px;font-size:10px;text-transform:uppercase;">Date</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);padding:4px 12px 8px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.55px;font-size:10px;border-bottom:1px solid var(--border);text-align:center;">
           <div>Pitches</div><div>Strike</div><div>Location</div><div>PB Score</div>
         </div>
         ${sessions.map(s=>{
@@ -2183,7 +2184,7 @@ function pitchLogHTML(pitch) {
     <span class="log-result">Target: ${targets} → Z${pitch.resultZone ?? 'OOZ'}${pitch.velocity != null ? ` · ${pitch.velocity} MPH` : ''}</span>
     <div class="log-badges">
       <span class="badge ${pitch.isStrike ? 'strike' : 'ball'}">${pitch.isStrike ? '✓ STR' : '✗ BALL'}</span>
-      ${pitch.targetZones.size > 0 ? `<span class="badge ${pitch.isOnTarget ? 'on-target' : 'miss'}">${pitch.isOnTarget ? '◎ LOC' : '△ MISS'}</span>` : ''}
+      ${pitch.targetZones.size > 0 ? `<span class="badge ${pitch.isOnTarget ? 'on-target' : 'miss'}">${pitch.isWildPitch ? 'WP' : (pitch.isOnTarget ? '◎ LOC' : '△ MISS')}</span>` : ''}
     </div>`;
 }
 
