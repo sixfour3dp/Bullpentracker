@@ -973,6 +973,93 @@
   .velo-switch input:checked + .velo-slider::before { transform:translateX(16px); }
   .velo-input:disabled { opacity:.38; }
 
+
+  /* Interactive command heat map */
+  .command-map {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 14px;
+    overflow: hidden;
+    background-color: #0b1119;
+    border: 1px solid var(--border);
+    touch-action: manipulation;
+  }
+  .command-strike-zone {
+    position: absolute;
+    inset: 15%;
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    grid-template-rows: repeat(3,1fr);
+    border: 2px solid rgba(255,255,255,.72);
+    z-index: 3;
+    pointer-events: none;
+  }
+  .command-target-cell {
+    border: 1px solid rgba(255,255,255,.18);
+    position: relative;
+    transition: background .15s, box-shadow .15s;
+  }
+  .command-target-cell.selected-target {
+    background: rgba(0,212,255,.24);
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+  .command-target-cell.selected-target::after {
+    content: 'TARGET';
+    position: absolute;
+    inset: 50% auto auto 50%;
+    transform: translate(-50%,-50%);
+    color: var(--accent);
+    font-family: 'Barlow Condensed',sans-serif;
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: .7px;
+  }
+  .command-pitch-dot {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    margin-left: -9px;
+    margin-top: -9px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.95);
+    z-index: 8;
+    cursor: pointer;
+    box-shadow: 0 1px 7px rgba(0,0,0,.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #071018;
+    font-family: 'Barlow Condensed',sans-serif;
+    font-size: 8px;
+    font-weight: 900;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .command-pitch-dot.hit { background: var(--green); }
+  .command-pitch-dot.miss { background: var(--red); color: white; }
+  .command-pitch-dot.selected {
+    width: 24px; height: 24px; margin-left:-12px; margin-top:-12px;
+    box-shadow: 0 0 0 3px rgba(255,255,255,.3), 0 1px 8px rgba(0,0,0,.75);
+  }
+  .command-map-legend {
+    display:flex; gap:14px; align-items:center; justify-content:center;
+    padding:8px 4px 2px; color:var(--muted); font-size:10px;
+    font-family:'Barlow Condensed',sans-serif; letter-spacing:.7px;
+  }
+  .command-map-legend span { display:flex; align-items:center; gap:5px; }
+  .heat-key { width:12px; height:12px; border-radius:50%; display:inline-block; }
+  .heat-key.good { background:var(--green); }
+  .heat-key.bad { background:var(--red); }
+  .command-pitch-info {
+    margin-top:8px; min-height:54px; padding:9px 11px;
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    color:var(--text); font-size:12px;
+  }
+  .command-pitch-info strong {
+    font-family:'Barlow Condensed',sans-serif; letter-spacing:.5px;
+  }
+  .command-pitch-info .target-copy { color:var(--accent); font-weight:700; }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 </head>
@@ -1151,9 +1238,14 @@
 
     <div class="stat-cards" id="statCards"></div>
 
-    <div class="section-label">ZONE HEAT MAP — PITCH LOCATIONS</div>
+    <div class="section-label">COMMAND HEAT MAP — TAP A PITCH</div>
     <div class="stats-zone-section">
-      <div class="stats-zone-grid" id="heatmapGrid"></div>
+      <div class="command-map" id="heatmapGrid" aria-label="Pitch command heat map"></div>
+      <div class="command-map-legend">
+        <span><i class="heat-key good"></i> ON TARGET</span>
+        <span><i class="heat-key bad"></i> OFF TARGET</span>
+      </div>
+      <div class="command-pitch-info" id="commandPitchInfo">Tap any pitch dot to see its intended location.</div>
     </div>
 
     <div class="section-label">BY PITCH TYPE</div>
@@ -1681,6 +1773,11 @@ function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
     return;
   }
   const isOnTarget = zone !== null && state.targetZones.has(zone);
+  const outerRectForPitch = outerZone.getBoundingClientRect();
+  const resultX = clickX != null && outerRectForPitch.width
+    ? Math.max(0, Math.min(1, (clickX - outerRectForPitch.left) / outerRectForPitch.width)) : null;
+  const resultY = clickY != null && outerRectForPitch.height
+    ? Math.max(0, Math.min(1, (clickY - outerRectForPitch.top) / outerRectForPitch.height)) : null;
   const rawVelo = (veloInput?.value || '').trim();
   const parsedVelo = Number(rawVelo);
   const velocity = rawVelo !== '' && Number.isFinite(parsedVelo) && parsedVelo > 0 && parsedVelo < 150
@@ -1696,6 +1793,7 @@ function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
     isOnTarget,
     velocity,
     relX, relY,
+    resultX, resultY,
   };
 
   state.pitches.push(pitch);
@@ -1817,8 +1915,18 @@ document.getElementById('savePitchEditBtn').addEventListener('click',()=>{
   p.velocity=raw!=='' && Number.isFinite(v) && v>0 && v<150 ? Math.round(v*10)/10 : null;
   p.targetZones=new Set([...editTargetZones.querySelectorAll('.edit-target-btn.active')].map(b=>Number(b.dataset.zone)));
   const rv=document.getElementById('editResultZone').value;
+  const oldResultZone=p.resultZone;
   p.resultZone=rv==='OOZ'?null:Number(rv); p.isStrike=p.resultZone!==null; p.isOnTarget=p.resultZone!==null && p.targetZones.has(p.resultZone);
-  if(p.resultZone!==null){ p.relX=.5; p.relY=.5; } else { p.relX=null; p.relY=null; }
+  if(p.resultZone!==null){
+    p.relX=.5; p.relY=.5;
+    if(oldResultZone!==p.resultZone || !Number.isFinite(Number(p.resultX)) || !Number.isFinite(Number(p.resultY))){
+      const c=(p.resultZone-1)%3, r=Math.floor((p.resultZone-1)/3), inset=.15, span=.70;
+      p.resultX=inset+((c+.5)/3)*span; p.resultY=inset+((r+.5)/3)*span;
+    }
+  } else {
+    p.relX=null; p.relY=null;
+    if(oldResultZone!==null){ p.resultX=null; p.resultY=null; }
+  }
   document.querySelectorAll('.pitch-dot,.click-ring').forEach(d=>d.remove());
   closePitchEditor(); renderPitchLog();
 });
@@ -1838,6 +1946,86 @@ function finalizeFinishedSession(notes=''){
 }
 document.getElementById('saveNotesBtn').addEventListener('click',()=>finalizeFinishedSession(sessionNotesInput.value));
 document.getElementById('skipNotesBtn').addEventListener('click',()=>finalizeFinishedSession(''));
+
+
+const ZONE_NAMES = {1:'UP-IN',2:'UP',3:'UP-OUT',4:'MID-IN',5:'MID',6:'MID-OUT',7:'DOWN-IN',8:'DOWN',9:'DOWN-OUT'};
+
+function commandMapPoint(p) {
+  // Exact coordinates are saved for pitches recorded by current versions.
+  if(Number.isFinite(Number(p.resultX)) && Number.isFinite(Number(p.resultY))){
+    return {x:Number(p.resultX), y:Number(p.resultY), exact:true};
+  }
+  // Legacy in-zone pitches can be reconstructed from saved cell + relative click.
+  if(p.resultZone){
+    const z=Number(p.resultZone), col=(z-1)%3, row=Math.floor((z-1)/3);
+    const rx=Number.isFinite(Number(p.relX)) ? Number(p.relX) : .5;
+    const ry=Number.isFinite(Number(p.relY)) ? Number(p.relY) : .5;
+    const inset=.15, span=.70;
+    return {x:inset+((col+rx)/3)*span, y:inset+((row+ry)/3)*span, exact:false};
+  }
+  // Old outside-zone pitches did not save an exact click coordinate.
+  // Keep them visible on the perimeter without pretending the location is exact.
+  const slot=((Number(p.num)||1)-1)%12;
+  const side=Math.floor(slot/3), pos=.25+(slot%3)*.25;
+  if(side===0) return {x:pos,y:.06,exact:false,legacyOutside:true};
+  if(side===1) return {x:.94,y:pos,exact:false,legacyOutside:true};
+  if(side===2) return {x:1-pos,y:.94,exact:false,legacyOutside:true};
+  return {x:.06,y:1-pos,exact:false,legacyOutside:true};
+}
+
+function targetZoneLabel(p){
+  const rawTargets=p.targetZones instanceof Set ? [...p.targetZones] : (Array.isArray(p.targetZones)?p.targetZones:[]);
+  const zs=rawTargets.map(Number).sort((a,b)=>a-b);
+  if(!zs.length) return 'No target selected';
+  return zs.map(z=>`Z${z} ${ZONE_NAMES[z]||''}`).join(' · ');
+}
+
+function renderCommandHeatmap(pitches){
+  const map=document.getElementById('heatmapGrid');
+  const info=document.getElementById('commandPitchInfo');
+  if(!map) return;
+
+  const points=pitches.map(p=>({p,pt:commandMapPoint(p)}));
+
+  // Layer multiple soft radial gradients to create a real continuous heat field.
+  // Each on-target pitch adds green energy; each miss adds red energy.
+  const gradients=points.map(({p,pt})=>{
+    const x=(pt.x*100).toFixed(1), y=(pt.y*100).toFixed(1);
+    const c=p.isOnTarget ? '34,197,94' : '239,68,68';
+    return `radial-gradient(circle at ${x}% ${y}%, rgba(${c},.54) 0%, rgba(${c},.30) 9%, rgba(${c},.11) 18%, rgba(${c},0) 29%)`;
+  });
+  map.style.backgroundImage=gradients.length ? gradients.join(',') : 'none';
+
+  map.innerHTML=`
+    <div class="command-strike-zone" id="commandStrikeZone">
+      ${ZONES.map(z=>`<div class="command-target-cell" data-command-zone="${z}"></div>`).join('')}
+    </div>
+  `;
+
+  points.forEach(({p,pt})=>{
+    const dot=document.createElement('button');
+    dot.type='button';
+    dot.className='command-pitch-dot '+(p.isOnTarget?'hit':'miss');
+    dot.style.left=(pt.x*100)+'%';
+    dot.style.top=(pt.y*100)+'%';
+    dot.textContent=p.num;
+    dot.setAttribute('aria-label',`Pitch ${p.num}: ${p.type}, ${p.isOnTarget?'on target':'off target'}`);
+    dot.addEventListener('click',()=>{
+      map.querySelectorAll('.command-pitch-dot').forEach(d=>d.classList.remove('selected'));
+      dot.classList.add('selected');
+      map.querySelectorAll('.command-target-cell').forEach(c=>c.classList.remove('selected-target'));
+      (p.targetZones instanceof Set ? [...p.targetZones] : (Array.isArray(p.targetZones)?p.targetZones:[])).forEach(z=>{
+        map.querySelector(`[data-command-zone="${Number(z)}"]`)?.classList.add('selected-target');
+      });
+      const actual=p.resultZone ? `Z${p.resultZone} ${ZONE_NAMES[p.resultZone]||''}` : 'BALL — OUTSIDE ZONE';
+      const velo=Number.isFinite(Number(p.velocity)) && Number(p.velocity)>0 ? ` · ${Number(p.velocity).toFixed(1)} MPH` : '';
+      const legacy=pt.legacyOutside ? `<br><span style="color:var(--yellow)">Older outside-zone pitch: exact outside coordinates were not saved.</span>` : '';
+      if(info) info.innerHTML=`<strong>#${p.num} ${p.type}${velo}</strong> · Actual: ${actual}<br><span class="target-copy">INTENDED: ${targetZoneLabel(p)}</span>${legacy}`;
+    });
+    map.appendChild(dot);
+  });
+  if(info) info.textContent=points.length ? 'Tap any pitch dot to see its intended location.' : 'No pitches recorded.';
+}
 
 function buildStats() {
   const pitches = state.pitches;
@@ -1867,31 +2055,9 @@ function buildStats() {
     </div>
   `).join('');
 
-  // Heatmap
-  const zoneCounts = {};
-  ZONES.forEach(z => zoneCounts[z] = { total: 0, strikes: 0 });
-  pitches.forEach(p => {
-    if (p.resultZone) {
-      zoneCounts[p.resultZone].total++;
-      if (p.isStrike) zoneCounts[p.resultZone].strikes++;
-    }
-  });
-  const maxCount = Math.max(...Object.values(zoneCounts).map(z => z.total), 1);
-
-  document.getElementById('heatmapGrid').innerHTML = ZONES.map(z => {
-    const zd = zoneCounts[z];
-    const intensity = zd.total / maxCount;
-    const r = Math.round(intensity * 200);
-    const g = Math.round(intensity * 100 + 50);
-    const b = Math.round((1 - intensity) * 200 + 30);
-    const bg = zd.total > 0 ? `rgba(${r},${g},${b},${0.2 + intensity * 0.5})` : 'rgba(255,255,255,0.03)';
-    const stPct = zd.total > 0 ? Math.round(zd.strikes/zd.total*100) + '%' : '';
-    return `
-      <div class="stats-zone-cell" style="background:${bg};border:1px solid rgba(255,255,255,0.07)">
-        <div class="stats-zone-num">${zd.total || ''}</div>
-        <div class="stats-zone-pct">${stPct}</div>
-      </div>`;
-  }).join('');
+  // Command heat map: green = on target, red = off target.
+  // New pitches retain exact outer-zone coordinates, including balls.
+  renderCommandHeatmap(pitches);
 
   // By pitch type
   const types = {};
