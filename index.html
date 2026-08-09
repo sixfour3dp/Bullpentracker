@@ -959,6 +959,20 @@
   .velo-input:disabled { opacity:.35; }
   .velo-required { color:var(--green); }
 
+
+  .velo-mode-label {
+    margin-left:auto; font-size:10px; color:var(--muted);
+    font-family:'Barlow Condensed',sans-serif; letter-spacing:1px; font-weight:700;
+  }
+  .velo-mode-label.on { color:var(--green); }
+  .velo-switch { position:relative; width:38px; height:22px; flex:0 0 38px; display:inline-block; }
+  .velo-switch input { opacity:0; width:0; height:0; position:absolute; }
+  .velo-slider { position:absolute; inset:0; border-radius:999px; background:var(--surface2); border:1px solid var(--border); transition:.18s; cursor:pointer; }
+  .velo-slider::before { content:''; position:absolute; width:16px; height:16px; left:2px; top:2px; border-radius:50%; background:#fff; transition:.18s; box-shadow:0 1px 4px rgba(0,0,0,.35); }
+  .velo-switch input:checked + .velo-slider { background:var(--green); border-color:var(--green); }
+  .velo-switch input:checked + .velo-slider::before { transform:translateX(16px); }
+  .velo-input:disabled { opacity:.38; }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 </head>
@@ -1111,8 +1125,12 @@
       <!-- Pitch log -->
       <div class="velo-entry-row">
         <label for="veloInput">Velo:</label>
-        <input id="veloInput" class="velo-input" type="number" inputmode="decimal" min="1" max="149.9" step="0.1" placeholder="MPH">
-        <span class="velo-hint">optional</span>
+        <input id="veloInput" class="velo-input" type="number" inputmode="decimal" min="1" max="149.9" step="0.1" placeholder="MPH" disabled>
+        <span id="veloModeLabel" class="velo-mode-label">OFF</span>
+        <label class="velo-switch" aria-label="Require velocity for each pitch">
+          <input type="checkbox" id="veloToggle">
+          <span class="velo-slider"></span>
+        </label>
       </div>
       <div class="section-label" id="logLabel" style="display:none">PITCH LOG · SWIPE LEFT TO EDIT</div>
       <div class="pitch-log" id="pitchLog"></div>
@@ -1219,6 +1237,23 @@ const doneBtn          = document.getElementById('doneBtn');
 const clearTargetBtn   = document.getElementById('clearTargetBtn');
 const newSessionBtn    = document.getElementById('newSessionBtn');
 const veloInput         = document.getElementById('veloInput');
+const veloToggle        = document.getElementById('veloToggle');
+const veloModeLabel     = document.getElementById('veloModeLabel');
+let requireVelocity = false;
+
+function syncVeloMode() {
+  requireVelocity = Boolean(veloToggle && veloToggle.checked);
+  if (veloInput) {
+    veloInput.disabled = !requireVelocity;
+    if (!requireVelocity) veloInput.value = '';
+  }
+  if (veloModeLabel) {
+    veloModeLabel.textContent = requireVelocity ? 'ON' : 'OFF';
+    veloModeLabel.classList.toggle('on', requireVelocity);
+  }
+}
+if (veloToggle) veloToggle.addEventListener('change', syncVeloMode);
+syncVeloMode();
 
 const managerScreen    = document.getElementById('managerScreen');
 const historyScreen    = document.getElementById('historyScreen');
@@ -1326,6 +1361,8 @@ document.getElementById('addPlayerBtn').addEventListener('click', () => {
 
 function startBullpen(playerId) {
   state = { phase:'target', targetZones:new Set(), currentPitchType:'FB', pitches:[], pitchNum:1, activePlayerId:playerId, sessionSaved:false };
+  if (veloToggle) veloToggle.checked = false;
+  syncVeloMode();
   resetTrackingUI();
   const p=activePlayer(); const t=appData.teams.find(x=>x.id===p?.teamId);
   sessionContext.textContent = p ? `${p.name}${t?' · '+t.name:''}` : '';
