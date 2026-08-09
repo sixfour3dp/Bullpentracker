@@ -427,6 +427,58 @@
   .badge.on-target { background: rgba(0, 212, 255, 0.15); color: var(--accent); }
   .badge.miss { background: rgba(90, 122, 154, 0.15); color: var(--muted); }
 
+  .velo-entry-row {
+    margin: 10px 16px 8px;
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+  }
+  .velo-entry-row label {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 800;
+    font-size: 13px; letter-spacing: 1px; color: var(--text); text-transform: uppercase;
+  }
+  .velo-input {
+    width: 76px; padding: 7px 9px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface2); color: var(--text);
+    font-size: 16px; font-weight: 700; outline: none;
+  }
+  .velo-input:focus { border-color: var(--accent); }
+  .velo-hint { margin-left:auto; font-size:10px; color:var(--muted); }
+
+  .pitch-log-swipe { position:relative; overflow:hidden; border-radius:8px; touch-action:pan-y; }
+  .pitch-log-actions {
+    position:absolute; inset:0 0 0 auto; display:flex; width:144px; z-index:0;
+  }
+  .pitch-log-action {
+    flex:1; border:0; color:white; font-family:'Barlow Condensed',sans-serif;
+    font-weight:800; letter-spacing:.6px; font-size:12px;
+  }
+  .pitch-log-action.update { background:#1677ff; }
+  .pitch-log-action.delete { background:var(--red); }
+  .pitch-log-item { position:relative; z-index:1; transition:transform .18s ease; width:100%; }
+  .pitch-log-swipe.open .pitch-log-item { transform:translateX(-144px); }
+
+  .edit-modal {
+    position:fixed; inset:0; z-index:1000; display:none; align-items:flex-end;
+    background:rgba(0,0,0,.7); padding:16px;
+  }
+  .edit-modal.visible { display:flex; }
+  .edit-sheet {
+    width:100%; max-width:520px; margin:0 auto; background:var(--surface);
+    border:1px solid var(--border); border-radius:18px; padding:16px;
+    box-shadow:0 -20px 50px rgba(0,0,0,.35);
+  }
+  .edit-title { font-family:'Barlow Condensed',sans-serif; font-size:20px; font-weight:900; color:var(--text); margin-bottom:12px; }
+  .edit-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .edit-field { display:flex; flex-direction:column; gap:5px; }
+  .edit-field.full { grid-column:1/-1; }
+  .edit-field label { font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); font-weight:700; }
+  .edit-control { width:100%; padding:10px; border-radius:9px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:15px; }
+  .edit-targets { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .edit-target-btn { padding:8px 4px; border:1px solid var(--border); border-radius:8px; background:var(--surface2); color:var(--muted); font-weight:700; }
+  .edit-target-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(0,212,255,.12); }
+  .edit-actions { display:flex; gap:8px; margin-top:14px; }
+
   /* Action buttons */
   .action-bar {
     padding: 10px 20px;
@@ -1045,7 +1097,12 @@
       </div>
 
       <!-- Pitch log -->
-      <div class="section-label" id="logLabel" style="display:none">PITCH LOG</div>
+      <div class="velo-entry-row">
+        <label for="veloInput">Velo:</label>
+        <input id="veloInput" class="velo-input" type="number" inputmode="decimal" min="1" max="149.9" step="0.1" placeholder="MPH">
+        <span class="velo-hint">optional</span>
+      </div>
+      <div class="section-label" id="logLabel" style="display:none">PITCH LOG · SWIPE LEFT TO EDIT</div>
       <div class="pitch-log" id="pitchLog"></div>
     </div>
 
@@ -1095,6 +1152,20 @@
     </div>
   </div>
 
+  <!-- PITCH EDIT MODAL -->
+  <div class="edit-modal" id="pitchEditModal">
+    <div class="edit-sheet">
+      <div class="edit-title">Update Pitch <span id="editPitchNum"></span></div>
+      <div class="edit-grid">
+        <div class="edit-field"><label>Pitch Type</label><select id="editPitchType" class="edit-control"><option value="FB">Fastball</option><option value="CB">Curveball</option><option value="SL">Slider</option><option value="CH">Changeup</option><option value="CT">Cutter</option><option value="SI">Sinker</option></select></div>
+        <div class="edit-field"><label>Velocity (MPH)</label><input id="editPitchVelocity" class="edit-control" type="number" inputmode="decimal" step="0.1" placeholder="Not tracked"></div>
+        <div class="edit-field full"><label>Target Zone(s)</label><div class="edit-targets" id="editTargetZones"></div></div>
+        <div class="edit-field full"><label>Actual Result</label><select id="editResultZone" class="edit-control"><option value="1">Zone 1</option><option value="2">Zone 2</option><option value="3">Zone 3</option><option value="4">Zone 4</option><option value="5">Zone 5</option><option value="6">Zone 6</option><option value="7">Zone 7</option><option value="8">Zone 8</option><option value="9">Zone 9</option><option value="OOZ">Outside Zone (Ball)</option></select></div>
+      </div>
+      <div class="edit-actions"><button id="cancelPitchEditBtn" class="btn btn-secondary">CANCEL</button><button id="savePitchEditBtn" class="btn btn-primary">UPDATE PITCH</button></div>
+    </div>
+  </div>
+
 <script>
 // ============================================================
 // STATE
@@ -1115,7 +1186,6 @@ let state = {
   pitchNum: 1,
   activePlayerId: null,
   sessionSaved: false,
-  velocityTracking: false,
 };
 
 // pitch object: { num, type, targetZones, resultZone, resultX, resultY, isStrike, isOnTarget }
@@ -1136,6 +1206,7 @@ const strikeZoneTarget = document.getElementById('strikeZoneTarget');
 const doneBtn          = document.getElementById('doneBtn');
 const clearTargetBtn   = document.getElementById('clearTargetBtn');
 const newSessionBtn    = document.getElementById('newSessionBtn');
+const veloInput         = document.getElementById('veloInput');
 
 const managerScreen    = document.getElementById('managerScreen');
 const historyScreen    = document.getElementById('historyScreen');
@@ -1242,8 +1313,7 @@ document.getElementById('addPlayerBtn').addEventListener('click', () => {
 });
 
 function startBullpen(playerId) {
-  const velocityTracking = confirm('Record pitch velocity for this bullpen?\n\nTap OK for Yes or Cancel for No.');
-  state = { phase:'target', targetZones:new Set(), currentPitchType:'FB', pitches:[], pitchNum:1, activePlayerId:playerId, sessionSaved:false, velocityTracking };
+  state = { phase:'target', targetZones:new Set(), currentPitchType:'FB', pitches:[], pitchNum:1, activePlayerId:playerId, sessionSaved:false };
   resetTrackingUI();
   const p=activePlayer(); const t=appData.teams.find(x=>x.id===p?.teamId);
   sessionContext.textContent = p ? `${p.name}${t?' · '+t.name:''}` : '';
@@ -1251,6 +1321,7 @@ function startBullpen(playerId) {
 }
 
 function resetTrackingUI() {
+  if (veloInput) veloInput.value='';
   pitchNumEl.textContent='1'; pitchLogEl.innerHTML=''; logLabel.style.display='none'; advancePromptShown=false;
   strikeZoneTarget.style.display='grid'; outerZone.style.display='none'; outerZone.classList.remove('active');
   strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('target'));
@@ -1272,7 +1343,7 @@ function saveCurrentSession(notes='') {
   const avgVelocity=velocityPitches.length ? Math.round((velocityPitches.reduce((sum,p)=>sum+p.velocity,0)/velocityPitches.length)*10)/10 : null;
   const maxVelocity=velocityPitches.length ? Math.max(...velocityPitches.map(p=>p.velocity)) : null;
   appData.sessions.push({ id:uid('session'), playerId:state.activePlayerId, createdAt:new Date().toISOString(), totalPitches:total,
-    strikePct, locationPct, combinedScore, velocityTracked:state.velocityTracking, avgVelocity, maxVelocity, notes:(notes||'').trim(), pitches:state.pitches.map(serializePitch) });
+    strikePct, locationPct, combinedScore, velocityTracked:velocityPitches.length>0, avgVelocity, maxVelocity, notes:(notes||'').trim(), pitches:state.pitches.map(serializePitch) });
   state.sessionSaved=true; saveAppData();
 }
 
@@ -1558,16 +1629,11 @@ function handleOuterZoneClick(e) {
 
 function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
   const isOnTarget = zone !== null && state.targetZones.has(zone);
-  let velocity = null;
-  if (state.velocityTracking) {
-    while (true) {
-      const entry = prompt(`Pitch #${state.pitchNum} velocity (MPH):`, '');
-      if (entry === null || entry.trim() === '') break;
-      const mph = Number(entry);
-      if (Number.isFinite(mph) && mph > 0 && mph < 150) { velocity = Math.round(mph * 10) / 10; break; }
-      alert('Enter a valid pitch speed in MPH.');
-    }
-  }
+  const rawVelo = (veloInput?.value || '').trim();
+  const parsedVelo = Number(rawVelo);
+  const velocity = rawVelo !== '' && Number.isFinite(parsedVelo) && parsedVelo > 0 && parsedVelo < 150
+    ? Math.round(parsedVelo * 10) / 10 : null;
+  if (veloInput) veloInput.value = '';
 
   const pitch = {
     num: state.pitchNum,
@@ -1630,23 +1696,80 @@ function spawnDot(containerEl, relX, relY, isStrike, isOnTarget, clientX, client
 }
 
 function addToLog(pitch) {
-  const item = document.createElement('div');
-  item.className = 'pitch-log-item ' + (pitch.isStrike ? 'strike-log' : 'ball-log');
+  renderPitchLog();
+}
 
+function pitchLogHTML(pitch) {
   const targets = [...pitch.targetZones].map(z => `Z${z}`).join(',') || '—';
-
-  item.innerHTML = `
+  return `
     <span class="log-num">#${pitch.num}</span>
     <span class="log-type">${pitch.type}</span>
     <span class="log-result">Target: ${targets} → Z${pitch.resultZone ?? 'OOZ'}${pitch.velocity != null ? ` · ${pitch.velocity} MPH` : ''}</span>
     <div class="log-badges">
       <span class="badge ${pitch.isStrike ? 'strike' : 'ball'}">${pitch.isStrike ? '✓ STR' : '✗ BALL'}</span>
       ${pitch.targetZones.size > 0 ? `<span class="badge ${pitch.isOnTarget ? 'on-target' : 'miss'}">${pitch.isOnTarget ? '◎ LOC' : '△ MISS'}</span>` : ''}
-    </div>
-  `;
-
-  pitchLogEl.insertBefore(item, pitchLogEl.firstChild);
+    </div>`;
 }
+
+function renderPitchLog() {
+  pitchLogEl.innerHTML='';
+  [...state.pitches].reverse().forEach(pitch => {
+    const wrap=document.createElement('div');
+    wrap.className='pitch-log-swipe'; wrap.dataset.pitchNum=pitch.num;
+    wrap.innerHTML=`<div class="pitch-log-actions"><button class="pitch-log-action update" type="button">UPDATE</button><button class="pitch-log-action delete" type="button">DELETE</button></div><div class="pitch-log-item ${pitch.isStrike?'strike-log':'ball-log'}">${pitchLogHTML(pitch)}</div>`;
+    pitchLogEl.appendChild(wrap);
+    bindPitchSwipe(wrap);
+    wrap.querySelector('.pitch-log-action.update').addEventListener('click',()=>openPitchEditor(pitch.num));
+    wrap.querySelector('.pitch-log-action.delete').addEventListener('click',()=>deletePitch(pitch.num));
+  });
+  logLabel.style.display=state.pitches.length?'block':'none';
+}
+
+function bindPitchSwipe(wrap) {
+  const card=wrap.querySelector('.pitch-log-item'); let sx=0, sy=0, base=0, drag=false;
+  card.addEventListener('touchstart',e=>{ const t=e.touches[0]; sx=t.clientX; sy=t.clientY; base=wrap.classList.contains('open')?-144:0; drag=true; card.style.transition='none'; },{passive:true});
+  card.addEventListener('touchmove',e=>{ if(!drag)return; const t=e.touches[0], dx=t.clientX-sx, dy=t.clientY-sy; if(Math.abs(dy)>Math.abs(dx)+6)return; const x=Math.max(-144,Math.min(0,base+dx)); card.style.transform=`translateX(${x}px)`; },{passive:true});
+  card.addEventListener('touchend',e=>{ if(!drag)return; drag=false; const t=e.changedTouches[0], dx=t.clientX-sx; wrap.classList.toggle('open', base+dx < -65); card.style.transition=''; card.style.transform=''; });
+}
+
+function deletePitch(num) {
+  const p=state.pitches.find(x=>x.num===num); if(!p)return;
+  if(!confirm(`Delete pitch #${num} (${p.type})?`))return;
+  state.pitches=state.pitches.filter(x=>x.num!==num);
+  state.pitches.forEach((x,i)=>x.num=i+1);
+  state.pitchNum=state.pitches.length+1; pitchNumEl.textContent=state.pitchNum;
+  document.querySelectorAll('.pitch-dot,.click-ring').forEach(d=>d.remove());
+  renderPitchLog();
+}
+
+let editingPitchNum=null;
+const pitchEditModal=document.getElementById('pitchEditModal');
+const editTargetZones=document.getElementById('editTargetZones');
+function openPitchEditor(num) {
+  const p=state.pitches.find(x=>x.num===num); if(!p)return; editingPitchNum=num;
+  document.getElementById('editPitchNum').textContent=`#${num}`;
+  document.getElementById('editPitchType').value=p.type;
+  document.getElementById('editPitchVelocity').value=p.velocity ?? '';
+  document.getElementById('editResultZone').value=p.resultZone ?? 'OOZ';
+  editTargetZones.innerHTML=ZONES.map(z=>`<button type="button" class="edit-target-btn ${p.targetZones.has(z)?'active':''}" data-zone="${z}">Z${z}</button>`).join('');
+  editTargetZones.querySelectorAll('.edit-target-btn').forEach(b=>b.addEventListener('click',()=>b.classList.toggle('active')));
+  pitchEditModal.classList.add('visible');
+}
+function closePitchEditor(){ pitchEditModal.classList.remove('visible'); editingPitchNum=null; }
+document.getElementById('cancelPitchEditBtn').addEventListener('click',closePitchEditor);
+pitchEditModal.addEventListener('click',e=>{ if(e.target===pitchEditModal)closePitchEditor(); });
+document.getElementById('savePitchEditBtn').addEventListener('click',()=>{
+  const p=state.pitches.find(x=>x.num===editingPitchNum); if(!p)return closePitchEditor();
+  p.type=document.getElementById('editPitchType').value;
+  const raw=document.getElementById('editPitchVelocity').value.trim(), v=Number(raw);
+  p.velocity=raw!=='' && Number.isFinite(v) && v>0 && v<150 ? Math.round(v*10)/10 : null;
+  p.targetZones=new Set([...editTargetZones.querySelectorAll('.edit-target-btn.active')].map(b=>Number(b.dataset.zone)));
+  const rv=document.getElementById('editResultZone').value;
+  p.resultZone=rv==='OOZ'?null:Number(rv); p.isStrike=p.resultZone!==null; p.isOnTarget=p.resultZone!==null && p.targetZones.has(p.resultZone);
+  if(p.resultZone!==null){ p.relX=.5; p.relY=.5; } else { p.relX=null; p.relY=null; }
+  document.querySelectorAll('.pitch-dot,.click-ring').forEach(d=>d.remove());
+  closePitchEditor(); renderPitchLog();
+});
 
 // ============================================================
 // DONE SESSION → STATS
