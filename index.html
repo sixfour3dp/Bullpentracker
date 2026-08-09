@@ -1176,6 +1176,17 @@
     padding-right:10px !important;
   }
   .team-remove-btn:disabled { opacity:.3; }
+
+  .result-zone-btn {
+    margin-top:8px;
+    background:var(--accent) !important;
+    color:#071018 !important;
+    border-color:var(--accent) !important;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:900;
+    letter-spacing:1px;
+    cursor:pointer;
+  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 </head>
@@ -1406,7 +1417,7 @@
         <div class="edit-field"><label>Pitch Type</label><select id="editPitchType" class="edit-control"><option value="FB">Fastball</option><option value="CB">Curveball</option><option value="SL">Slider</option><option value="CH">Changeup</option><option value="CT">Cutter</option><option value="SI">Sinker</option></select></div>
         <div class="edit-field"><label>Velocity (MPH)</label><input id="editPitchVelocity" class="edit-control" type="number" inputmode="decimal" step="0.1" placeholder="Not tracked"></div>
         <div class="edit-field full"><label>Target Zone(s)</label><div class="edit-targets" id="editTargetZones"></div></div>
-        <div class="edit-field full"><label>Actual Result</label><select id="editResultZone" class="edit-control"><option value="1">Zone 1</option><option value="2">Zone 2</option><option value="3">Zone 3</option><option value="4">Zone 4</option><option value="5">Zone 5</option><option value="6">Zone 6</option><option value="7">Zone 7</option><option value="8">Zone 8</option><option value="9">Zone 9</option><option value="OOZ">Outside Zone (Ball)</option></select></div>
+        <div class="edit-field full"><label>Actual Result</label><select id="editResultZone" class="edit-control"><option value="1">Zone 1</option><option value="2">Zone 2</option><option value="3">Zone 3</option><option value="4">Zone 4</option><option value="5">Zone 5</option><option value="6">Zone 6</option><option value="7">Zone 7</option><option value="8">Zone 8</option><option value="9">Zone 9</option><option value="OOZ">Outside Zone (Ball)</option></select><button id="selectResultOnZoneBtn" type="button" class="edit-control result-zone-btn">SELECT ON ZONE</button></div>
       </div>
       <div class="edit-actions"><button id="cancelPitchEditBtn" class="btn btn-secondary">CANCEL</button><button id="savePitchEditBtn" class="btn btn-primary">UPDATE PITCH</button></div>
     </div>
@@ -1605,6 +1616,7 @@ document.getElementById('addPlayerBtn').addEventListener('click', () => {
 });
 
 function startBullpen(playerId) {
+  editingResultPitchNum=null;
   activePitchTypeFilter=null;
   state = { phase:'target', targetZones:new Set(), currentPitchType:'FB', pitches:[], pitchNum:1, activePlayerId:playerId, sessionSaved:false, savedSessionId:null, reportMode:null };
   resetTrackingUI();
@@ -2296,6 +2308,7 @@ function toTargetPhase() {
   phaseInstEl.className = 'phase-instruction phase-target';
 
   clearTargetBtn.textContent = 'VIEW SESSION';
+  clearTargetBtn.disabled = false;
   doneBtn.textContent = 'DONE SESSION';
   doneBtn.onclick = finishSession;
   doneBtn.disabled = false;
@@ -2342,6 +2355,28 @@ function capturePitchPoint(clickX, clickY) {
 
 function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY, isWildPitch=false) {
   const capturedPoint=capturePitchPoint(clickX,clickY);
+
+  // When editing an existing pitch, this tap replaces its actual result instead of recording a new pitch.
+  if(editingResultPitchNum!==null){
+    const p=state.pitches.find(x=>x.num===editingResultPitchNum);
+    if(p){
+      p.resultZone=zone;
+      p.isStrike=Boolean(isStrike);
+      p.isWildPitch=Boolean(isWildPitch);
+      p.isOnTarget=zone!==null && p.targetZones.has(zone);
+      p.relX=zone!==null ? relX : null;
+      p.relY=zone!==null ? relY : null;
+      p.resultX=capturedPoint.resultX;
+      p.resultY=capturedPoint.resultY;
+    }
+    editingResultPitchNum=null;
+    clearTargetBtn.disabled=false;
+    document.querySelectorAll('.pitch-dot,.click-ring').forEach(d=>d.remove());
+    state.targetZones.clear();
+    toTargetPhase();
+    renderPitchLog();
+    return;
+  }
   // With velocity tracking ON, capture the location first, then wait for MPH.
   if (requireVelocity) {
     let previewDot = null;
@@ -2512,6 +2547,7 @@ function deletePitch(num) {
 }
 
 let editingPitchNum=null;
+let editingResultPitchNum=null;
 const pitchEditModal=document.getElementById('pitchEditModal');
 const editTargetZones=document.getElementById('editTargetZones');
 function openPitchEditor(num) {
@@ -2524,7 +2560,28 @@ function openPitchEditor(num) {
   editTargetZones.querySelectorAll('.edit-target-btn').forEach(b=>b.addEventListener('click',()=>b.classList.toggle('active')));
   pitchEditModal.classList.add('visible');
 }
+function applyPitchEditorBase(p){
+  applyPitchEditorBase(p);
+}
 function closePitchEditor(){ pitchEditModal.classList.remove('visible'); editingPitchNum=null; }
+
+document.getElementById('selectResultOnZoneBtn').addEventListener('click',()=>{
+  const p=state.pitches.find(x=>x.num===editingPitchNum);
+  if(!p) return closePitchEditor();
+  applyPitchEditorBase(p);
+  editingResultPitchNum=p.num;
+  closePitchEditor();
+
+  // Use the pitch's intended target while the user re-selects the actual result.
+  state.targetZones=new Set(p.targetZones);
+  strikeZoneTarget.style.display='none';
+  outerZone.style.display='block';
+  outerZone.classList.add('active');
+  toResultPhase();
+  phaseInstEl.textContent=`UPDATE PITCH #${p.num} — TAP NEW ACTUAL RESULT`;
+  phaseInstEl.className='phase-instruction phase-result';
+  clearTargetBtn.disabled=true;
+});
 document.getElementById('cancelPitchEditBtn').addEventListener('click',closePitchEditor);
 pitchEditModal.addEventListener('click',e=>{ if(e.target===pitchEditModal)closePitchEditor(); });
 document.getElementById('savePitchEditBtn').addEventListener('click',()=>{
