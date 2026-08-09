@@ -1115,6 +1115,7 @@ let state = {
   pitchNum: 1,
   activePlayerId: null,
   sessionSaved: false,
+  velocityTracking: false,
 };
 
 // pitch object: { num, type, targetZones, resultZone, resultX, resultY, isStrike, isOnTarget }
@@ -1241,7 +1242,8 @@ document.getElementById('addPlayerBtn').addEventListener('click', () => {
 });
 
 function startBullpen(playerId) {
-  state = { phase:'target', targetZones:new Set(), currentPitchType:'FB', pitches:[], pitchNum:1, activePlayerId:playerId, sessionSaved:false };
+  const velocityTracking = confirm('Record pitch velocity for this bullpen?\n\nTap OK for Yes or Cancel for No.');
+  state = { phase:'target', targetZones:new Set(), currentPitchType:'FB', pitches:[], pitchNum:1, activePlayerId:playerId, sessionSaved:false, velocityTracking };
   resetTrackingUI();
   const p=activePlayer(); const t=appData.teams.find(x=>x.id===p?.teamId);
   sessionContext.textContent = p ? `${p.name}${t?' · '+t.name:''}` : '';
@@ -1266,8 +1268,11 @@ function saveCurrentSession(notes='') {
   const strikePct=Math.round(strikes/total*100);
   const locationPct=targeted.length?Math.round(onTarget/targeted.length*100):0;
   const combinedScore=Math.round(((strikes/total)*0.5 + (targeted.length?onTarget/targeted.length:0)*0.5)*100);
+  const velocityPitches=state.pitches.filter(p=>Number.isFinite(p.velocity));
+  const avgVelocity=velocityPitches.length ? Math.round((velocityPitches.reduce((sum,p)=>sum+p.velocity,0)/velocityPitches.length)*10)/10 : null;
+  const maxVelocity=velocityPitches.length ? Math.max(...velocityPitches.map(p=>p.velocity)) : null;
   appData.sessions.push({ id:uid('session'), playerId:state.activePlayerId, createdAt:new Date().toISOString(), totalPitches:total,
-    strikePct, locationPct, combinedScore, notes:(notes||'').trim(), pitches:state.pitches.map(serializePitch) });
+    strikePct, locationPct, combinedScore, velocityTracked:state.velocityTracking, avgVelocity, maxVelocity, notes:(notes||'').trim(), pitches:state.pitches.map(serializePitch) });
   state.sessionSaved=true; saveAppData();
 }
 
@@ -1549,6 +1554,16 @@ function handleOuterZoneClick(e) {
 
 function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
   const isOnTarget = zone !== null && state.targetZones.has(zone);
+  let velocity = null;
+  if (state.velocityTracking) {
+    while (true) {
+      const entry = prompt(`Pitch #${state.pitchNum} velocity (MPH):`, '');
+      if (entry === null || entry.trim() === '') break;
+      const mph = Number(entry);
+      if (Number.isFinite(mph) && mph > 0 && mph < 150) { velocity = Math.round(mph * 10) / 10; break; }
+      alert('Enter a valid pitch speed in MPH.');
+    }
+  }
 
   const pitch = {
     num: state.pitchNum,
@@ -1557,6 +1572,7 @@ function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
     resultZone: zone,
     isStrike,
     isOnTarget,
+    velocity,
     relX, relY,
   };
 
@@ -1618,7 +1634,7 @@ function addToLog(pitch) {
   item.innerHTML = `
     <span class="log-num">#${pitch.num}</span>
     <span class="log-type">${pitch.type}</span>
-    <span class="log-result">Target: ${targets} → Z${pitch.resultZone ?? 'OOZ'}</span>
+    <span class="log-result">Target: ${targets} → Z${pitch.resultZone ?? 'OOZ'}${pitch.velocity != null ? ` · ${pitch.velocity} MPH` : ''}</span>
     <div class="log-badges">
       <span class="badge ${pitch.isStrike ? 'strike' : 'ball'}">${pitch.isStrike ? '✓ STR' : '✗ BALL'}</span>
       ${pitch.targetZones.size > 0 ? `<span class="badge ${pitch.isOnTarget ? 'on-target' : 'miss'}">${pitch.isOnTarget ? '◎ LOC' : '△ MISS'}</span>` : ''}
