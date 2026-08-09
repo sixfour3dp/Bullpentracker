@@ -270,7 +270,7 @@
   /* Pitch dot */
   .pitch-dot {
     position: absolute;
-    width: 14px; height: 14px;
+    width: 17px; height: 17px;
     border-radius: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
@@ -316,7 +316,7 @@
     background: rgba(0,0,0,0.15);
     border: 1.5px dashed rgba(255,255,255,0.08);
     border-radius: 6px;
-    padding: 30px;
+    padding: 46px;
     position: relative;
     cursor: crosshair;
     display: none;
@@ -831,7 +831,7 @@
   @media (max-width: 360px) {
     .header { padding-left: 14px; padding-right: 14px; }
     .zone-wrapper { padding-left: 10px; padding-right: 10px; }
-    .outer-zone { padding: 24px; }
+    .outer-zone { padding: 38px; }
     .zone-cell { min-height: 58px; }
   }
   @media (min-width: 700px) {
@@ -1288,6 +1288,10 @@ window.showHistory = function(playerId) {
   if(sessions.length){
     const latest=sessions[0]; const avgStr=Math.round(sessions.reduce((n,s)=>n+s.strikePct,0)/sessions.length); const avgLoc=Math.round(sessions.reduce((n,s)=>n+s.locationPct,0)/sessions.length);
     trend+=`<div class="trend-card"><div class="trend-value strike-pct ${strikeClass(latest.strikePct)}">${latest.strikePct}%</div><div class="trend-label">Latest Strike %</div></div><div class="trend-card"><div class="trend-value strike-pct ${strikeClass(avgStr)}">${avgStr}%</div><div class="trend-label">Avg Strike %</div></div>`;
+    const fbVelos=sessions.flatMap(s=>(s.pitches||[]).filter(p=>p.type==='FB' && Number.isFinite(Number(p.velocity))).map(p=>Number(p.velocity)));
+    const avgFb=fbVelos.length ? (fbVelos.reduce((a,b)=>a+b,0)/fbVelos.length).toFixed(1) : '—';
+    const highFb=fbVelos.length ? Math.max(...fbVelos).toFixed(1) : '—';
+    trend+=`<div class="trend-card"><div class="trend-value">${avgFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">Avg. FB Velo</div></div><div class="trend-card"><div class="trend-value">${highFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">High FB Velo</div></div>`;
   }
   document.getElementById('trendCards').innerHTML=trend;
   document.getElementById('historyList').innerHTML = sessions.length ? `<table class="history-table"><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th></tr></thead><tbody>${sessions.map(s=>{const note=(s.notes||'').trim(); return `<tr><td>${new Date(s.createdAt).toLocaleDateString()}</td><td>${s.totalPitches}</td><td class="strike-pct ${strikeClass(s.strikePct)}">${s.strikePct}%</td><td>${s.locationPct}%</td></tr>${note?`<tr class="session-note-row"><td colspan="4"><div class="session-note"><span class="session-note-label">SESSION NOTES</span>${esc(note)}</div></td></tr>`:''}`}).join('')}</tbody></table>` : '<div class="empty-state">No saved sessions yet.</div>';
@@ -1717,9 +1721,10 @@ function buildStats() {
   // By pitch type
   const types = {};
   pitches.forEach(p => {
-    if (!types[p.type]) types[p.type] = { total:0, strikes:0, targeted:0, onTarget:0 };
+    if (!types[p.type]) types[p.type] = { total:0, strikes:0, targeted:0, onTarget:0, velocities:[] };
     types[p.type].total++;
     if (p.isStrike) types[p.type].strikes++;
+    if (Number.isFinite(Number(p.velocity))) types[p.type].velocities.push(Number(p.velocity));
     if (p.targetZones.size > 0) {
       types[p.type].targeted++;
       if (p.isOnTarget) types[p.type].onTarget++;
@@ -1729,6 +1734,8 @@ function buildStats() {
   document.getElementById('pitchBreakdown').innerHTML = Object.entries(types).map(([type, d]) => {
     const sPct = Math.round(d.strikes/d.total*100);
     const lPct = d.targeted > 0 ? Math.round(d.onTarget/d.targeted*100) : 0;
+    const avgVelo = d.velocities.length ? (d.velocities.reduce((a,b)=>a+b,0)/d.velocities.length).toFixed(1) : null;
+    const highVelo = d.velocities.length ? Math.max(...d.velocities).toFixed(1) : null;
     return `
       <div class="breakdown-row">
         <div class="breakdown-type">${type}</div>
@@ -1743,6 +1750,7 @@ function buildStats() {
             <div class="mini-bar-track"><div class="mini-bar-fill loc-fill" style="width:${lPct}%"></div></div>
             <span class="mini-bar-pct" style="color:var(--accent)">${lPct}%</span>
           </div>` : ''}
+          ${avgVelo !== null ? `<div style="display:flex;gap:12px;margin-top:4px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:var(--text);"><span>AVG <strong style="color:var(--accent)">${avgVelo}</strong> MPH</span><span>HIGH <strong style="color:var(--green)">${highVelo}</strong> MPH</span></div>` : ''}
         </div>
         <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;color:var(--muted);">${d.total}p</span>
       </div>`;
