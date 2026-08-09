@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BullPen">
+<meta name="theme-color" content="#0a0e14">
+<link rel="manifest" href="manifest.webmanifest">
+<title>BullPen Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e14;
+    --surface: #111720;
+    --surface2: #1a2333;
+    --border: #1e2d42;
+    --accent: #00d4ff;
+    --accent2: #ff5c35;
+    --green: #22c55e;
+    --yellow: #facc15;
+    --red: #ef4444;
+    --text: #e8f0fe;
+    --muted: #5a7a9a;
+    --strike-zone: #0d1f35;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: #1a1a2e;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    font-family: 'Barlow', sans-serif;
+    padding: 20px 0;
+  }
+
+  /* iPhone shell */
+  .phone {
+    width: 390px;
+    min-height: 844px;
+    background: var(--bg);
+    border-radius: 50px;
+    box-shadow: 0 0 0 12px #1c1c1e, 0 0 0 14px #3a3a3c, 0 30px 80px rgba(0,0,0,0.8);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Notch */
+  .notch {
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 126px; height: 34px;
+    background: #1c1c1e;
+    border-radius: 0 0 20px 20px;
+    z-index: 100;
+  }
+
+  /* Status bar */
+  .status-bar {
+    height: 44px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 28px 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    flex-shrink: 0;
+  }
+
+  .status-time { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 15px; }
+  .status-icons { display: flex; gap: 6px; align-items: center; }
+
+  /* App content */
+  .app {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .header {
+    padding: 12px 24px 8px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  .app-logo {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 22px;
+    letter-spacing: 1px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .app-logo span { color: var(--accent2); }
+
+  .pitch-counter {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--muted);
+    background: var(--surface2);
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  .pitch-counter strong { color: var(--accent); }
+
+  /* Pitch type selector */
+  .pitch-type-bar {
+    display: flex;
+    gap: 6px;
+    padding: 8px 16px;
+    overflow-x: auto;
+    flex-shrink: 0;
+    background: var(--surface);
+    scrollbar-width: none;
+  }
+  .pitch-type-bar::-webkit-scrollbar { display: none; }
+
+  .pitch-btn {
+    flex-shrink: 0;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+
+  .pitch-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+
+  /* Main scroll area */
+  .scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    padding-bottom: 20px;
+  }
+  .scroll-area::-webkit-scrollbar { display: none; }
+
+  /* Section label */
+  .section-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 12px 20px 6px;
+  }
+
+  /* Strike zone */
+  .zone-wrapper {
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .zone-container {
+    position: relative;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  /* Batter silhouette context */
+  .batter-context {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  .batter-label {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding-bottom: 8px;
+  }
+
+  /* The zone grid */
+  .strike-zone {
+    background: var(--strike-zone);
+    border: 2px solid rgba(0, 212, 255, 0.4);
+    border-radius: 4px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 2px;
+    padding: 2px;
+    width: 100%;
+    aspect-ratio: 1;
+    position: relative;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.08), inset 0 0 30px rgba(0,0,0,0.3);
+  }
+
+  .zone-cell {
+    position: relative;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.04);
+    cursor: pointer;
+    transition: all 0.12s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    min-height: 60px;
+  }
+
+  .zone-cell:hover {
+    background: rgba(0, 212, 255, 0.08);
+    border-color: rgba(0, 212, 255, 0.2);
+  }
+
+  .zone-cell.target {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: rgba(0, 212, 255, 0.5);
+  }
+
+  .zone-cell.target::after {
+    content: '✕';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    color: var(--accent);
+    font-size: 20px;
+    font-weight: 900;
+    opacity: 0.6;
+  }
+
+  /* Pitch dot */
+  .pitch-dot {
+    position: absolute;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 10;
+    box-shadow: 0 0 8px currentColor;
+    transition: opacity 0.2s;
+  }
+
+  .pitch-dot.strike { background: var(--green); color: var(--green); }
+  .pitch-dot.ball { background: var(--accent2); color: var(--accent2); }
+  .pitch-dot.location-hit { border: 2px solid white; }
+
+  /* Ghost target zone highlight for result click */
+  .zone-cell.awaiting-result {
+    animation: pulse-cell 1s ease-in-out infinite alternate;
+    cursor: crosshair;
+  }
+
+  @keyframes pulse-cell {
+    from { background: rgba(250, 204, 21, 0.05); }
+    to { background: rgba(250, 204, 21, 0.12); border-color: rgba(250, 204, 21, 0.3); }
+  }
+
+  /* Wide zone overlay - clickable for pitch result */
+  .result-overlay {
+    position: absolute;
+    inset: 0;
+    cursor: crosshair;
+    z-index: 20;
+    display: none;
+  }
+
+  .result-overlay.active { display: block; }
+
+  /* Outside zone - wider clickable area */
+  .full-zone-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .outer-zone {
+    background: rgba(0,0,0,0.15);
+    border: 1.5px dashed rgba(255,255,255,0.08);
+    border-radius: 6px;
+    padding: 30px;
+    position: relative;
+    cursor: crosshair;
+    display: none;
+  }
+
+  .outer-zone.active { display: block; }
+  .outer-zone-label {
+    position: absolute;
+    top: 8px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: var(--yellow);
+    font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    animation: blink 1.2s ease infinite;
+  }
+
+  @keyframes blink {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Phase instruction */
+  .phase-instruction {
+    margin: 10px 20px 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    text-align: center;
+    transition: all 0.2s;
+  }
+
+  .phase-instruction.phase-target {
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid rgba(0, 212, 255, 0.25);
+    color: var(--accent);
+  }
+
+  .phase-instruction.phase-result {
+    background: rgba(250, 204, 21, 0.1);
+    border: 1px solid rgba(250, 204, 21, 0.3);
+    color: var(--yellow);
+  }
+
+  /* Pitch log */
+  .pitch-log {
+    padding: 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .pitch-log-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--surface);
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+    font-size: 12px;
+  }
+
+  .pitch-log-item.strike-log { border-left-color: var(--green); }
+  .pitch-log-item.ball-log { border-left-color: var(--accent2); }
+
+  .log-num {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--muted);
+    min-width: 20px;
+  }
+
+  .log-type {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    color: var(--text);
+    min-width: 50px;
+  }
+
+  .log-result {
+    font-size: 11px;
+    color: var(--muted);
+    flex: 1;
+  }
+
+  .log-badges { display: flex; gap: 4px; }
+
+  .badge {
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .badge.strike { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+  .badge.ball { background: rgba(255, 92, 53, 0.15); color: var(--accent2); }
+  .badge.on-target { background: rgba(0, 212, 255, 0.15); color: var(--accent); }
+  .badge.miss { background: rgba(90, 122, 154, 0.15); color: var(--muted); }
+
+  /* Action buttons */
+  .action-bar {
+    padding: 10px 20px;
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  .btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  .btn-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--red);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  /* ==================== STATS SCREEN ==================== */
+  .stats-screen {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 30px;
+  }
+
+  .stats-screen.visible { display: flex; }
+
+  .stats-header {
+    padding: 20px 24px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stats-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 28px;
+    color: var(--text);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .stats-subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* Big stat cards */
+  .stat-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 16px 16px 8px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+
+  .stat-card.green::before { background: var(--green); }
+  .stat-card.blue::before { background: var(--accent); }
+  .stat-card.yellow::before { background: var(--yellow); }
+  .stat-card.orange::before { background: var(--accent2); }
+
+  .stat-card-label {
+    font-size: 10px;
+    font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .stat-card-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 36px;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .stat-card-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  /* Heatmap zone in stats */
+  .stats-zone-section {
+    padding: 0 16px 12px;
+  }
+
+  .stats-zone-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px;
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    aspect-ratio: 1;
+  }
+
+  .stats-zone-cell {
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 4px;
+    min-height: 50px;
+    position: relative;
+  }
+
+  .stats-zone-num {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 16px;
+    color: white;
+    line-height: 1;
+  }
+
+  .stats-zone-pct {
+    font-size: 9px;
+    color: rgba(255,255,255,0.6);
+    font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: 0.5px;
+  }
+
+  /* By pitch type breakdown */
+  .pitch-breakdown {
+    padding: 0 16px 12px;
+  }
+
+  .breakdown-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    border: 1px solid var(--border);
+    gap: 10px;
+  }
+
+  .breakdown-type {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text);
+    min-width: 40px;
+    text-transform: uppercase;
+  }
+
+  .breakdown-bars {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .mini-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .mini-bar-label {
+    font-size: 9px;
+    color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    min-width: 20px;
+  }
+
+  .mini-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .mini-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .mini-bar-fill.strike-fill { background: var(--green); }
+  .mini-bar-fill.loc-fill { background: var(--accent); }
+
+  .mini-bar-pct {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    min-width: 30px;
+    text-align: right;
+  }
+
+  /* Spread/StdDev */
+  .spread-section {
+    padding: 0 16px 16px;
+  }
+
+  .spread-card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+  }
+
+  .spread-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .spread-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .spread-stat {
+    text-align: center;
+  }
+
+  .spread-val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 24px;
+    color: var(--text);
+  }
+
+  .spread-lbl {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: 1px;
+  }
+
+  .new-session-btn {
+    margin: 8px 16px 0;
+    width: calc(100% - 32px);
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--accent2);
+    color: white;
+    border: none;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 16px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .new-session-btn:hover { filter: brightness(1.1); }
+
+  /* Dot in zone for stats heatmap */
+  .zone-dot-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  /* Animated ring on result click */
+  .click-ring {
+    position: absolute;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 2px solid;
+    transform: translate(-50%, -50%) scale(0);
+    pointer-events: none;
+    z-index: 30;
+    animation: ring-expand 0.4s ease-out forwards;
+  }
+
+  @keyframes ring-expand {
+    to { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+  }
+
+  .target-badge-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+
+  .target-zone-pill {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    background: rgba(0, 212, 255, 0.12);
+    color: var(--accent);
+    border: 1px solid rgba(0, 212, 255, 0.25);
+    border-radius: 20px;
+    padding: 2px 8px;
+  }
+
+  .select-all-btn {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    background: rgba(250, 204, 21, 0.08);
+    color: var(--yellow);
+    border: 1px solid rgba(250, 204, 21, 0.2);
+    border-radius: 20px;
+    padding: 2px 10px;
+    cursor: pointer;
+  }
+
+
+
+  /* Real phone/mobile layout */
+  html, body { width: 100%; min-height: 100%; background: var(--bg); }
+  body {
+    display: block;
+    min-height: 100dvh;
+    padding: 0;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .phone {
+    width: 100%;
+    max-width: none;
+    min-height: 100dvh;
+    height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .notch, .status-bar { display: none; }
+  .header { padding-top: 10px; padding-left: max(18px, env(safe-area-inset-left)); padding-right: max(18px, env(safe-area-inset-right)); }
+  .pitch-type-bar { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+  .scroll-area { -webkit-overflow-scrolling: touch; }
+  .zone-wrapper { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+  .zone-container, .full-zone-wrapper { max-width: min(92vw, 390px); }
+  .strike-zone { touch-action: manipulation; }
+  .zone-cell { min-height: 72px; touch-action: manipulation; }
+  .pitch-btn { min-height: 38px; padding: 7px 14px; }
+  .action-bar {
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  .btn { min-height: 48px; }
+  .new-session-btn { min-height: 50px; margin-bottom: max(8px, env(safe-area-inset-bottom)); }
+  @media (max-width: 360px) {
+    .header { padding-left: 14px; padding-right: 14px; }
+    .zone-wrapper { padding-left: 10px; padding-right: 10px; }
+    .outer-zone { padding: 24px; }
+    .zone-cell { min-height: 58px; }
+  }
+  @media (min-width: 700px) {
+    .phone { max-width: 520px; margin: 0 auto; }
+  }
+
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons">
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor"><rect x="0" y="3" width="3" height="9" rx="1"/><rect x="4.5" y="2" width="3" height="10" rx="1"/><rect x="9" y="0" width="3" height="12" rx="1"/><rect x="13.5" y="1" width="2.5" height="11" rx="1" opacity=".3"/></svg>
+      <svg width="16" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg>
+      <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="currentColor" stroke-opacity=".35"/><rect x="2" y="2" width="16" height="8" rx="2" fill="currentColor"/><path d="M23 4v4a2 2 0 0 0 0-4z" fill="currentColor" opacity=".4"/></svg>
+    </div>
+  </div>
+
+  <!-- TRACKING SCREEN -->
+  <div class="app" id="trackingScreen">
+    <div class="header">
+      <div class="header-top">
+        <div class="app-logo">Bull<span>Pen</span></div>
+        <div class="pitch-counter">PITCH <strong id="pitchNum">1</strong></div>
+      </div>
+      <div class="target-badge-row" id="targetBadgeRow">
+        <span style="font-size:11px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;">No target selected</span>
+      </div>
+    </div>
+
+    <!-- Pitch type selector -->
+    <div class="pitch-type-bar">
+      <button class="pitch-btn active" data-type="FB">Fastball</button>
+      <button class="pitch-btn" data-type="CB">Curveball</button>
+      <button class="pitch-btn" data-type="SL">Slider</button>
+      <button class="pitch-btn" data-type="CH">Changeup</button>
+      <button class="pitch-btn" data-type="CT">Cutter</button>
+      <button class="pitch-btn" data-type="SI">Sinker</button>
+    </div>
+
+    <div class="scroll-area">
+      <div class="phase-instruction phase-target" id="phaseInstruction">
+        TAP ZONE(S) TO SET TARGET LOCATION
+      </div>
+
+      <div class="zone-wrapper">
+        <div class="batter-context">
+          <span class="batter-label">← INSIDE</span>
+          <span class="batter-label" style="flex:1;text-align:center;letter-spacing:2px;">STRIKE ZONE</span>
+          <span class="batter-label">OUTSIDE →</span>
+        </div>
+
+        <!-- Outer zone for balls outside the zone -->
+        <div class="full-zone-wrapper" id="outerZoneWrapper">
+          <div class="outer-zone" id="outerZone">
+            <span class="outer-zone-label">TAP ANYWHERE — INCLUDING OUTSIDE ZONE</span>
+            <div class="strike-zone" id="strikeZone">
+              <!-- 9 cells -->
+              <div class="zone-cell" data-zone="1"></div>
+              <div class="zone-cell" data-zone="2"></div>
+              <div class="zone-cell" data-zone="3"></div>
+              <div class="zone-cell" data-zone="4"></div>
+              <div class="zone-cell" data-zone="5"></div>
+              <div class="zone-cell" data-zone="6"></div>
+              <div class="zone-cell" data-zone="7"></div>
+              <div class="zone-cell" data-zone="8"></div>
+              <div class="zone-cell" data-zone="9"></div>
+            </div>
+          </div>
+
+          <!-- Strike zone alone for target phase -->
+          <div class="strike-zone" id="strikeZoneTarget" style="border-radius:4px;">
+            <div class="zone-cell" data-zone="1"></div>
+            <div class="zone-cell" data-zone="2"></div>
+            <div class="zone-cell" data-zone="3"></div>
+            <div class="zone-cell" data-zone="4"></div>
+            <div class="zone-cell" data-zone="5"></div>
+            <div class="zone-cell" data-zone="6"></div>
+            <div class="zone-cell" data-zone="7"></div>
+            <div class="zone-cell" data-zone="8"></div>
+            <div class="zone-cell" data-zone="9"></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+          <div style="display:flex;align-items:center;gap:4px;">
+            <div style="width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);"></div>
+            <span style="font-size:10px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;">STRIKE</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <div style="width:10px;height:10px;border-radius:50%;background:var(--accent2);box-shadow:0 0 5px var(--accent2);"></div>
+            <span style="font-size:10px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;">BALL</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <div style="width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid white;"></div>
+            <span style="font-size:10px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;letter-spacing:1px;">ON TARGET</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pitch log -->
+      <div class="section-label" id="logLabel" style="display:none">PITCH LOG</div>
+      <div class="pitch-log" id="pitchLog"></div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn btn-secondary" id="clearTargetBtn" style="flex:0.6">CLEAR</button>
+      <button class="btn btn-primary" id="doneBtn">DONE SESSION</button>
+    </div>
+  </div>
+
+  <!-- STATS SCREEN -->
+  <div class="stats-screen" id="statsScreen">
+    <div class="stats-header">
+      <div class="stats-title">Session Report</div>
+      <div class="stats-subtitle" id="statsSubtitle"></div>
+    </div>
+
+    <div class="stat-cards" id="statCards"></div>
+
+    <div class="section-label">ZONE HEAT MAP — PITCH LOCATIONS</div>
+    <div class="stats-zone-section">
+      <div class="stats-zone-grid" id="heatmapGrid"></div>
+    </div>
+
+    <div class="section-label">BY PITCH TYPE</div>
+    <div class="pitch-breakdown" id="pitchBreakdown"></div>
+
+    <div class="section-label">COMMAND METRICS</div>
+    <div class="spread-section">
+      <div class="spread-card" id="spreadCard"></div>
+    </div>
+
+    <button class="new-session-btn" id="newSessionBtn">+ NEW SESSION</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const ZONES = [1,2,3,4,5,6,7,8,9];
+
+// Zone positions in a 3x3 grid: [col0-2, row0-2]
+// For coordinate math: zone layout:
+// 1 2 3  (row 0)
+// 4 5 6  (row 1)
+// 7 8 9  (row 2)
+
+let state = {
+  phase: 'target',      // 'target' | 'result'
+  targetZones: new Set(),
+  currentPitchType: 'FB',
+  pitches: [],          // array of pitch objects
+  pitchNum: 1,
+};
+
+// pitch object: { num, type, targetZones, resultZone, resultX, resultY, isStrike, isOnTarget }
+
+// ============================================================
+// DOM REFS
+// ============================================================
+const trackingScreen   = document.getElementById('trackingScreen');
+const statsScreen      = document.getElementById('statsScreen');
+const pitchNumEl       = document.getElementById('pitchNum');
+const phaseInstEl      = document.getElementById('phaseInstruction');
+const pitchLogEl       = document.getElementById('pitchLog');
+const logLabel         = document.getElementById('logLabel');
+const targetBadgeRow   = document.getElementById('targetBadgeRow');
+const outerZone        = document.getElementById('outerZone');
+const outerZoneWrapper = document.getElementById('outerZoneWrapper');
+const strikeZoneTarget = document.getElementById('strikeZoneTarget');
+const doneBtn          = document.getElementById('doneBtn');
+const clearTargetBtn   = document.getElementById('clearTargetBtn');
+const newSessionBtn    = document.getElementById('newSessionBtn');
+
+// ============================================================
+// PITCH TYPE SELECTOR
+// ============================================================
+document.querySelectorAll('.pitch-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.pitch-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.currentPitchType = btn.dataset.type;
+  });
+});
+
+// ============================================================
+// TARGET PHASE — click cells in strikeZoneTarget
+// ============================================================
+strikeZoneTarget.querySelectorAll('.zone-cell').forEach(cell => {
+  cell.addEventListener('click', () => {
+    if (state.phase !== 'target') return;
+    const z = parseInt(cell.dataset.zone);
+    if (state.targetZones.has(z)) {
+      state.targetZones.delete(z);
+      cell.classList.remove('target');
+    } else {
+      state.targetZones.add(z);
+      cell.classList.add('target');
+    }
+    updateTargetBadges();
+  });
+});
+
+function updateTargetBadges() {
+  if (state.targetZones.size === 0) {
+    targetBadgeRow.innerHTML = `<span style="font-size:11px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;">No target selected</span>`;
+  } else {
+    const zoneNames = {1:'UP-IN',2:'UP',3:'UP-OUT',4:'MID-IN',5:'MID',6:'MID-OUT',7:'DOWN-IN',8:'DOWN',9:'DOWN-OUT'};
+    const pills = [...state.targetZones].map(z => `<span class="target-zone-pill">Z${z} ${zoneNames[z]}</span>`).join('');
+    targetBadgeRow.innerHTML = pills + `<button class="select-all-btn" id="selectAllBtn">ALL</button>`;
+    document.getElementById('selectAllBtn')?.addEventListener('click', selectAllZones);
+  }
+}
+
+function selectAllZones() {
+  ZONES.forEach(z => {
+    state.targetZones.add(z);
+    strikeZoneTarget.querySelector(`[data-zone="${z}"]`).classList.add('target');
+  });
+  updateTargetBadges();
+}
+
+clearTargetBtn.addEventListener('click', () => {
+  if (state.phase === 'target') {
+    state.targetZones.clear();
+    strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c => c.classList.remove('target'));
+    updateTargetBadges();
+  } else {
+    // Go back to target phase
+    toTargetPhase();
+  }
+});
+
+// ============================================================
+// RESULT PHASE — advance from target to result
+// ============================================================
+// When user taps a zone, if in target phase, just selecting.
+// To advance to result phase, the "NEXT: TAP RESULT" overlay appears.
+// We detect if user has selected zones and then needs to tap a different element.
+// UX: after selecting target(s), the outer zone appears for result tapping.
+
+// We'll use a "confirm target" approach:
+// - Tapping a target zone cell selects it
+// - After selection, a small "confirm" prompt appears; tapping "RECORD PITCH →" switches to result phase
+// Actually, let's simplify: after selecting at least one target zone, the action bar shows a "RECORD PITCH" button.
+// But instead let's keep it super simple for mobile: 
+//   Phase 1 (target): tap zones to select target
+//   Auto-advance: after selecting target, show "now tap where pitch went"
+//   Phase 2 (result): outer zone + inner zone become clickable for result
+
+// We'll add a "CONFIRM TARGET →" button that appears after selection.
+// For now let's just show the outer zone clickable when target zones are selected.
+
+// Let's watch target zone changes:
+function checkTargetReady() {
+  // If we have targets selected, show hint to proceed
+  // We'll let user click "RECORD PITCH" to advance — shown when target selected
+}
+
+// Override: when targets are selected, show a "TAP TO RECORD →" bar
+strikeZoneTarget.addEventListener('click', () => {
+  setTimeout(() => {
+    if (state.phase === 'target' && state.targetZones.size > 0) {
+      // Show prompt to move to result phase
+      showAdvancePrompt(true);
+    } else {
+      showAdvancePrompt(false);
+    }
+  }, 50);
+});
+
+let advancePromptShown = false;
+function showAdvancePrompt(show) {
+  if (show && !advancePromptShown) {
+    advancePromptShown = true;
+    phaseInstEl.textContent = 'TARGET SET — TAP "RECORD PITCH" TO CONTINUE';
+    phaseInstEl.className = 'phase-instruction phase-target';
+    clearTargetBtn.textContent = 'CLEAR';
+    doneBtn.textContent = 'RECORD PITCH →';
+    doneBtn.onclick = toResultPhase;
+    doneBtn.disabled = false;
+  }
+}
+
+function toResultPhase() {
+  state.phase = 'result';
+  advancePromptShown = false;
+
+  // Hide target zone, show outer zone
+  strikeZoneTarget.style.display = 'none';
+  outerZone.style.display = 'block';
+  outerZone.classList.add('active');
+
+  phaseInstEl.textContent = 'TAP WHERE THE PITCH ACTUALLY WENT';
+  phaseInstEl.className = 'phase-instruction phase-result';
+
+  clearTargetBtn.textContent = '← BACK';
+  doneBtn.textContent = 'DONE SESSION';
+  doneBtn.onclick = finishSession;
+
+  // Mark target zones on the inner zone grid
+  outerZone.querySelectorAll('.zone-cell').forEach(cell => {
+    const z = parseInt(cell.dataset.zone);
+    if (state.targetZones.has(z)) {
+      cell.classList.add('target');
+    } else {
+      cell.classList.remove('target');
+    }
+    cell.classList.add('awaiting-result');
+  });
+
+  // Attach click to inner cells for result
+  outerZone.querySelectorAll('.zone-cell').forEach(cell => {
+    cell.addEventListener('click', handleResultCellClick, { once: true });
+  });
+
+  // Also attach click to outer zone background (balls way outside)
+  outerZone.addEventListener('click', handleOuterZoneClick);
+}
+
+function toTargetPhase() {
+  state.phase = 'target';
+  advancePromptShown = false;
+
+  strikeZoneTarget.style.display = 'grid';
+  outerZone.style.display = 'none';
+  outerZone.classList.remove('active');
+
+  phaseInstEl.textContent = 'TAP ZONE(S) TO SET TARGET LOCATION';
+  phaseInstEl.className = 'phase-instruction phase-target';
+
+  clearTargetBtn.textContent = 'CLEAR';
+  doneBtn.textContent = 'DONE SESSION';
+  doneBtn.onclick = finishSession;
+
+  // Remove result listeners
+  outerZone.removeEventListener('click', handleOuterZoneClick);
+  outerZone.querySelectorAll('.zone-cell').forEach(cell => {
+    cell.classList.remove('awaiting-result');
+    cell.replaceWith(cell.cloneNode(true)); // remove all listeners
+  });
+
+  // Re-bind inner zone target cells
+  outerZone.querySelectorAll('.zone-cell').forEach(cell => {
+    cell.classList.remove('awaiting-result');
+  });
+}
+
+function handleResultCellClick(e) {
+  e.stopPropagation();
+  const cell = e.currentTarget;
+  const zone = parseInt(cell.dataset.zone);
+  const rect = cell.getBoundingClientRect();
+  const relX = (e.clientX - rect.left) / rect.width;
+  const relY = (e.clientY - rect.top) / rect.height;
+  recordPitch(zone, relX, relY, true, cell, e.clientX, e.clientY);
+}
+
+function handleOuterZoneClick(e) {
+  // Make sure it's not from a cell
+  if (e.target.classList.contains('zone-cell')) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const innerZone = outerZone.querySelector('.strike-zone') || outerZone;
+  const innerRect = outerZone.querySelector('[data-zone="5"]')?.closest('.strike-zone, #strikeZone')?.getBoundingClientRect() || rect;
+  recordPitch(null, null, null, false, e.currentTarget, e.clientX, e.clientY);
+}
+
+function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
+  const isOnTarget = zone !== null && state.targetZones.has(zone);
+
+  const pitch = {
+    num: state.pitchNum,
+    type: state.currentPitchType,
+    targetZones: new Set(state.targetZones),
+    resultZone: zone,
+    isStrike,
+    isOnTarget,
+    relX, relY,
+  };
+
+  state.pitches.push(pitch);
+
+  // Visual feedback - animate dot on zone
+  if (targetEl && zone) {
+    spawnDot(targetEl, relX, relY, isStrike, isOnTarget, clickX, clickY);
+  } else if (targetEl) {
+    spawnDot(targetEl, null, null, false, false, clickX, clickY);
+  }
+
+  // Add to log
+  addToLog(pitch);
+
+  // Reset for next pitch
+  state.pitchNum++;
+  pitchNumEl.textContent = state.pitchNum;
+  state.targetZones.clear();
+
+  // Back to target phase
+  setTimeout(() => {
+    strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c => c.classList.remove('target'));
+    updateTargetBadges();
+    toTargetPhase();
+  }, 350);
+
+  logLabel.style.display = 'block';
+}
+
+function spawnDot(containerEl, relX, relY, isStrike, isOnTarget, clientX, clientY) {
+  const dot = document.createElement('div');
+  dot.className = 'pitch-dot ' + (isStrike ? 'strike' : 'ball') + (isOnTarget ? ' location-hit' : '');
+
+  const rect = containerEl.getBoundingClientRect();
+  const x = relX !== null ? relX * 100 : ((clientX - rect.left) / rect.width) * 100;
+  const y = relY !== null ? relY * 100 : ((clientY - rect.top) / rect.height) * 100;
+
+  dot.style.left = x + '%';
+  dot.style.top = y + '%';
+  containerEl.appendChild(dot);
+
+  // Ring animation
+  const ring = document.createElement('div');
+  ring.className = 'click-ring';
+  ring.style.left = x + '%';
+  ring.style.top = y + '%';
+  ring.style.borderColor = isStrike ? 'var(--green)' : 'var(--accent2)';
+  containerEl.appendChild(ring);
+  setTimeout(() => ring.remove(), 500);
+}
+
+function addToLog(pitch) {
+  const item = document.createElement('div');
+  item.className = 'pitch-log-item ' + (pitch.isStrike ? 'strike-log' : 'ball-log');
+
+  const targets = [...pitch.targetZones].map(z => `Z${z}`).join(',') || '—';
+
+  item.innerHTML = `
+    <span class="log-num">#${pitch.num}</span>
+    <span class="log-type">${pitch.type}</span>
+    <span class="log-result">Target: ${targets} → Z${pitch.resultZone ?? 'OOZ'}</span>
+    <div class="log-badges">
+      <span class="badge ${pitch.isStrike ? 'strike' : 'ball'}">${pitch.isStrike ? '✓ STR' : '✗ BALL'}</span>
+      ${pitch.targetZones.size > 0 ? `<span class="badge ${pitch.isOnTarget ? 'on-target' : 'miss'}">${pitch.isOnTarget ? '◎ LOC' : '△ MISS'}</span>` : ''}
+    </div>
+  `;
+
+  pitchLogEl.insertBefore(item, pitchLogEl.firstChild);
+}
+
+// ============================================================
+// DONE SESSION → STATS
+// ============================================================
+function finishSession() {
+  if (state.pitches.length === 0) {
+    alert('No pitches recorded yet!');
+    return;
+  }
+  buildStats();
+  trackingScreen.style.display = 'none';
+  statsScreen.style.display = 'flex';
+}
+
+function buildStats() {
+  const pitches = state.pitches;
+  const total = pitches.length;
+  const strikes = pitches.filter(p => p.isStrike).length;
+  const withTarget = pitches.filter(p => p.targetZones.size > 0);
+  const onTarget = pitches.filter(p => p.isOnTarget).length;
+  const strikePct = Math.round((strikes / total) * 100);
+  const locPct = withTarget.length > 0 ? Math.round((onTarget / withTarget.length) * 100) : 0;
+
+  // Subtitle
+  document.getElementById('statsSubtitle').textContent = `${total} pitches · ${new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'})}`;
+
+  // Big stat cards
+  const cards = [
+    { label:'STRIKE %', value: strikePct + '%', sub: `${strikes}/${total} strikes`, cls:'green' },
+    { label:'LOCATION %', value: locPct + '%', sub: `${onTarget}/${withTarget.length} on target`, cls:'blue' },
+    { label:'TOTAL PITCHES', value: total, sub: strikes + ' strikes · ' + (total-strikes) + ' balls', cls:'yellow' },
+    { label:'STRIKE + LOC', value: Math.round((strikes/total * 0.5 + (withTarget.length>0?onTarget/withTarget.length:0) * 0.5)*100) + '%', sub: 'combined score', cls:'orange' },
+  ];
+
+  document.getElementById('statCards').innerHTML = cards.map(c => `
+    <div class="stat-card ${c.cls}">
+      <div class="stat-card-label">${c.label}</div>
+      <div class="stat-card-value">${c.value}</div>
+      <div class="stat-card-sub">${c.sub}</div>
+    </div>
+  `).join('');
+
+  // Heatmap
+  const zoneCounts = {};
+  ZONES.forEach(z => zoneCounts[z] = { total: 0, strikes: 0 });
+  pitches.forEach(p => {
+    if (p.resultZone) {
+      zoneCounts[p.resultZone].total++;
+      if (p.isStrike) zoneCounts[p.resultZone].strikes++;
+    }
+  });
+  const maxCount = Math.max(...Object.values(zoneCounts).map(z => z.total), 1);
+
+  document.getElementById('heatmapGrid').innerHTML = ZONES.map(z => {
+    const zd = zoneCounts[z];
+    const intensity = zd.total / maxCount;
+    const r = Math.round(intensity * 200);
+    const g = Math.round(intensity * 100 + 50);
+    const b = Math.round((1 - intensity) * 200 + 30);
+    const bg = zd.total > 0 ? `rgba(${r},${g},${b},${0.2 + intensity * 0.5})` : 'rgba(255,255,255,0.03)';
+    const stPct = zd.total > 0 ? Math.round(zd.strikes/zd.total*100) + '%' : '';
+    return `
+      <div class="stats-zone-cell" style="background:${bg};border:1px solid rgba(255,255,255,0.07)">
+        <div class="stats-zone-num">${zd.total || ''}</div>
+        <div class="stats-zone-pct">${stPct}</div>
+      </div>`;
+  }).join('');
+
+  // By pitch type
+  const types = {};
+  pitches.forEach(p => {
+    if (!types[p.type]) types[p.type] = { total:0, strikes:0, targeted:0, onTarget:0 };
+    types[p.type].total++;
+    if (p.isStrike) types[p.type].strikes++;
+    if (p.targetZones.size > 0) {
+      types[p.type].targeted++;
+      if (p.isOnTarget) types[p.type].onTarget++;
+    }
+  });
+
+  document.getElementById('pitchBreakdown').innerHTML = Object.entries(types).map(([type, d]) => {
+    const sPct = Math.round(d.strikes/d.total*100);
+    const lPct = d.targeted > 0 ? Math.round(d.onTarget/d.targeted*100) : 0;
+    return `
+      <div class="breakdown-row">
+        <div class="breakdown-type">${type}</div>
+        <div class="breakdown-bars">
+          <div class="mini-bar-wrap">
+            <span class="mini-bar-label">STR</span>
+            <div class="mini-bar-track"><div class="mini-bar-fill strike-fill" style="width:${sPct}%"></div></div>
+            <span class="mini-bar-pct" style="color:var(--green)">${sPct}%</span>
+          </div>
+          ${d.targeted > 0 ? `<div class="mini-bar-wrap">
+            <span class="mini-bar-label">LOC</span>
+            <div class="mini-bar-track"><div class="mini-bar-fill loc-fill" style="width:${lPct}%"></div></div>
+            <span class="mini-bar-pct" style="color:var(--accent)">${lPct}%</span>
+          </div>` : ''}
+        </div>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;color:var(--muted);">${d.total}p</span>
+      </div>`;
+  }).join('') || '<div style="text-align:center;color:var(--muted);font-size:13px;padding:12px">No pitches recorded</div>';
+
+  // Command metrics - std dev of zone positions
+  const zonedPitches = pitches.filter(p => p.resultZone);
+  let spreadHTML = '';
+  if (zonedPitches.length >= 2) {
+    const zoneRow = z => Math.floor((z-1)/3);
+    const zoneCol = z => (z-1)%3;
+    const rows = zonedPitches.map(p => zoneRow(p.resultZone));
+    const cols = zonedPitches.map(p => zoneCol(p.resultZone));
+    const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+    const std = arr => { const m = mean(arr); return Math.sqrt(arr.reduce((a,b)=>a+(b-m)**2,0)/arr.length); };
+    const rowStd = std(rows);
+    const colStd = std(cols);
+    const overallStd = Math.sqrt(rowStd**2 + colStd**2);
+
+    const grade = overallStd < 0.5 ? {label:'ELITE', color:'var(--green)'} 
+                : overallStd < 0.9 ? {label:'SHARP', color:'var(--accent)'} 
+                : overallStd < 1.2 ? {label:'AVERAGE', color:'var(--yellow)'} 
+                : {label:'WILD', color:'var(--accent2)'};
+
+    spreadHTML = `
+      <div class="spread-title">LOCATION CONSISTENCY</div>
+      <div class="spread-grid">
+        <div class="spread-stat">
+          <div class="spread-val" style="color:${grade.color}">${grade.label}</div>
+          <div class="spread-lbl">COMMAND GRADE</div>
+        </div>
+        <div class="spread-stat">
+          <div class="spread-val">${overallStd.toFixed(2)}</div>
+          <div class="spread-lbl">SPREAD (SD)</div>
+        </div>
+        <div class="spread-stat">
+          <div class="spread-val">${colStd.toFixed(2)}</div>
+          <div class="spread-lbl">HORIZ SPREAD</div>
+        </div>
+        <div class="spread-stat">
+          <div class="spread-val">${rowStd.toFixed(2)}</div>
+          <div class="spread-lbl">VERT SPREAD</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:10px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;letter-spacing:0.5px;">
+        SD measured in zone-widths (0–2 scale). Elite &lt; 0.5 · Average 0.9–1.2 · Wild &gt; 1.2
+      </div>`;
+  } else {
+    spreadHTML = `<div class="spread-title">LOCATION CONSISTENCY</div><div style="font-size:13px;color:var(--muted);padding:8px 0">Need at least 2 pitches in zone for spread metrics.</div>`;
+  }
+  document.getElementById('spreadCard').innerHTML = spreadHTML;
+}
+
+newSessionBtn.addEventListener('click', () => {
+  // Reset everything
+  state = { phase:'target', targetZones: new Set(), currentPitchType:'FB', pitches:[], pitchNum:1 };
+  pitchNumEl.textContent = '1';
+  pitchLogEl.innerHTML = '';
+  logLabel.style.display = 'none';
+  updateTargetBadges();
+  advancePromptShown = false;
+
+  // Reset zones
+  strikeZoneTarget.style.display = 'grid';
+  outerZone.style.display = 'none';
+  outerZone.classList.remove('active');
+  strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c => c.classList.remove('target'));
+
+  phaseInstEl.textContent = 'TAP ZONE(S) TO SET TARGET LOCATION';
+  phaseInstEl.className = 'phase-instruction phase-target';
+  clearTargetBtn.textContent = 'CLEAR';
+  doneBtn.textContent = 'DONE SESSION';
+  doneBtn.onclick = finishSession;
+
+  // Remove old dots
+  document.querySelectorAll('.pitch-dot,.click-ring').forEach(d => d.remove());
+
+  statsScreen.style.display = 'none';
+  trackingScreen.style.display = 'flex';
+
+  // Reset pitch type
+  document.querySelectorAll('.pitch-btn').forEach(b => { b.classList.remove('active'); if(b.dataset.type==='FB') b.classList.add('active'); });
+});
+
+// Initial setup
+toTargetPhase();
+doneBtn.onclick = finishSession;
+</script>
+<script>
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
