@@ -796,6 +796,7 @@
   body {
     display: block;
     min-height: 100dvh;
+    color: var(--text);
     padding: 0;
     overscroll-behavior: none;
     -webkit-user-select: none;
@@ -850,9 +851,12 @@
   .app-input, .app-select { width:100%; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:12px; font-size:16px; outline:none; }
   .app-select { appearance:auto; }
   .mini-btn { border:0; border-radius:10px; padding:11px 14px; background:var(--accent); color:var(--bg); font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:14px; white-space:nowrap; }
-  .player-card { display:flex; align-items:center; gap:10px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; margin-bottom:8px; }
+  .player-swipe { position:relative; overflow:hidden; border-radius:12px; margin-bottom:8px; background:var(--red); }
+  .player-delete { position:absolute; top:0; right:0; bottom:0; width:88px; border:0; background:var(--red); color:white; font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:14px; letter-spacing:.8px; }
+  .player-card { position:relative; z-index:1; display:flex; align-items:center; gap:10px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; margin:0; transform:translateX(0); transition:transform .18s ease; touch-action:pan-y; }
+  .player-card.swiping { transition:none; }
   .player-main { flex:1; min-width:0; }
-  .player-name { font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:18px; }
+  .player-name { font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:18px; color:var(--text); }
   .player-meta { font-size:11px; color:var(--muted); margin-top:2px; }
   .card-actions { display:flex; gap:6px; }
   .card-btn { border:1px solid var(--border); background:var(--surface2); color:var(--text); border-radius:8px; padding:8px 9px; font-size:12px; font-weight:700; }
@@ -865,10 +869,14 @@
   .back-btn { width:42px; height:42px; border-radius:10px; background:var(--surface2); color:var(--text); border:1px solid var(--border); font-size:20px; }
   .history-table { width:100%; border-collapse:collapse; font-size:12px; }
   .history-table th { color:var(--muted); text-align:left; padding:8px 6px; border-bottom:1px solid var(--border); font-family:'Barlow Condensed',sans-serif; letter-spacing:.5px; }
-  .history-table td { padding:10px 6px; border-bottom:1px solid rgba(30,45,66,.6); }
+  .history-table td { padding:10px 6px; border-bottom:1px solid rgba(30,45,66,.6); color:var(--text); }
+  .strike-good { color:#39ff88 !important; text-shadow:0 0 8px rgba(57,255,136,.35); }
+  .strike-mid { color:#ffffff !important; }
+  .strike-low { color:var(--red) !important; }
+  .strike-pct { font-weight:800; }
   .trend-cards { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
   .trend-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px; }
-  .trend-value { font-family:'Barlow Condensed',sans-serif; font-size:26px; font-weight:900; }
+  .trend-value { font-family:'Barlow Condensed',sans-serif; font-size:26px; font-weight:900; color:var(--text); }
   .trend-label { color:var(--muted); font-size:10px; letter-spacing:1px; text-transform:uppercase; }
 
 </style>
@@ -1119,6 +1127,7 @@ function saveAppData() {
   catch(e) { alert('Could not save data on this device.'); }
 }
 function esc(v) { return String(v ?? '').replace(/[&<>'\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c])); }
+function strikeClass(pct) { return pct > 50 ? 'strike-good' : pct >= 45 ? 'strike-mid' : 'strike-low'; }
 function selectedTeam() { return appData.teams.find(t => t.id === appData.selectedTeamId) || null; }
 function activePlayer() { return appData.players.find(p => p.id === state.activePlayerId) || null; }
 
@@ -1131,9 +1140,62 @@ function renderManager() {
   playerList.innerHTML = players.length ? players.map(p => {
     const sessions = appData.sessions.filter(s => s.playerId === p.id);
     const last = sessions.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt))[0];
-    return `<div class="player-card"><div class="player-main"><div class="player-name">${esc(p.name)}</div><div class="player-meta">${sessions.length} session${sessions.length===1?'':'s'}${last ? ' · Last '+new Date(last.createdAt).toLocaleDateString() : ''}</div></div><div class="card-actions"><button class="card-btn" onclick="showHistory('${p.id}')">HISTORY</button><button class="card-btn primary" onclick="startBullpen('${p.id}')">START</button></div></div>`;
+    return `<div class="player-swipe" data-player-id="${p.id}"><button class="player-delete" type="button">DELETE</button><div class="player-card"><div class="player-main"><div class="player-name">${esc(p.name)}</div><div class="player-meta">${sessions.length} session${sessions.length===1?'':'s'}${last ? ' · Last '+new Date(last.createdAt).toLocaleDateString() : ''}</div></div><div class="card-actions"><button class="card-btn" onclick="showHistory('${p.id}')">HISTORY</button><button class="card-btn primary" onclick="startBullpen('${p.id}')">START</button></div></div></div>`;
   }).join('') : '<div class="empty-state">Add a team and player to start saving bullpen sessions.</div>';
+  setupPlayerSwipe();
   saveAppData();
+}
+
+
+function setupPlayerSwipe() {
+  let openCard = null;
+  document.querySelectorAll('.player-swipe').forEach(wrapper => {
+    const card = wrapper.querySelector('.player-card');
+    const deleteBtn = wrapper.querySelector('.player-delete');
+    const playerId = wrapper.dataset.playerId;
+    let startX=0, startY=0, baseX=0, currentX=0, dragging=false;
+
+    const setX = x => { currentX=Math.max(-88,Math.min(0,x)); card.style.transform=`translateX(${currentX}px)`; };
+    const close = () => { card.classList.remove('swiping'); setX(0); if(openCard===card) openCard=null; };
+    const open = () => { card.classList.remove('swiping'); setX(-88); openCard=card; };
+
+    card.addEventListener('touchstart', e => {
+      if(openCard && openCard!==card) { openCard.style.transform='translateX(0)'; openCard=null; }
+      const t=e.touches[0]; startX=t.clientX; startY=t.clientY;
+      baseX = card.style.transform.includes('-88') ? -88 : 0;
+      dragging=false; card.classList.add('swiping');
+    }, {passive:true});
+
+    card.addEventListener('touchmove', e => {
+      const t=e.touches[0], dx=t.clientX-startX, dy=t.clientY-startY;
+      if(!dragging && Math.abs(dx)>8 && Math.abs(dx)>Math.abs(dy)) dragging=true;
+      if(dragging) { e.preventDefault(); setX(baseX+dx); }
+    }, {passive:false});
+
+    card.addEventListener('touchend', () => {
+      card.classList.remove('swiping');
+      if(currentX < -40) open(); else close();
+      setTimeout(()=>{ dragging=false; },0);
+    });
+
+    card.addEventListener('click', e => {
+      if(currentX < 0 && !e.target.closest('button')) { e.preventDefault(); close(); }
+    });
+
+    deleteBtn.addEventListener('click', () => deletePlayer(playerId));
+  });
+}
+
+function deletePlayer(playerId) {
+  const p=appData.players.find(x=>x.id===playerId); if(!p) return;
+  const sessionCount=appData.sessions.filter(s=>s.playerId===playerId).length;
+  const msg = sessionCount
+    ? `Delete ${p.name} and ${sessionCount} saved bullpen session${sessionCount===1?'':'s'}? This cannot be undone.`
+    : `Delete ${p.name}? This cannot be undone.`;
+  if(!confirm(msg)) return;
+  appData.players=appData.players.filter(x=>x.id!==playerId);
+  appData.sessions=appData.sessions.filter(s=>s.playerId!==playerId);
+  saveAppData(); renderManager();
 }
 
 document.getElementById('addTeamBtn').addEventListener('click', () => {
@@ -1184,10 +1246,10 @@ window.showHistory = function(playerId) {
   const pitches=sessions.reduce((n,s)=>n+s.totalPitches,0); trend+='<div class="trend-card"><div class="trend-value">'+pitches+'</div><div class="trend-label">Total Pitches</div></div>';
   if(sessions.length){
     const latest=sessions[0]; const avgStr=Math.round(sessions.reduce((n,s)=>n+s.strikePct,0)/sessions.length); const avgLoc=Math.round(sessions.reduce((n,s)=>n+s.locationPct,0)/sessions.length);
-    trend+=`<div class="trend-card"><div class="trend-value">${latest.strikePct}%</div><div class="trend-label">Latest Strike %</div></div><div class="trend-card"><div class="trend-value">${avgStr}%</div><div class="trend-label">Avg Strike %</div></div>`;
+    trend+=`<div class="trend-card"><div class="trend-value strike-pct ${strikeClass(latest.strikePct)}">${latest.strikePct}%</div><div class="trend-label">Latest Strike %</div></div><div class="trend-card"><div class="trend-value strike-pct ${strikeClass(avgStr)}">${avgStr}%</div><div class="trend-label">Avg Strike %</div></div>`;
   }
   document.getElementById('trendCards').innerHTML=trend;
-  document.getElementById('historyList').innerHTML = sessions.length ? `<table class="history-table"><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th></tr></thead><tbody>${sessions.map(s=>`<tr><td>${new Date(s.createdAt).toLocaleDateString()}</td><td>${s.totalPitches}</td><td>${s.strikePct}%</td><td>${s.locationPct}%</td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">No saved sessions yet.</div>';
+  document.getElementById('historyList').innerHTML = sessions.length ? `<table class="history-table"><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th></tr></thead><tbody>${sessions.map(s=>`<tr><td>${new Date(s.createdAt).toLocaleDateString()}</td><td>${s.totalPitches}</td><td class="strike-pct ${strikeClass(s.strikePct)}">${s.strikePct}%</td><td>${s.locationPct}%</td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">No saved sessions yet.</div>';
   managerScreen.style.display='none'; trackingScreen.style.display='none'; statsScreen.style.display='none'; historyScreen.style.display='flex';
 };
 document.getElementById('historyBackBtn').addEventListener('click',()=>{historyScreen.style.display='none';managerScreen.style.display='flex';renderManager();});
