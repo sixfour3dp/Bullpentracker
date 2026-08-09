@@ -879,7 +879,24 @@
   .trend-value { font-family:'Barlow Condensed',sans-serif; font-size:26px; font-weight:900; color:var(--text); }
   .trend-label { color:var(--muted); font-size:10px; letter-spacing:1px; text-transform:uppercase; }
 
+
+  /* ===== SESSION NOTES / PDF REPORT ===== */
+  .history-actions { margin-left:auto; }
+  .pdf-btn { border:1px solid rgba(0,212,255,.35); background:rgba(0,212,255,.10); color:var(--accent); border-radius:10px; padding:10px 12px; font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:12px; letter-spacing:.8px; white-space:nowrap; }
+  .session-note-row td { padding:0 6px 10px !important; border-bottom:1px solid rgba(30,45,66,.6); }
+  .session-note { background:rgba(255,255,255,.025); border-left:3px solid var(--accent); border-radius:7px; padding:8px 10px; color:var(--text); font-size:12px; line-height:1.4; white-space:pre-wrap; }
+  .session-note-label { display:block; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:10px; letter-spacing:1px; margin-bottom:3px; }
+  .modal-backdrop { position:fixed; inset:0; z-index:1000; display:none; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.72); padding:16px; padding-bottom:max(16px,env(safe-area-inset-bottom)); }
+  .modal-backdrop.visible { display:flex; }
+  .notes-modal { width:min(100%,430px); background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:18px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+  .notes-title { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:24px; color:var(--text); text-transform:uppercase; }
+  .notes-sub { color:var(--muted); font-size:12px; margin:3px 0 12px; }
+  .notes-textarea { width:100%; min-height:120px; resize:vertical; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:12px; padding:12px; font-family:'Barlow',sans-serif; font-size:16px; line-height:1.4; outline:none; }
+  .notes-actions { display:flex; gap:8px; margin-top:12px; }
+  .notes-actions .btn { min-height:46px; }
+
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -934,6 +951,7 @@
       <div class="history-header">
         <button id="historyBackBtn" class="back-btn">‹</button>
         <div><div class="manager-title" id="historyPlayerName">Player</div><div class="manager-sub" id="historyTeamName"></div></div>
+        <div class="history-actions"><button id="pdfReportBtn" class="pdf-btn">PDF REPORT</button></div>
       </div>
       <div class="trend-cards" id="trendCards"></div>
       <div class="panel">
@@ -1063,6 +1081,19 @@
     <button class="new-session-btn" id="homeBtn" style="background:var(--surface2);color:var(--text);margin-top:6px">← PLAYERS</button>
   </div>
 </div>
+
+  <!-- SESSION NOTES MODAL -->
+  <div class="modal-backdrop" id="sessionNotesModal" role="dialog" aria-modal="true" aria-labelledby="sessionNotesTitle">
+    <div class="notes-modal">
+      <div class="notes-title" id="sessionNotesTitle">Session Notes</div>
+      <div class="notes-sub">Optional — add anything you want to remember about this bullpen.</div>
+      <textarea id="sessionNotesInput" class="notes-textarea" maxlength="1200" placeholder="Examples: Fastball command improved after 15 pitches. Curveball was sharp. Worked mostly glove side..."></textarea>
+      <div class="notes-actions">
+        <button id="skipNotesBtn" class="btn btn-secondary">SKIP</button>
+        <button id="saveNotesBtn" class="btn btn-primary">SAVE SESSION</button>
+      </div>
+    </div>
+  </div>
 
 <script>
 // ============================================================
@@ -1228,18 +1259,23 @@ function resetTrackingUI() {
 }
 
 function serializePitch(p) { return {...p, targetZones:[...p.targetZones]}; }
-function saveCurrentSession() {
+function saveCurrentSession(notes='') {
   if(state.sessionSaved || !state.activePlayerId || !state.pitches.length) return;
   const total=state.pitches.length, strikes=state.pitches.filter(p=>p.isStrike).length;
   const targeted=state.pitches.filter(p=>p.targetZones.size>0), onTarget=state.pitches.filter(p=>p.isOnTarget).length;
+  const strikePct=Math.round(strikes/total*100);
+  const locationPct=targeted.length?Math.round(onTarget/targeted.length*100):0;
+  const combinedScore=Math.round(((strikes/total)*0.5 + (targeted.length?onTarget/targeted.length:0)*0.5)*100);
   appData.sessions.push({ id:uid('session'), playerId:state.activePlayerId, createdAt:new Date().toISOString(), totalPitches:total,
-    strikePct:Math.round(strikes/total*100), locationPct:targeted.length?Math.round(onTarget/targeted.length*100):0,
-    pitches:state.pitches.map(serializePitch) });
+    strikePct, locationPct, combinedScore, notes:(notes||'').trim(), pitches:state.pitches.map(serializePitch) });
   state.sessionSaved=true; saveAppData();
 }
 
+let currentHistoryPlayerId = null;
+function escAttr(s){ return esc(s ?? ''); }
 window.showHistory = function(playerId) {
   const p=appData.players.find(x=>x.id===playerId); if(!p) return;
+  currentHistoryPlayerId=playerId;
   const t=appData.teams.find(x=>x.id===p.teamId); const sessions=appData.sessions.filter(s=>s.playerId===playerId).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
   document.getElementById('historyPlayerName').textContent=p.name; document.getElementById('historyTeamName').textContent=t?.name||'';
   let trend='<div class="trend-card"><div class="trend-value">'+sessions.length+'</div><div class="trend-label">Sessions</div></div>';
@@ -1249,9 +1285,65 @@ window.showHistory = function(playerId) {
     trend+=`<div class="trend-card"><div class="trend-value strike-pct ${strikeClass(latest.strikePct)}">${latest.strikePct}%</div><div class="trend-label">Latest Strike %</div></div><div class="trend-card"><div class="trend-value strike-pct ${strikeClass(avgStr)}">${avgStr}%</div><div class="trend-label">Avg Strike %</div></div>`;
   }
   document.getElementById('trendCards').innerHTML=trend;
-  document.getElementById('historyList').innerHTML = sessions.length ? `<table class="history-table"><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th></tr></thead><tbody>${sessions.map(s=>`<tr><td>${new Date(s.createdAt).toLocaleDateString()}</td><td>${s.totalPitches}</td><td class="strike-pct ${strikeClass(s.strikePct)}">${s.strikePct}%</td><td>${s.locationPct}%</td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">No saved sessions yet.</div>';
+  document.getElementById('historyList').innerHTML = sessions.length ? `<table class="history-table"><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th></tr></thead><tbody>${sessions.map(s=>{const note=(s.notes||'').trim(); return `<tr><td>${new Date(s.createdAt).toLocaleDateString()}</td><td>${s.totalPitches}</td><td class="strike-pct ${strikeClass(s.strikePct)}">${s.strikePct}%</td><td>${s.locationPct}%</td></tr>${note?`<tr class="session-note-row"><td colspan="4"><div class="session-note"><span class="session-note-label">SESSION NOTES</span>${esc(note)}</div></td></tr>`:''}`}).join('')}</tbody></table>` : '<div class="empty-state">No saved sessions yet.</div>';
   managerScreen.style.display='none'; trackingScreen.style.display='none'; statsScreen.style.display='none'; historyScreen.style.display='flex';
 };
+
+function sessionCombinedScore(s){
+  if(Number.isFinite(s.combinedScore)) return s.combinedScore;
+  return Math.round(((Number(s.strikePct)||0)+(Number(s.locationPct)||0))/2);
+}
+function pdfSafe(s){ return String(s??'').replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').replace(/[\u2013\u2014]/g,'-').replace(/[^\x20-\x7E\n]/g,''); }
+function drawTrendChart(doc, sessions, x, y, w, h){
+  const data=sessions.slice().sort((a,b)=>a.createdAt.localeCompare(b.createdAt));
+  doc.setDrawColor(210,218,228); doc.setLineWidth(.25);
+  for(let pct=0;pct<=100;pct+=25){ const yy=y+h-(pct/100)*h; doc.line(x,yy,x+w,yy); doc.setFontSize(7); doc.setTextColor(110,120,135); doc.text(String(pct)+'%',x-3,yy+1,{align:'right'}); }
+  if(!data.length) return;
+  const padX=data.length===1?w/2:0;
+  const px=i=>data.length===1?x+padX:x+(i/(data.length-1))*w;
+  const py=v=>y+h-(Math.max(0,Math.min(100,v))/100)*h;
+  const series=[
+    {key:'strikePct',label:'Strike %',c:[34,197,94]},
+    {key:'locationPct',label:'Location %',c:[0,170,220]},
+    {key:'combinedScore',label:'Combined',c:[255,92,53]}
+  ];
+  series.forEach(sr=>{ doc.setDrawColor(...sr.c); doc.setFillColor(...sr.c); doc.setLineWidth(.8); let prev=null; data.forEach((s,i)=>{const val=sr.key==='combinedScore'?sessionCombinedScore(s):Number(s[sr.key]||0); const xx=px(i), yy=py(val); if(prev)doc.line(prev[0],prev[1],xx,yy); doc.circle(xx,yy,1.2,'F'); prev=[xx,yy];}); });
+  doc.setFontSize(8); let lx=x; series.forEach(sr=>{doc.setFillColor(...sr.c);doc.circle(lx,y+h+8,1.4,'F');doc.setTextColor(55,65,80);doc.text(sr.label,lx+3,y+h+10);lx+=34;});
+  const labels=data.map(s=>new Date(s.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+  doc.setFontSize(6.5); doc.setTextColor(110,120,135); data.forEach((s,i)=>{ if(data.length<=8 || i===0 || i===data.length-1 || i%Math.ceil(data.length/6)===0) doc.text(labels[i],px(i),y+h+17,{align:'center'}); });
+}
+async function exportPlayerPdf(playerId){
+  const p=appData.players.find(x=>x.id===playerId); if(!p)return;
+  if(!window.jspdf?.jsPDF){ alert('PDF tools are still loading. Check your internet connection and try again.'); return; }
+  const t=appData.teams.find(x=>x.id===p.teamId); const sessions=appData.sessions.filter(s=>s.playerId===playerId).sort((a,b)=>a.createdAt.localeCompare(b.createdAt));
+  if(!sessions.length){alert('No saved sessions to export yet.');return;}
+  const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'letter'}); const W=215.9, margin=16;
+  // Header
+  doc.setFillColor(10,14,20); doc.rect(0,0,W,42,'F'); doc.setTextColor(0,212,255); doc.setFont('helvetica','bold'); doc.setFontSize(24); doc.text('BULLPEN',margin,19); doc.setTextColor(255,92,53); doc.text('PROGRESS REPORT',margin+43,19);
+  doc.setTextColor(232,240,254); doc.setFontSize(15); doc.text(pdfSafe(p.name),margin,30); doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(150,165,185); doc.text(pdfSafe((t?.name||'')+'  |  '+sessions.length+' sessions  |  '+sessions.reduce((n,s)=>n+s.totalPitches,0)+' pitches'),margin,36);
+  const latest=sessions[sessions.length-1], first=sessions[0];
+  const avgStr=Math.round(sessions.reduce((n,s)=>n+s.strikePct,0)/sessions.length), avgLoc=Math.round(sessions.reduce((n,s)=>n+s.locationPct,0)/sessions.length);
+  const cards=[['LATEST STRIKE',latest.strikePct+'%'],['AVG STRIKE',avgStr+'%'],['LATEST LOCATION',latest.locationPct+'%'],['AVG LOCATION',avgLoc+'%']];
+  let cx=margin; cards.forEach(([lab,val])=>{doc.setFillColor(245,248,251);doc.roundedRect(cx,49,43,20,3,3,'F');doc.setTextColor(95,110,130);doc.setFontSize(7);doc.setFont('helvetica','bold');doc.text(lab,cx+4,56);doc.setTextColor(15,25,35);doc.setFontSize(16);doc.text(val,cx+4,65);cx+=46;});
+  doc.setTextColor(25,35,50); doc.setFontSize(12); doc.text('Progress over time',margin,80); drawTrendChart(doc,sessions,margin+8,86,W-margin*2-8,55);
+  const dStrike=latest.strikePct-first.strikePct, dLoc=latest.locationPct-first.locationPct;
+  doc.setFontSize(9); doc.setTextColor(70,80,95); doc.setFont('helvetica','normal'); doc.text(`First to latest: Strike ${dStrike>=0?'+':''}${dStrike} pts  |  Location ${dLoc>=0?'+':''}${dLoc} pts`,margin,163);
+  doc.setFont('helvetica','bold'); doc.setTextColor(25,35,50); doc.setFontSize(12); doc.text('Session history & notes',margin,176);
+  let yy=184; const newest=sessions.slice().reverse();
+  newest.forEach((s,idx)=>{
+    const note=pdfSafe((s.notes||'').trim()); const title=`${new Date(s.createdAt).toLocaleDateString()}   ${s.totalPitches} pitches   Strike ${s.strikePct}%   Location ${s.locationPct}%   Combined ${sessionCombinedScore(s)}%`;
+    const lines=note?doc.splitTextToSize(note,W-margin*2-8):['No session notes.']; const blockH=9+lines.length*4.2+4;
+    if(yy+blockH>265){ doc.addPage(); yy=18; }
+    doc.setFillColor(idx%2?248:243,idx%2?250:247,idx%2?252:250); doc.roundedRect(margin,yy-5,W-margin*2,blockH,2,2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(30,45,60);doc.text(title,margin+4,yy);
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(85,95,110);doc.text(lines,margin+4,yy+6); yy+=blockH+3;
+  });
+  const pages=doc.getNumberOfPages(); for(let i=1;i<=pages;i++){doc.setPage(i);doc.setFontSize(7);doc.setTextColor(130,140,155);doc.text('BullPen Tracker',margin,274);doc.text(`Page ${i} of ${pages}`,W-margin,274,{align:'right'});}
+  const fileName=(p.name||'player').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'').toLowerCase()+'-bullpen-progress.pdf';
+  doc.save(fileName);
+}
+document.getElementById('pdfReportBtn').addEventListener('click',()=>{ if(currentHistoryPlayerId) exportPlayerPdf(currentHistoryPlayerId); });
+
 document.getElementById('historyBackBtn').addEventListener('click',()=>{historyScreen.style.display='none';managerScreen.style.display='flex';renderManager();});
 homeBtn.addEventListener('click',()=>{ statsScreen.style.display='none'; trackingScreen.style.display='none'; historyScreen.style.display='none'; managerScreen.style.display='flex'; renderManager(); });
 
@@ -1539,16 +1631,18 @@ function addToLog(pitch) {
 // ============================================================
 // DONE SESSION → STATS
 // ============================================================
+const sessionNotesModal=document.getElementById('sessionNotesModal');
+const sessionNotesInput=document.getElementById('sessionNotesInput');
 function finishSession() {
-  if (state.pitches.length === 0) {
-    alert('No pitches recorded yet!');
-    return;
-  }
-  saveCurrentSession();
-  buildStats();
-  trackingScreen.style.display = 'none';
-  statsScreen.style.display = 'flex';
+  if (state.pitches.length === 0) { alert('No pitches recorded yet!'); return; }
+  if(state.sessionSaved){ buildStats(); trackingScreen.style.display='none'; statsScreen.style.display='flex'; return; }
+  sessionNotesInput.value=''; sessionNotesModal.classList.add('visible'); setTimeout(()=>sessionNotesInput.focus(),100);
 }
+function finalizeFinishedSession(notes=''){
+  sessionNotesModal.classList.remove('visible'); saveCurrentSession(notes); buildStats(); trackingScreen.style.display='none'; statsScreen.style.display='flex';
+}
+document.getElementById('saveNotesBtn').addEventListener('click',()=>finalizeFinishedSession(sessionNotesInput.value));
+document.getElementById('skipNotesBtn').addEventListener('click',()=>finalizeFinishedSession(''));
 
 function buildStats() {
   const pitches = state.pitches;
