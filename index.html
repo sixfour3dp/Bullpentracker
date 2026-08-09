@@ -1077,16 +1077,16 @@
     display:none;
     position:absolute;
     inset:0;
-    border:4px solid var(--accent2);
+    border:30px solid rgba(255,92,53,.50);
     border-radius:7px;
     pointer-events:none;
     z-index:5;
-    box-shadow:inset 0 0 22px rgba(255,92,53,.18);
+    box-shadow:inset 0 0 18px rgba(255,92,53,.18);
   }
   .wild-pitch-band::before {
     content:'WILD PITCH';
     position:absolute;
-    top:5px;
+    top:-23px;
     left:50%;
     transform:translateX(-50%);
     background:var(--accent2);
@@ -2034,7 +2034,7 @@ function handleOuterZoneClick(e) {
   if (e.target.classList.contains('zone-cell')) return;
   const rect=e.currentTarget.getBoundingClientRect();
   const edge=Math.min(e.clientX-rect.left, rect.right-e.clientX, e.clientY-rect.top, rect.bottom-e.clientY);
-  const isWild=outerZone.classList.contains('wild-mode') && edge<=34;
+  const isWild=outerZone.classList.contains('wild-mode') && edge<=38;
   recordPitch(null, null, null, false, e.currentTarget, e.clientX, e.clientY, isWild);
 }
 
