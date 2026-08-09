@@ -1471,18 +1471,72 @@ function resetTrackingUI() {
 }
 
 function serializePitch(p) { return {...p, targetZones:[...p.targetZones]}; }
+// Pocket Bullpen proprietary command scoring.
+// Overall: 50% called-location strike rate, 30% general strike rate, 20% pitch-by-pitch location quality.
+function pitchTargetZones(p){
+  return p.targetZones instanceof Set ? [...p.targetZones].map(Number) : (Array.isArray(p.targetZones)?p.targetZones.map(Number):[]);
+}
+function zoneRC(z){ return {r:Math.floor((Number(z)-1)/3), c:(Number(z)-1)%3}; }
+function pitchLocationQuality(p){
+  const targets=pitchTargetZones(p); if(!targets.length) return p.isStrike?55:20;
+  if(p.isOnTarget && p.isStrike) return 100;
+  const actual=Number(p.resultZone);
+  if(p.isStrike && actual){
+    const a=zoneRC(actual);
+    let best=99;
+    targets.forEach(z=>{const t=zoneRC(z); best=Math.min(best,Math.abs(a.r-t.r)+Math.abs(a.c-t.c));});
+    if(best===1) return 85;
+    if(best===2) return 70;
+    // Opposite-side / far strike still beats a ball, but receives little command credit.
+    return 50;
+  }
+  // Balls: use exact saved coordinates when available to reward competitive same-side misses.
+  const x=Number(p.resultX), y=Number(p.resultY);
+  if(Number.isFinite(x)&&Number.isFinite(y)){
+    let best=10;
+    targets.forEach(z=>{
+      const t=zoneRC(z); const tx=.15+((t.c+.5)/3)*.70, ty=.15+((t.r+.5)/3)*.70;
+      const d=Math.hypot(x-tx,y-ty);
+      const sameH=(t.c===1)||((tx<.5)===(x<.5));
+      const sameV=(t.r===1)||((ty<.5)===(y<.5));
+      let q=d<.18?45:d<.30?38:d<.45?30:18;
+      if(sameH&&sameV) q+=3; else if(!sameH&&!sameV) q-=5;
+      best=Math.max(best,Math.max(5,Math.min(48,q)));
+    });
+    return best;
+  }
+  return 20;
+}
+function pocketCommandMetrics(pitches){
+  const total=pitches.length||1, strikes=pitches.filter(p=>p.isStrike).length;
+  const targeted=pitches.filter(p=>pitchTargetZones(p).length>0);
+  const calledStrikeHits=targeted.filter(p=>p.isStrike&&p.isOnTarget).length;
+  const onTargetStrikePct=targeted.length?calledStrikeHits/targeted.length*100:0;
+  const strikePct=strikes/total*100;
+  const locationQuality=pitches.length?pitches.reduce((n,p)=>n+pitchLocationQuality(p),0)/pitches.length:0;
+  const score=Math.round(onTargetStrikePct*.50+strikePct*.30+locationQuality*.20);
+  const grade=score>=90?'ELITE':score>=80?'EXCELLENT':score>=70?'GOOD':score>=60?'DEVELOPING':score>=50?'INCONSISTENT':'POOR';
+  return {score,grade,onTargetStrikePct:Math.round(onTargetStrikePct),strikePct:Math.round(strikePct),locationQuality:Math.round(locationQuality)};
+}
+function sessionCommandScore(s){
+  if(Number.isFinite(Number(s.commandScore))) return Number(s.commandScore);
+  if(Array.isArray(s.pitches)&&s.pitches.length) return pocketCommandMetrics(s.pitches).score;
+  return Number(s.combinedScore)||0;
+}
+
 function saveCurrentSession(notes='') {
   if(state.sessionSaved || !state.activePlayerId || !state.pitches.length) return;
   const total=state.pitches.length, strikes=state.pitches.filter(p=>p.isStrike).length;
   const targeted=state.pitches.filter(p=>p.targetZones.size>0), onTarget=state.pitches.filter(p=>p.isOnTarget).length;
   const strikePct=Math.round(strikes/total*100);
   const locationPct=targeted.length?Math.round(onTarget/targeted.length*100):0;
-  const combinedScore=Math.round(((strikes/total)*0.5 + (targeted.length?onTarget/targeted.length:0)*0.5)*100);
+  const command=pocketCommandMetrics(state.pitches);
+  const combinedScore=command.score;
   const velocityPitches=state.pitches.filter(p=>Number.isFinite(Number(p.velocity)) && Number(p.velocity) > 0);
   const avgVelocity=velocityPitches.length ? Math.round((velocityPitches.reduce((sum,p)=>sum+Number(p.velocity),0)/velocityPitches.length)*10)/10 : null;
   const maxVelocity=velocityPitches.length ? Math.max(...velocityPitches.map(p=>p.velocity)) : null;
   appData.sessions.push({ id:uid('session'), playerId:state.activePlayerId, createdAt:new Date().toISOString(), totalPitches:total,
-    strikePct, locationPct, combinedScore, velocityTracked:velocityPitches.length>0, avgVelocity, maxVelocity, notes:(notes||'').trim(), pitches:state.pitches.map(serializePitch) });
+    strikePct, locationPct, combinedScore, commandScore:command.score, commandGrade:command.grade, locationQuality:command.locationQuality, onTargetStrikePct:command.onTargetStrikePct, velocityTracked:velocityPitches.length>0, avgVelocity, maxVelocity, notes:(notes||'').trim(), pitches:state.pitches.map(serializePitch) });
   state.sessionSaved=true; saveAppData();
 }
 
@@ -1497,7 +1551,7 @@ window.showHistory = function(playerId) {
   const pitches=sessions.reduce((n,s)=>n+s.totalPitches,0); trend+='<div class="trend-card"><div class="trend-value">'+pitches+'</div><div class="trend-label">Total Pitches</div></div>';
   if(sessions.length){
     const latest=sessions[0]; const avgStr=Math.round(sessions.reduce((n,s)=>n+s.strikePct,0)/sessions.length); const avgLoc=Math.round(sessions.reduce((n,s)=>n+s.locationPct,0)/sessions.length);
-    trend+=`<div class="trend-card"><div class="trend-value strike-pct ${strikeClass(latest.strikePct)}">${latest.strikePct}%</div><div class="trend-label">Latest Strike %</div></div><div class="trend-card"><div class="trend-value strike-pct ${strikeClass(avgStr)}">${avgStr}%</div><div class="trend-label">Avg Strike %</div></div>`;
+    const latestCmd=sessionCommandScore(latest); trend+=`<div class="trend-card"><div class="trend-value strike-pct ${strikeClass(latest.strikePct)}">${latest.strikePct}%</div><div class="trend-label">Latest Strike %</div></div><div class="trend-card"><div class="trend-value strike-pct ${strikeClass(avgStr)}">${avgStr}%</div><div class="trend-label">Avg Strike %</div></div><div class="trend-card"><div class="trend-value">${latestCmd}</div><div class="trend-label">PB Command Score</div></div>`;
     const fbVelos=sessions.flatMap(s=>(s.pitches||[]).filter(p=>p.type==='FB' && Number.isFinite(Number(p.velocity)) && Number(p.velocity) > 0).map(p=>Number(p.velocity)));
     const avgFb=fbVelos.length ? (fbVelos.reduce((a,b)=>a+b,0)/fbVelos.length).toFixed(1) : '—';
     const highFb=fbVelos.length ? Math.max(...fbVelos).toFixed(1) : '—';
@@ -1508,10 +1562,7 @@ window.showHistory = function(playerId) {
   managerScreen.style.display='none'; trackingScreen.style.display='none'; statsScreen.style.display='none'; historyScreen.style.display='flex';
 };
 
-function sessionCombinedScore(s){
-  if(Number.isFinite(s.combinedScore)) return s.combinedScore;
-  return Math.round(((Number(s.strikePct)||0)+(Number(s.locationPct)||0))/2);
-}
+function sessionCombinedScore(s){ return sessionCommandScore(s); }
 function pdfSafe(s){ return String(s??'').replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').replace(/[\u2013\u2014]/g,'-').replace(/[^\x20-\x7E\n]/g,''); }
 function drawTrendChart(doc, sessions, x, y, w, h){
   const data=sessions.slice().sort((a,b)=>a.createdAt.localeCompare(b.createdAt));
@@ -1524,7 +1575,7 @@ function drawTrendChart(doc, sessions, x, y, w, h){
   const series=[
     {key:'strikePct',label:'Strike %',c:[34,197,94]},
     {key:'locationPct',label:'Location %',c:[0,170,220]},
-    {key:'combinedScore',label:'Combined',c:[255,92,53]}
+    {key:'combinedScore',label:'PB Command',c:[255,92,53]}
   ];
   series.forEach(sr=>{ doc.setDrawColor(...sr.c); doc.setFillColor(...sr.c); doc.setLineWidth(.8); let prev=null; data.forEach((s,i)=>{const val=sr.key==='combinedScore'?sessionCombinedScore(s):Number(s[sr.key]||0); const xx=px(i), yy=py(val); if(prev)doc.line(prev[0],prev[1],xx,yy); doc.circle(xx,yy,1.2,'F'); prev=[xx,yy];}); });
   doc.setFontSize(8); let lx=x; series.forEach(sr=>{doc.setFillColor(...sr.c);doc.circle(lx,y+h+8,1.4,'F');doc.setTextColor(55,65,80);doc.text(sr.label,lx+3,y+h+10);lx+=34;});
@@ -1538,11 +1589,11 @@ async function exportPlayerPdf(playerId){
   if(!sessions.length){alert('No saved sessions to export yet.');return;}
   const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:'mm',format:'letter'}); const W=215.9, margin=16;
   // Header
-  doc.setFillColor(10,14,20); doc.rect(0,0,W,42,'F'); doc.setTextColor(0,212,255); doc.setFont('helvetica','bold'); doc.setFontSize(24); doc.text('BULLPEN',margin,19); doc.setTextColor(255,92,53); doc.text('PROGRESS REPORT',margin+43,19);
+  doc.setFillColor(10,14,20); doc.rect(0,0,W,42,'F'); doc.setTextColor(0,212,255); doc.setFont('helvetica','bold'); doc.setFontSize(24); doc.text('POCKET',margin,19); doc.setTextColor(255,92,53); doc.text('BULLPEN PROGRESS',margin+35,19);
   doc.setTextColor(232,240,254); doc.setFontSize(15); doc.text(pdfSafe(p.name),margin,30); doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(150,165,185); doc.text(pdfSafe((t?.name||'')+'  |  '+sessions.length+' sessions  |  '+sessions.reduce((n,s)=>n+s.totalPitches,0)+' pitches'),margin,36);
   const latest=sessions[sessions.length-1], first=sessions[0];
   const avgStr=Math.round(sessions.reduce((n,s)=>n+s.strikePct,0)/sessions.length), avgLoc=Math.round(sessions.reduce((n,s)=>n+s.locationPct,0)/sessions.length);
-  const cards=[['LATEST STRIKE',latest.strikePct+'%'],['AVG STRIKE',avgStr+'%'],['LATEST LOCATION',latest.locationPct+'%'],['AVG LOCATION',avgLoc+'%']];
+  const cards=[['LATEST STRIKE',latest.strikePct+'%'],['AVG STRIKE',avgStr+'%'],['LATEST LOCATION',latest.locationPct+'%'],['PB COMMAND',sessionCommandScore(latest)]];
   let cx=margin; cards.forEach(([lab,val])=>{doc.setFillColor(245,248,251);doc.roundedRect(cx,49,43,20,3,3,'F');doc.setTextColor(95,110,130);doc.setFontSize(7);doc.setFont('helvetica','bold');doc.text(lab,cx+4,56);doc.setTextColor(15,25,35);doc.setFontSize(16);doc.text(val,cx+4,65);cx+=46;});
   doc.setTextColor(25,35,50); doc.setFontSize(12); doc.text('Progress over time',margin,80); drawTrendChart(doc,sessions,margin+8,86,W-margin*2-8,55);
   const dStrike=latest.strikePct-first.strikePct, dLoc=latest.locationPct-first.locationPct;
@@ -2097,52 +2148,27 @@ function buildStats() {
       </div>`;
   }).join('') || '<div style="text-align:center;color:var(--muted);font-size:13px;padding:12px">No pitches recorded</div>';
 
-  // Command metrics - std dev of zone positions
-  const zonedPitches = pitches.filter(p => p.resultZone);
-  let spreadHTML = '';
-  if (zonedPitches.length >= 2) {
-    const zoneRow = z => Math.floor((z-1)/3);
-    const zoneCol = z => (z-1)%3;
-    const rows = zonedPitches.map(p => zoneRow(p.resultZone));
-    const cols = zonedPitches.map(p => zoneCol(p.resultZone));
-    const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
-    const std = arr => { const m = mean(arr); return Math.sqrt(arr.reduce((a,b)=>a+(b-m)**2,0)/arr.length); };
-    const rowStd = std(rows);
-    const colStd = std(cols);
-    const overallStd = Math.sqrt(rowStd**2 + colStd**2);
-
-    const grade = overallStd < 0.5 ? {label:'ELITE', color:'var(--green)'} 
-                : overallStd < 0.9 ? {label:'SHARP', color:'var(--accent)'} 
-                : overallStd < 1.2 ? {label:'AVERAGE', color:'var(--yellow)'} 
-                : {label:'WILD', color:'var(--accent2)'};
-
-    spreadHTML = `
-      <div class="spread-title">LOCATION CONSISTENCY</div>
-      <div class="spread-grid">
-        <div class="spread-stat">
-          <div class="spread-val" style="color:${grade.color}">${grade.label}</div>
-          <div class="spread-lbl">COMMAND GRADE</div>
-        </div>
-        <div class="spread-stat">
-          <div class="spread-val">${overallStd.toFixed(2)}</div>
-          <div class="spread-lbl">SPREAD (SD)</div>
-        </div>
-        <div class="spread-stat">
-          <div class="spread-val">${colStd.toFixed(2)}</div>
-          <div class="spread-lbl">HORIZ SPREAD</div>
-        </div>
-        <div class="spread-stat">
-          <div class="spread-val">${rowStd.toFixed(2)}</div>
-          <div class="spread-lbl">VERT SPREAD</div>
-        </div>
-      </div>
-      <div style="margin-top:10px;font-size:10px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;letter-spacing:0.5px;">
-        SD measured in zone-widths (0–2 scale). Elite &lt; 0.5 · Average 0.9–1.2 · Wild &gt; 1.2
-      </div>`;
-  } else {
-    spreadHTML = `<div class="spread-title">LOCATION CONSISTENCY</div><div style="font-size:13px;color:var(--muted);padding:8px 0">Need at least 2 pitches in zone for spread metrics.</div>`;
+  // Pocket Bullpen Command Score + spread diagnostics
+  const cmd=pocketCommandMetrics(pitches);
+  const zonedPitches=pitches.filter(p=>p.resultZone);
+  let spreadVal='—';
+  if(zonedPitches.length>=2){
+    const rows=zonedPitches.map(p=>Math.floor((p.resultZone-1)/3)), cols=zonedPitches.map(p=>(p.resultZone-1)%3);
+    const mean=a=>a.reduce((x,y)=>x+y,0)/a.length, std=a=>{const m=mean(a);return Math.sqrt(a.reduce((n,v)=>n+(v-m)**2,0)/a.length);};
+    spreadVal=Math.sqrt(std(rows)**2+std(cols)**2).toFixed(2);
   }
-  document.getElementById('spreadCard').innerHTML = spreadHTML;
+  const gradeColor=cmd.score>=80?'var(--green)':cmd.score>=60?'var(--accent)':cmd.score>=50?'var(--yellow)':'var(--accent2)';
+  document.getElementById('spreadCard').innerHTML=`
+    <div class="spread-title">POCKET BULLPEN COMMAND</div>
+    <div class="spread-grid">
+      <div class="spread-stat"><div class="spread-val" style="color:${gradeColor}">${cmd.score}</div><div class="spread-lbl">PB COMMAND SCORE</div></div>
+      <div class="spread-stat"><div class="spread-val" style="color:${gradeColor};font-size:18px">${cmd.grade}</div><div class="spread-lbl">COMMAND GRADE</div></div>
+      <div class="spread-stat"><div class="spread-val">${cmd.onTargetStrikePct}%</div><div class="spread-lbl">ON-LOCATION STRIKES</div></div>
+      <div class="spread-stat"><div class="spread-val">${cmd.locationQuality}</div><div class="spread-lbl">LOCATION QUALITY</div></div>
+    </div>
+    <div style="margin-top:10px;font-size:10px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;letter-spacing:.5px;line-height:1.45;">
+      PB Command Score = 50% on-location strike rate + 30% overall strike rate + 20% location quality. Competitive same-side misses receive more credit than opposite-side misses. Spread: ${spreadVal} SD.
+    </div>`;
 }
 
 newSessionBtn.addEventListener('click', () => {
