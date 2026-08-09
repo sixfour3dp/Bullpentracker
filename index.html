@@ -1225,7 +1225,7 @@
     </div>
 
     <div class="action-bar">
-      <button class="btn btn-secondary" id="clearTargetBtn" style="flex:0.6">CLEAR</button>
+      <button class="btn btn-secondary" id="clearTargetBtn" style="flex:0.8">VIEW SESSION</button>
       <button class="btn btn-primary" id="doneBtn">DONE SESSION</button>
     </div>
   </div>
@@ -1257,7 +1257,8 @@
       <div class="spread-card" id="spreadCard"></div>
     </div>
 
-    <button class="new-session-btn" id="newSessionBtn">+ NEW SESSION</button>
+    <button class="new-session-btn" id="continueSessionBtn" style="background:var(--green);color:#071018">← CONTINUE SESSION</button>
+    <button class="new-session-btn" id="newSessionBtn" style="margin-top:6px">+ NEW SESSION</button>
     <button class="new-session-btn" id="homeBtn" style="background:var(--surface2);color:var(--text);margin-top:6px">← PLAYERS</button>
   </div>
 </div>
@@ -1460,7 +1461,7 @@ document.getElementById('addPlayerBtn').addEventListener('click', () => {
 });
 
 function startBullpen(playerId) {
-  state = { phase:'target', targetZones:new Set(), currentPitchType:'FB', pitches:[], pitchNum:1, activePlayerId:playerId, sessionSaved:false };
+  state = { phase:'target', targetZones:new Set(), currentPitchType:'FB', pitches:[], pitchNum:1, activePlayerId:playerId, sessionSaved:false, savedSessionId:null, reportMode:null };
   resetTrackingUI();
   const p=activePlayer(); const t=appData.teams.find(x=>x.id===p?.teamId);
   sessionContext.textContent = p ? `${p.name}${t?' · '+t.name:''}` : '';
@@ -1474,7 +1475,7 @@ function resetTrackingUI() {
   strikeZoneTarget.style.display='grid'; outerZone.style.display='none'; outerZone.classList.remove('active');
   strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('target'));
   phaseInstEl.textContent='TAP ZONE(S) TO SET TARGET LOCATION'; phaseInstEl.className='phase-instruction phase-target';
-  clearTargetBtn.textContent='CLEAR'; doneBtn.textContent='DONE SESSION'; doneBtn.onclick=finishSession;
+  clearTargetBtn.textContent='VIEW SESSION'; doneBtn.textContent='DONE SESSION'; doneBtn.onclick=finishSession;
   document.querySelectorAll('.pitch-dot,.click-ring').forEach(d=>d.remove()); updateTargetBadges();
   document.querySelectorAll('.pitch-btn').forEach(b=>{ b.classList.remove('active'); if(b.dataset.type==='FB') b.classList.add('active'); });
 }
@@ -1544,8 +1545,15 @@ function saveCurrentSession(notes='') {
   const velocityPitches=state.pitches.filter(p=>Number.isFinite(Number(p.velocity)) && Number(p.velocity) > 0);
   const avgVelocity=velocityPitches.length ? Math.round((velocityPitches.reduce((sum,p)=>sum+Number(p.velocity),0)/velocityPitches.length)*10)/10 : null;
   const maxVelocity=velocityPitches.length ? Math.max(...velocityPitches.map(p=>p.velocity)) : null;
-  appData.sessions.push({ id:uid('session'), playerId:state.activePlayerId, createdAt:new Date().toISOString(), totalPitches:total,
-    strikePct, locationPct, combinedScore, commandScore:command.score, commandGrade:command.grade, locationQuality:command.locationQuality, onTargetStrikePct:command.onTargetStrikePct, velocityTracked:velocityPitches.length>0, avgVelocity, maxVelocity, notes:(notes||'').trim(), pitches:state.pitches.map(serializePitch) });
+  const existingIndex = state.savedSessionId ? appData.sessions.findIndex(s=>s.id===state.savedSessionId) : -1;
+  const existing = existingIndex>=0 ? appData.sessions[existingIndex] : null;
+  const sessionRecord = { id: existing?.id || uid('session'), playerId:state.activePlayerId, createdAt:existing?.createdAt || new Date().toISOString(), totalPitches:total,
+    strikePct, locationPct, combinedScore, commandScore:command.score, commandGrade:command.grade, locationQuality:command.locationQuality, onTargetStrikePct:command.onTargetStrikePct,
+    velocityTracked:velocityPitches.length>0, avgVelocity, maxVelocity,
+    notes:(notes||existing?.notes||'').trim(), pitches:state.pitches.map(serializePitch) };
+  if(existingIndex>=0) appData.sessions[existingIndex]=sessionRecord;
+  else appData.sessions.push(sessionRecord);
+  state.savedSessionId=sessionRecord.id;
   state.sessionSaved=true; saveAppData();
 }
 
@@ -1682,14 +1690,19 @@ function selectAllZones() {
 }
 
 clearTargetBtn.addEventListener('click', () => {
-  if (state.phase === 'target') {
-    state.targetZones.clear();
-    strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c => c.classList.remove('target'));
-    updateTargetBadges();
-  } else {
-    // Go back to target phase
-    toTargetPhase();
+  if (pendingVelocityPitch) {
+    alert('Finish entering velocity for the current pitch before viewing the session.');
+    veloInput?.focus();
+    return;
   }
+  if (!state.pitches.length) {
+    alert('Record at least one pitch before viewing the session report.');
+    return;
+  }
+  state.reportMode = 'live';
+  buildStats();
+  trackingScreen.style.display='none';
+  statsScreen.style.display='flex';
 });
 
 // ============================================================
@@ -1736,7 +1749,6 @@ function showAdvancePrompt(show) {
     advancePromptShown = true;
     phaseInstEl.textContent = 'TARGET SET — TAP "RECORD PITCH" TO CONTINUE';
     phaseInstEl.className = 'phase-instruction phase-target';
-    clearTargetBtn.textContent = 'CLEAR';
     doneBtn.textContent = 'RECORD PITCH →';
     doneBtn.onclick = toResultPhase;
     doneBtn.disabled = false;
@@ -1755,7 +1767,6 @@ function toResultPhase() {
   phaseInstEl.textContent = 'TAP WHERE THE PITCH ACTUALLY WENT';
   phaseInstEl.className = 'phase-instruction phase-result';
 
-  clearTargetBtn.textContent = '← BACK';
   doneBtn.textContent = 'DONE SESSION';
   doneBtn.onclick = finishSession;
 
@@ -2045,11 +2056,12 @@ const sessionNotesModal=document.getElementById('sessionNotesModal');
 const sessionNotesInput=document.getElementById('sessionNotesInput');
 function finishSession() {
   if (state.pitches.length === 0) { alert('No pitches recorded yet!'); return; }
-  if(state.sessionSaved){ buildStats(); trackingScreen.style.display='none'; statsScreen.style.display='flex'; return; }
-  sessionNotesInput.value=''; sessionNotesModal.classList.add('visible'); setTimeout(()=>sessionNotesInput.focus(),100);
+  if(state.sessionSaved){ state.reportMode='finished'; buildStats(); trackingScreen.style.display='none'; statsScreen.style.display='flex'; return; }
+  const existingSession=state.savedSessionId?appData.sessions.find(s=>s.id===state.savedSessionId):null;
+  sessionNotesInput.value=existingSession?.notes||''; sessionNotesModal.classList.add('visible'); setTimeout(()=>sessionNotesInput.focus(),100);
 }
 function finalizeFinishedSession(notes=''){
-  sessionNotesModal.classList.remove('visible'); saveCurrentSession(notes); buildStats(); trackingScreen.style.display='none'; statsScreen.style.display='flex';
+  sessionNotesModal.classList.remove('visible'); saveCurrentSession(notes); state.reportMode='finished'; buildStats(); trackingScreen.style.display='none'; statsScreen.style.display='flex';
 }
 document.getElementById('saveNotesBtn').addEventListener('click',()=>finalizeFinishedSession(sessionNotesInput.value));
 document.getElementById('skipNotesBtn').addEventListener('click',()=>finalizeFinishedSession(''));
@@ -2151,7 +2163,7 @@ function buildStats() {
     { label:'STRIKE %', value: strikePct + '%', sub: `${strikes}/${total} strikes`, cls:'green' },
     { label:'LOCATION %', value: locPct + '%', sub: `${onTarget}/${withTarget.length} on target`, cls:'blue' },
     { label:'TOTAL PITCHES', value: total, sub: strikes + ' strikes · ' + (total-strikes) + ' balls', cls:'yellow' },
-    { label:'STRIKE + LOC', value: Math.round((strikes/total * 0.5 + (withTarget.length>0?onTarget/withTarget.length:0) * 0.5)*100) + '%', sub: 'combined score', cls:'orange' },
+    { label:'PB COMMAND', value: pocketCommandMetrics(pitches).score, sub: pocketCommandMetrics(pitches).grade, cls:'orange' },
   ];
 
   document.getElementById('statCards').innerHTML = cards.map(c => `
@@ -2227,7 +2239,32 @@ function buildStats() {
     </div>`;
 }
 
+const continueSessionBtn=document.getElementById('continueSessionBtn');
+continueSessionBtn.addEventListener('click',()=>{
+  if(!state.activePlayerId || !state.pitches.length) return;
+  // If it had already been saved, allow further pitches and update that same saved record next time Done is tapped.
+  if(state.sessionSaved) state.sessionSaved=false;
+  state.reportMode=null;
+  statsScreen.style.display='none';
+  historyScreen.style.display='none';
+  managerScreen.style.display='none';
+  trackingScreen.style.display='flex';
+  // Return to a clean target-selection phase without losing any recorded pitches.
+  state.targetZones.clear();
+  strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('target'));
+  updateTargetBadges();
+  toTargetPhase();
+  doneBtn.textContent='DONE SESSION';
+  doneBtn.onclick=finishSession;
+  clearTargetBtn.textContent='VIEW SESSION';
+  renderPitchLog();
+  pitchNumEl.textContent=state.pitchNum;
+});
+
 newSessionBtn.addEventListener('click', () => {
+  if(state.reportMode==='live' && !state.sessionSaved){
+    if(!confirm('This bullpen is still in progress. Start a new session and discard the current unsaved bullpen?')) return;
+  }
   const playerId = state.activePlayerId;
   if (playerId) startBullpen(playerId);
   else { statsScreen.style.display='none'; managerScreen.style.display='flex'; renderManager(); }
