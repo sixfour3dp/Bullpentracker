@@ -947,6 +947,18 @@
   .notes-actions { display:flex; gap:8px; margin-top:12px; }
   .notes-actions .btn { min-height:46px; }
 
+
+  /* Velocity tracking toggle */
+  .velo-toggle-wrap { display:flex; align-items:center; gap:8px; margin-left:4px; }
+  .velo-switch { position:relative; width:38px; height:22px; flex:0 0 38px; }
+  .velo-switch input { opacity:0; width:0; height:0; position:absolute; }
+  .velo-slider { position:absolute; inset:0; border-radius:999px; background:var(--surface2); border:1px solid var(--border); transition:.18s; cursor:pointer; }
+  .velo-slider::before { content:''; position:absolute; width:16px; height:16px; left:2px; top:2px; border-radius:50%; background:#fff; transition:.18s; box-shadow:0 1px 4px rgba(0,0,0,.35); }
+  .velo-switch input:checked + .velo-slider { background:var(--green); border-color:var(--green); }
+  .velo-switch input:checked + .velo-slider::before { transform:translateX(16px); }
+  .velo-input:disabled { opacity:.35; }
+  .velo-required { color:var(--green); }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 </head>
@@ -1628,6 +1640,11 @@ function handleOuterZoneClick(e) {
 }
 
 function recordPitch(zone, relX, relY, isStrike, targetEl, clickX, clickY) {
+  if (requireVelocity && (!veloInput || veloInput.value.trim() === '')) {
+    alert('Enter pitch velocity before recording this pitch.');
+    veloInput?.focus();
+    return;
+  }
   const isOnTarget = zone !== null && state.targetZones.has(zone);
   const rawVelo = (veloInput?.value || '').trim();
   const parsedVelo = Number(rawVelo);
