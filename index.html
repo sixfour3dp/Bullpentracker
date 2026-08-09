@@ -1663,17 +1663,16 @@ window.showHistory = function(playerId) {
   document.getElementById('trendCards').innerHTML=trend;
   document.getElementById('historyList').innerHTML = sessions.length ? `
       <div class="history-table" style="display:block">
-        <div style="padding:8px 12px 2px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.7px;font-size:10px;text-transform:uppercase;">Date</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);padding:4px 12px 8px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.55px;font-size:10px;border-bottom:1px solid var(--border);text-align:center;">
-          <div>Pitches</div><div>Strike</div><div>Location</div><div>PB Score</div>
+        <div style="display:grid;grid-template-columns:1.15fr .75fr .8fr .9fr .9fr;padding:8px 12px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.55px;font-size:10px;border-bottom:1px solid var(--border);text-align:center;align-items:end;">
+          <div style="text-align:left;">Date</div><div>Pitches</div><div>Strike</div><div>Location</div><div>PB Score</div>
         </div>
         ${sessions.map(s=>{
           const note=(s.notes||'').trim();
           return `<div class="session-swipe" data-session-id="${s.id}">
             <div class="session-swipe-actions"><button type="button" class="session-view-btn">VIEW</button></div>
             <div class="session-swipe-card">
-              <div style="padding:9px 12px 2px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:.6px;">${new Date(s.createdAt).toLocaleDateString()}</div>
-              <div style="display:grid;grid-template-columns:repeat(4,1fr);padding:7px 12px 12px;align-items:center;color:var(--text);text-align:center;">
+              <div style="display:grid;grid-template-columns:1.15fr .75fr .8fr .9fr .9fr;padding:12px;align-items:center;color:var(--text);text-align:center;">
+                <div style="text-align:left;color:var(--muted);font-family:'Barlow Condensed',sans-serif;letter-spacing:.45px;">${new Date(s.createdAt).toLocaleDateString()}</div>
                 <div>${s.totalPitches}</div>
                 <div class="strike-pct ${strikeClass(s.strikePct)}">${s.strikePct}%</div>
                 <div>${s.locationPct}%</div>
