@@ -2168,7 +2168,16 @@ clearTargetBtn.addEventListener('click', () => {
     return;
   }
   if (!state.pitches.length) {
-    alert('Record at least one pitch before viewing the session report.');
+    if(!confirm('No pitches have been recorded. Exit this session without saving?')) return;
+    state.targetZones.clear();
+    state.sessionSaved=false;
+    state.savedSessionId=null;
+    state.reportMode=null;
+    trackingScreen.style.display='none';
+    statsScreen.style.display='none';
+    historyScreen.style.display='none';
+    managerScreen.style.display='flex';
+    renderManager();
     return;
   }
   state.reportMode = 'live';
@@ -2623,7 +2632,19 @@ const sessionNotesModal=document.getElementById('sessionNotesModal');
 const sessionNotesInput=document.getElementById('sessionNotesInput');
 function finishSession() {
   if(state.phase==='result' || pendingVelocityPitch){ return; }
-  if (state.pitches.length === 0) { alert('No pitches recorded yet!'); return; }
+  if (state.pitches.length === 0) {
+    if(!confirm('Exit this session without saving?')) return;
+    state.targetZones.clear();
+    state.sessionSaved=false;
+    state.savedSessionId=null;
+    state.reportMode=null;
+    trackingScreen.style.display='none';
+    statsScreen.style.display='none';
+    historyScreen.style.display='none';
+    managerScreen.style.display='flex';
+    renderManager();
+    return;
+  }
   if(state.sessionSaved){ state.reportMode='finished'; buildStats(); trackingScreen.style.display='none'; statsScreen.style.display='flex'; return; }
   const existingSession=state.savedSessionId?appData.sessions.find(s=>s.id===state.savedSessionId):null;
   sessionNotesInput.value=existingSession?.notes||''; sessionNotesModal.classList.add('visible'); setTimeout(()=>sessionNotesInput.focus(),100);
@@ -2820,9 +2841,6 @@ function buildStats() {
       <div class="spread-stat"><div class="spread-val" style="color:${gradeColor};font-size:18px">${cmd.grade}</div><div class="spread-lbl">COMMAND GRADE</div></div>
       <div class="spread-stat"><div class="spread-val">${cmd.onTargetStrikePct}%</div><div class="spread-lbl">ON-LOCATION STRIKES</div></div>
       <div class="spread-stat"><div class="spread-val">${cmd.locationQuality}</div><div class="spread-lbl">LOCATION QUALITY</div></div>
-    </div>
-    <div style="margin-top:10px;font-size:10px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;letter-spacing:.5px;line-height:1.45;">
-      PB Command Score = 50% on-location strike rate + 30% overall strike rate + 20% location quality. Competitive same-side misses receive more credit than opposite-side misses. Spread: ${spreadVal} SD.
     </div>`;
   const reportSession=currentSessionRecord();
   const reportNotes=document.getElementById('sessionReportNotes');
