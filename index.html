@@ -1293,6 +1293,32 @@
     color:#071018; background:var(--accent); border-color:var(--accent);
   }
 
+
+  .trend-arrow {
+    display:inline-block;
+    margin-left:4px;
+    font-size:.58em;
+    vertical-align:middle;
+    line-height:1;
+  }
+  .trend-arrow.up { color:var(--green); }
+  .trend-arrow.down { color:var(--red); }
+  .session-swipe-card { cursor:pointer; }
+  .session-swipe-card.selected {
+    background:rgba(0,212,255,.09);
+    box-shadow:inset 3px 0 0 var(--accent), inset 0 0 0 1px rgba(0,212,255,.30);
+  }
+  .session-select-hint {
+    padding:8px 12px;
+    color:var(--muted);
+    font-size:10px;
+    line-height:1.35;
+    border-bottom:1px solid var(--border);
+    font-family:'Barlow Condensed',sans-serif;
+    letter-spacing:.45px;
+  }
+  .session-select-hint strong { color:var(--accent); }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 </head>
@@ -1890,34 +1916,133 @@ function saveCurrentSession(notes='') {
 }
 
 let currentHistoryPlayerId = null;
+let historySelectedSessionIds = new Set();
+
 function escAttr(s){ return esc(s ?? ''); }
+
+function trendArrow(current,previous){
+  if(!Number.isFinite(Number(current)) || !Number.isFinite(Number(previous))) return '';
+  const c=Number(current),p=Number(previous);
+  if(c>p) return '<span class="trend-arrow up" aria-label="up">▲</span>';
+  if(c<p) return '<span class="trend-arrow down" aria-label="down">▼</span>';
+  return '';
+}
+
+function historySessionPitches(s){
+  return (s?.pitches||[]).map((p,i)=>({
+    ...p,
+    num:Number(p.num)||i+1,
+    targetZones:new Set(Array.isArray(p.targetZones)?p.targetZones:[])
+  }));
+}
+
+function aggregateHistorySessions(sessions,player){
+  const totalPitches=sessions.reduce((n,s)=>n+(Number(s.totalPitches)||0),0);
+  const pitchArrays=sessions.map(historySessionPitches);
+  const allPitches=pitchArrays.flat();
+  const sessionsWithPitches=sessions.filter(s=>Array.isArray(s.pitches)&&s.pitches.length);
+
+  let strikePct=0, locationPct=0, commandScore=0;
+  if(allPitches.length && sessionsWithPitches.length===sessions.length){
+    const strikes=allPitches.filter(p=>p.isStrike).length;
+    const targeted=allPitches.filter(p=>pitchTargetZones(p).length);
+    const onTarget=targeted.filter(p=>p.isOnTarget).length;
+    strikePct=Math.round(strikes/allPitches.length*100);
+    locationPct=targeted.length?Math.round(onTarget/targeted.length*100):0;
+    commandScore=pocketCommandMetrics(allPitches).score;
+  }else if(sessions.length){
+    const weight=Math.max(1,totalPitches);
+    strikePct=Math.round(sessions.reduce((n,s)=>n+(Number(s.strikePct)||0)*(Number(s.totalPitches)||0),0)/weight);
+    locationPct=Math.round(sessions.reduce((n,s)=>n+(Number(s.locationPct)||0)*(Number(s.totalPitches)||0),0)/weight);
+    commandScore=Math.round(sessions.reduce((n,s)=>n+sessionCommandScore(s),0)/sessions.length);
+  }
+
+  const fbVelos=sessions.flatMap(s=>(s.pitches||[])
+    .filter(p=>p.type==='FB' && Number.isFinite(Number(p.velocity)) && Number(p.velocity)>0)
+    .map(p=>Number(p.velocity)));
+  const avgFb=fbVelos.length?(fbVelos.reduce((a,b)=>a+b,0)/fbVelos.length).toFixed(1):'—';
+  const bestFb=fbVelos.length?Math.max(...fbVelos).toFixed(1):'—';
+  const missBias=lateralMissBias(allPitches,player?.throws||null);
+  return {totalPitches,strikePct,locationPct,commandScore,avgFb,bestFb,fbVelos,missBias,allPitches};
+}
+
+function buildHistoryMetricCards(allSessions,player){
+  const selected=allSessions.filter(s=>historySelectedSessionIds.has(s.id));
+  const usingSelection=selected.length>0;
+  const metricSessions=usingSelection?selected:allSessions;
+  const agg=aggregateHistorySessions(metricSessions,player);
+
+  if(!metricSessions.length){
+    return '<div class="trend-card"><div class="trend-value">0</div><div class="trend-label">Sessions</div></div>';
+  }
+
+  let latestArrow='', avgArrow='', commandArrow='';
+  if(!usingSelection && allSessions.length>1){
+    const latest=allSessions[0], previous=allSessions[1];
+    latestArrow=trendArrow(latest.strikePct,previous.strikePct);
+    commandArrow=trendArrow(sessionCommandScore(latest),sessionCommandScore(previous));
+
+    // Compare the cumulative average now with the cumulative average before the latest bullpen.
+    const currentAvg=aggregateHistorySessions(allSessions,player).strikePct;
+    const priorAvg=aggregateHistorySessions(allSessions.slice(1),player).strikePct;
+    avgArrow=trendArrow(currentAvg,priorAvg);
+  }
+
+  const latest=metricSessions[0];
+  const sessionCount=metricSessions.length;
+  const firstLabel=usingSelection?'Selected':'Sessions';
+  const latestStrikeValue=usingSelection?agg.strikePct:Number(latest.strikePct)||0;
+  const latestStrikeLabel=usingSelection?(sessionCount===1?'Strike %':'Combined Strike %'):'Latest Strike %';
+  const avgStrikeValue=agg.strikePct;
+  const avgStrikeLabel=usingSelection?(sessionCount===1?'Session Strike %':'Selected Strike %'):'Avg Strike %';
+  const commandValue=usingSelection?agg.commandScore:sessionCommandScore(latest);
+  const commandLabel=usingSelection?(sessionCount===1?'PB Command Score':'Combined PB Score'):'PB Command Score';
+
+  const miss=agg.missBias;
+  const biasValue=!player.throws?'SET HAND':(miss.sided?`${miss.pct}% ${miss.direction}`:'—');
+  const biasSub=!player.throws?'Tap player icon to set throwing hand':(miss.sided?`${miss.glove} glove · ${miss.throwing} throwing`:'No lateral misses');
+
+  let cards=`<div class="trend-card"><div class="trend-value">${sessionCount}</div><div class="trend-label">${firstLabel}</div></div>`;
+  cards+=`<div class="trend-card"><div class="trend-value">${agg.totalPitches}</div><div class="trend-label">Total Pitches</div></div>`;
+  cards+=`<div class="trend-card"><div class="trend-value strike-pct ${strikeClass(latestStrikeValue)}">${latestStrikeValue}%${latestArrow}</div><div class="trend-label">${latestStrikeLabel}</div></div>`;
+  cards+=`<div class="trend-card"><div class="trend-value strike-pct ${strikeClass(avgStrikeValue)}">${avgStrikeValue}%${avgArrow}</div><div class="trend-label">${avgStrikeLabel}</div></div>`;
+  cards+=`<div class="trend-card"><div class="trend-value">${commandValue}${commandArrow}</div><div class="trend-label">${commandLabel}</div></div>`;
+  cards+=`<div class="trend-card"><div class="trend-value">${agg.avgFb}${agg.fbVelos.length?' MPH':''}</div><div class="trend-label">Avg. FB Velo</div></div>`;
+  cards+=`<div class="trend-card"><div class="trend-value">${agg.bestFb}${agg.fbVelos.length?' MPH':''}</div><div class="trend-label">Personal Best FB Velo</div></div>`;
+  cards+=`<div class="trend-card"><div class="trend-value">${biasValue}</div><div class="trend-label">Miss-Side Bias · ${biasSub}</div></div>`;
+  return cards;
+}
+
 window.showHistory = function(playerId) {
   const p=appData.players.find(x=>x.id===playerId); if(!p) return;
+
+  // A different player starts with no selected bullpen sessions.
+  if(currentHistoryPlayerId!==playerId) historySelectedSessionIds.clear();
   currentHistoryPlayerId=playerId;
-  const t=appData.teams.find(x=>x.id===p.teamId); const sessions=appData.sessions.filter(s=>s.playerId===playerId).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+
+  const t=appData.teams.find(x=>x.id===p.teamId);
+  const sessions=appData.sessions.filter(s=>s.playerId===playerId).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+
+  // Drop any selections whose sessions were deleted.
+  const validIds=new Set(sessions.map(s=>s.id));
+  historySelectedSessionIds=new Set([...historySelectedSessionIds].filter(id=>validIds.has(id)));
+
   document.getElementById('historyPlayerName').textContent=p.name;
   document.getElementById('historyTeamName').textContent=`${t?.name||''}${p.throws ? ' · Throws '+(p.throws==='R'?'Right':'Left') : ' · Throwing hand not set'}`;
-  let trend='<div class="trend-card"><div class="trend-value">'+sessions.length+'</div><div class="trend-label">Sessions</div></div>';
-  const pitches=sessions.reduce((n,s)=>n+s.totalPitches,0); trend+='<div class="trend-card"><div class="trend-value">'+pitches+'</div><div class="trend-label">Total Pitches</div></div>';
-  if(sessions.length){
-    const latest=sessions[0]; const avgStr=Math.round(sessions.reduce((n,s)=>n+s.strikePct,0)/sessions.length); const avgLoc=Math.round(sessions.reduce((n,s)=>n+s.locationPct,0)/sessions.length);
-    const latestCmd=sessionCommandScore(latest); trend+=`<div class="trend-card"><div class="trend-value strike-pct ${strikeClass(latest.strikePct)}">${latest.strikePct}%</div><div class="trend-label">Latest Strike %</div></div><div class="trend-card"><div class="trend-value strike-pct ${strikeClass(avgStr)}">${avgStr}%</div><div class="trend-label">Avg Strike %</div></div><div class="trend-card"><div class="trend-value">${latestCmd}</div><div class="trend-label">PB Command Score</div></div>`;
-    const fbVelos=sessions.flatMap(s=>(s.pitches||[]).filter(p=>p.type==='FB' && Number.isFinite(Number(p.velocity)) && Number(p.velocity) > 0).map(p=>Number(p.velocity)));
-    const avgFb=fbVelos.length ? (fbVelos.reduce((a,b)=>a+b,0)/fbVelos.length).toFixed(1) : '—';
-    const highFb=fbVelos.length ? Math.max(...fbVelos).toFixed(1) : '—';
-    const allHistoryPitches=sessions.flatMap(s=>(s.pitches||[]).map((p,i)=>({...p,num:Number(p.num)||i+1,targetZones:new Set(Array.isArray(p.targetZones)?p.targetZones:[])})));
-    const missBias=lateralMissBias(allHistoryPitches,p.throws||null);
-    const biasValue=!p.throws ? 'SET HAND' : (missBias.sided ? `${missBias.pct}% ${missBias.direction}` : '—');
-    const biasSub=!p.throws ? 'Tap player icon to set throwing hand' : (missBias.sided ? `${missBias.glove} glove · ${missBias.throwing} throwing` : 'No lateral misses');
-    trend+=`<div class="trend-card"><div class="trend-value">${avgFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">Avg. FB Velo</div></div><div class="trend-card"><div class="trend-value">${highFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">Personal Best FB Velo</div></div><div class="trend-card"><div class="trend-value">${biasValue}</div><div class="trend-label">Miss-Side Bias · ${biasSub}</div></div>`;
-  }
-  document.getElementById('trendCards').innerHTML=trend;
+
+  document.getElementById('trendCards').innerHTML=buildHistoryMetricCards(sessions,p);
+
+  const selectedCount=historySelectedSessionIds.size;
   document.getElementById('historyList').innerHTML = sessions.length ? `
       <div class="history-table" style="display:block">
+        <div class="session-select-hint">${selectedCount
+          ? `<strong>${selectedCount} selected.</strong> Tap another session to combine it, or tap a highlighted session to deselect.`
+          : 'Tap a session to show its metrics. Select multiple sessions to combine their metrics.'}</div>
         <div style="display:grid;grid-template-columns:1.15fr .75fr .8fr .9fr .9fr;padding:8px 12px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.55px;font-size:10px;border-bottom:1px solid var(--border);text-align:center;align-items:end;">
           <div style="text-align:left;">Date</div><div>Pitches</div><div>Strike</div><div>Location</div><div>PB Score</div>
         </div>
         ${sessions.map(s=>{
+          const selected=historySelectedSessionIds.has(s.id);
           return `<div class="session-swipe" data-session-id="${s.id}">
             <div class="session-swipe-actions">
                <button type="button" class="session-view-btn">VIEW</button>
@@ -1925,7 +2050,7 @@ window.showHistory = function(playerId) {
                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
                </button>
              </div>
-            <div class="session-swipe-card">
+            <div class="session-swipe-card ${selected?'selected':''}" aria-pressed="${selected?'true':'false'}">
               <div style="display:grid;grid-template-columns:1.15fr .75fr .8fr .9fr .9fr;padding:12px;align-items:center;color:var(--text);text-align:center;">
                 <div style="text-align:left;color:var(--muted);font-family:'Barlow Condensed',sans-serif;letter-spacing:.45px;">${new Date(s.createdAt).toLocaleDateString()}</div>
                 <div>${s.totalPitches}</div>
@@ -1941,39 +2066,69 @@ window.showHistory = function(playerId) {
   managerScreen.style.display='none'; trackingScreen.style.display='none'; statsScreen.style.display='none'; historyScreen.style.display='flex';
 };
 
-
 function bindSessionHistorySwipe(){
   document.querySelectorAll('.session-swipe').forEach(wrap=>{
     const card=wrap.querySelector('.session-swipe-card');
     const viewBtn=wrap.querySelector('.session-view-btn');
     const deleteBtn=wrap.querySelector('.session-delete-btn');
-    let sx=0, sy=0, base=0, drag=false;
+    let sx=0, sy=0, base=0, drag=false, moved=false;
+
     card.addEventListener('touchstart',e=>{
-      const t=e.touches[0]; sx=t.clientX; sy=t.clientY; base=wrap.classList.contains('open')?-150:0; drag=true; card.style.transition='none';
+      const t=e.touches[0];
+      sx=t.clientX; sy=t.clientY;
+      base=wrap.classList.contains('open')?-150:0;
+      drag=true; moved=false;
+      card.style.transition='none';
     },{passive:true});
+
     card.addEventListener('touchmove',e=>{
       if(!drag)return;
       const t=e.touches[0], dx=t.clientX-sx, dy=t.clientY-sy;
+      if(Math.abs(dx)>8 && Math.abs(dx)>Math.abs(dy)) moved=true;
       if(Math.abs(dy)>Math.abs(dx)+6)return;
       const x=Math.max(-150,Math.min(0,base+dx));
       card.style.transform=`translateX(${x}px)`;
     },{passive:true});
+
     card.addEventListener('touchend',e=>{
-      if(!drag)return; drag=false;
+      if(!drag)return;
+      drag=false;
       const t=e.changedTouches[0], dx=t.clientX-sx;
-      wrap.classList.toggle('open', base+dx < -65);
+      if(moved){
+        wrap.classList.toggle('open', base+dx < -65);
+        card.style.transition=''; card.style.transform='';
+        return;
+      }
       card.style.transition=''; card.style.transform='';
+      // A normal tap selects/deselects this bullpen for combined history metrics.
+      const sessionId=wrap.dataset.sessionId;
+      if(historySelectedSessionIds.has(sessionId)) historySelectedSessionIds.delete(sessionId);
+      else historySelectedSessionIds.add(sessionId);
+      if(currentHistoryPlayerId) window.showHistory(currentHistoryPlayerId);
     });
-    viewBtn.addEventListener('click',()=>openHistoricalSession(wrap.dataset.sessionId));
-    deleteBtn.addEventListener('click',()=>{
+
+    // Desktop/mouse fallback.
+    card.addEventListener('click',e=>{
+      if(e.detail===0) return;
+      // Touch browsers already handle tap above; avoid the synthetic click immediately after touch.
+      if('ontouchstart' in window) return;
+      const sessionId=wrap.dataset.sessionId;
+      if(historySelectedSessionIds.has(sessionId)) historySelectedSessionIds.delete(sessionId);
+      else historySelectedSessionIds.add(sessionId);
+      if(currentHistoryPlayerId) window.showHistory(currentHistoryPlayerId);
+    });
+
+    viewBtn.addEventListener('click',e=>{e.stopPropagation();openHistoricalSession(wrap.dataset.sessionId);});
+    deleteBtn.addEventListener('click',e=>{
+      e.stopPropagation();
       const sessionId=wrap.dataset.sessionId;
       const s=appData.sessions.find(x=>x.id===sessionId);
       if(!s) return;
       const date=new Date(s.createdAt).toLocaleDateString();
       if(!confirm(`Delete the bullpen session from ${date}? This cannot be undone.`)) return;
       appData.sessions=appData.sessions.filter(x=>x.id!==sessionId);
+      historySelectedSessionIds.delete(sessionId);
       saveAppData();
-      wrap.remove();
       if(currentHistoryPlayerId) window.showHistory(currentHistoryPlayerId);
     });
   });
