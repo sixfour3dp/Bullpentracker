@@ -1262,6 +1262,19 @@
     .analytics-home-header .manager-sub { font-size:9px; letter-spacing:1.3px; }
   }
 
+
+  .preferred-brand-header {
+    padding:0;
+    background:var(--bg);
+    border-bottom:1px solid var(--border);
+    overflow:hidden;
+  }
+  .preferred-brand-header img {
+    display:block;
+    width:100%;
+    height:auto;
+    background:var(--bg);
+  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 </head>
@@ -1281,16 +1294,8 @@
 
   <!-- TEAM / PLAYER HOME -->
   <div class="manager-screen" id="managerScreen">
-    <div class="header analytics-home-header">
-      <div class="analytics-mark" aria-hidden="true">
-        <img src="header-heatmap.png" alt="">
-      </div>
-      <div class="analytics-brand-copy">
-        <div class="app-logo">POCKET<span>BULLPEN</span></div>
-        <div class="analytics-rule"><span></span><i></i><b></b></div>
-        <div class="manager-title">Bullpen Tracker</div>
-        <div class="manager-sub">TRACK · ANALYZE · DEVELOP</div>
-      </div>
+    <div class="header preferred-brand-header">
+      <img src="pocketbullpen-header.png" alt="PocketBullpen — Bullpen Tracker — Track Analyze Develop">
     </div>
     <div class="manager-scroll">
       <div class="panel">
