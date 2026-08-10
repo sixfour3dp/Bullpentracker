@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="BullPen">
+<meta name="apple-mobile-web-app-title" content="Pocket Bullpen">
 <meta name="theme-color" content="#0a0e14">
 <title>Pocket Bullpen</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0a0e14">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1191,6 +1191,77 @@
     letter-spacing:1px;
     cursor:pointer;
   }
+
+  .analytics-home-header {
+    display:grid;
+    grid-template-columns:112px minmax(0,1fr);
+    gap:12px;
+    align-items:center;
+    padding-top:14px;
+    padding-bottom:14px;
+    background:
+      linear-gradient(rgba(10,14,20,.88),rgba(10,14,20,.94)),
+      linear-gradient(90deg,rgba(0,212,255,.05),transparent 48%,rgba(255,92,53,.04));
+  }
+  .analytics-mark {
+    width:112px;
+    height:84px;
+    overflow:hidden;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .analytics-mark img {
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+  .analytics-brand-copy { min-width:0; }
+  .analytics-home-header .app-logo {
+    font-size:28px;
+    line-height:1;
+    letter-spacing:.4px;
+    white-space:nowrap;
+  }
+  .analytics-home-header .manager-title {
+    font-size:16px;
+    letter-spacing:4px;
+    margin-top:6px;
+    color:var(--text);
+  }
+  .analytics-home-header .manager-sub {
+    margin-top:3px;
+    font-family:'Barlow Condensed',sans-serif;
+    letter-spacing:1.8px;
+    font-weight:700;
+    font-size:10px;
+  }
+  .analytics-rule {
+    height:6px;
+    display:flex;
+    align-items:center;
+    margin-top:6px;
+  }
+  .analytics-rule span,.analytics-rule b {
+    display:block;height:1px;flex:1;
+  }
+  .analytics-rule span { background:linear-gradient(90deg,var(--accent),rgba(0,212,255,.15)); }
+  .analytics-rule b { background:linear-gradient(90deg,rgba(255,92,53,.15),var(--accent2)); }
+  .analytics-rule i {
+    width:6px;height:6px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 7px rgba(0,212,255,.65);
+    margin:0 4px;
+  }
+  @media (max-width:390px) {
+    .analytics-home-header { grid-template-columns:92px minmax(0,1fr); gap:9px; }
+    .analytics-mark { width:92px;height:72px; }
+    .analytics-home-header .app-logo { font-size:23px; }
+    .analytics-home-header .manager-title { font-size:14px; letter-spacing:3px; }
+    .analytics-home-header .manager-sub { font-size:9px; letter-spacing:1.3px; }
+  }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 </head>
@@ -1210,10 +1281,16 @@
 
   <!-- TEAM / PLAYER HOME -->
   <div class="manager-screen" id="managerScreen">
-    <div class="header">
-      <div class="header-top"><div class="app-logo">POCKET<span>BULLPEN</span></div></div>
-      <div class="manager-title">Bullpen Tracker</div>
-      <div class="manager-sub">TRACK · ANALYZE · DEVELOP</div>
+    <div class="header analytics-home-header">
+      <div class="analytics-mark" aria-hidden="true">
+        <img src="header-heatmap.png" alt="">
+      </div>
+      <div class="analytics-brand-copy">
+        <div class="app-logo">POCKET<span>BULLPEN</span></div>
+        <div class="analytics-rule"><span></span><i></i><b></b></div>
+        <div class="manager-title">Bullpen Tracker</div>
+        <div class="manager-sub">TRACK · ANALYZE · DEVELOP</div>
+      </div>
     </div>
     <div class="manager-scroll">
       <div class="panel">
@@ -1799,7 +1876,8 @@ function bindSessionHistorySwipe(){
       if(!confirm(`Delete the bullpen session from ${date}? This cannot be undone.`)) return;
       appData.sessions=appData.sessions.filter(x=>x.id!==sessionId);
       saveAppData();
-      openPlayerHistory(historyPlayerId);
+      wrap.remove();
+      if(currentHistoryPlayerId) window.showHistory(currentHistoryPlayerId);
     });
   });
 }
