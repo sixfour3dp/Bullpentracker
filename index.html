@@ -1305,7 +1305,7 @@
   .trend-arrow.down { color:var(--red); }
   .session-swipe-card { cursor:pointer; }
   .session-swipe-card.selected {
-    background:rgba(0,212,255,.09);
+    background:#10212b;
     box-shadow:inset 3px 0 0 var(--accent), inset 0 0 0 1px rgba(0,212,255,.30);
   }
   .session-select-hint {
@@ -1318,6 +1318,17 @@
     letter-spacing:.45px;
   }
   .session-select-hint strong { color:var(--accent); }
+
+
+  .session-swipe-actions {
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .12s ease;
+  }
+  .session-swipe.open .session-swipe-actions {
+    opacity:1;
+    pointer-events:auto;
+  }
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
@@ -2101,7 +2112,8 @@ function bindSessionHistorySwipe(){
       }
       card.style.transition=''; card.style.transform='';
       wrap.classList.remove('open');
-      card.style.transform='';
+      card.style.transition='';
+      card.style.transform='translateX(0px)';
       // A normal tap selects/deselects this bullpen for combined history metrics.
       const sessionId=wrap.dataset.sessionId;
       if(historySelectedSessionIds.has(sessionId)) historySelectedSessionIds.delete(sessionId);
