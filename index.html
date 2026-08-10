@@ -1303,7 +1303,7 @@
   }
   .trend-arrow.up { color:var(--green); }
   .trend-arrow.down { color:var(--red); }
-  .session-swipe-card { cursor:pointer; }
+  .session-swipe-card { cursor:pointer; touch-action:pan-y; -webkit-user-select:none; user-select:none; }
   .session-swipe-card.selected {
     background:#10212b;
     box-shadow:inset 3px 0 0 var(--accent), inset 0 0 0 1px rgba(0,212,255,.30);
@@ -2095,18 +2095,36 @@ function bindSessionHistorySwipe(){
     card.addEventListener('touchmove',e=>{
       if(!drag)return;
       const t=e.touches[0], dx=t.clientX-sx, dy=t.clientY-sy;
-      if(Math.abs(dx)>8 && Math.abs(dx)>Math.abs(dy)) moved=true;
+      const SWIPE_START=32;
       if(Math.abs(dy)>Math.abs(dx)+6)return;
-      const x=Math.max(-150,Math.min(0,base+dx));
-      card.style.transform=`translateX(${x}px)`;
+      // A tap or ordinary finger jitter must never reveal actions.
+      if(base===0){
+        if(dx>-SWIPE_START) return;
+        moved=true;
+        const x=Math.max(-150,Math.min(0,dx+SWIPE_START));
+        card.style.transform=`translateX(${x}px)`;
+      }else{
+        if(Math.abs(dx)>8) moved=true;
+        const x=Math.max(-150,Math.min(0,base+dx));
+        card.style.transform=`translateX(${x}px)`;
+      }
     },{passive:true});
+
+    card.addEventListener('touchcancel',()=>{
+      drag=false; moved=false;
+      card.style.transition='';
+      card.style.transform='';
+    });
 
     card.addEventListener('touchend',e=>{
       if(!drag)return;
       drag=false;
       const t=e.changedTouches[0], dx=t.clientX-sx;
       if(moved){
-        wrap.classList.toggle('open', base+dx < -65);
+        // From closed, require at least 55px of deliberate left travel.
+        // From open, keep it open unless the user deliberately swipes it back right.
+        const shouldOpen = base===0 ? dx <= -55 : (base+dx < -65);
+        wrap.classList.toggle('open',shouldOpen);
         card.style.transition=''; card.style.transform='';
         return;
       }
