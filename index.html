@@ -1731,6 +1731,35 @@ function pitchTargetZones(p){
   return p.targetZones instanceof Set ? [...p.targetZones].map(Number) : (Array.isArray(p.targetZones)?p.targetZones.map(Number):[]);
 }
 function zoneRC(z){ return {r:Math.floor((Number(z)-1)/3), c:(Number(z)-1)%3}; }
+function lateralMissBias(pitches){
+  let left=0,right=0,center=0,total=0,sumDx=0;
+  const zoneW=.70/3;
+  (pitches||[]).forEach(p=>{
+    const targets=pitchTargetZones(p);
+    if(!targets.length || p.isOnTarget) return;
+    const pt=commandMapPoint(p);
+    if(!pt || !Number.isFinite(Number(pt.x))) return;
+    const tx=targets.reduce((n,z)=>{const t=zoneRC(z); return n+(.15+((t.c+.5)/3)*.70);},0)/targets.length;
+    const dx=Number(pt.x)-tx;
+    sumDx+=dx; total++;
+    if(dx < -.035) left++;
+    else if(dx > .035) right++;
+    else center++;
+  });
+  const sided=left+right;
+  const rightPct=sided?Math.round(right/sided*100):0;
+  const leftPct=sided?100-rightPct:0;
+  let direction='BALANCED', pct=0;
+  if(sided){
+    if(right>left){direction='RIGHT';pct=rightPct;}
+    else if(left>right){direction='LEFT';pct=leftPct;}
+    else {direction='BALANCED';pct=50;}
+  }
+  const avgZones=total ? Math.abs(sumDx/total)/zoneW : 0;
+  const signedIndex=sided?Math.round((right-left)/sided*100):0;
+  return {left,right,center,total,sided,leftPct,rightPct,direction,pct,avgZones:Number(avgZones.toFixed(2)),signedIndex};
+}
+
 function pitchLocationQuality(p){
   if(p.isWildPitch) return 2;
   const targets=pitchTargetZones(p); if(!targets.length) return p.isStrike?55:20;
@@ -1817,7 +1846,11 @@ window.showHistory = function(playerId) {
     const fbVelos=sessions.flatMap(s=>(s.pitches||[]).filter(p=>p.type==='FB' && Number.isFinite(Number(p.velocity)) && Number(p.velocity) > 0).map(p=>Number(p.velocity)));
     const avgFb=fbVelos.length ? (fbVelos.reduce((a,b)=>a+b,0)/fbVelos.length).toFixed(1) : '—';
     const highFb=fbVelos.length ? Math.max(...fbVelos).toFixed(1) : '—';
-    trend+=`<div class="trend-card"><div class="trend-value">${avgFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">Avg. FB Velo</div></div><div class="trend-card"><div class="trend-value">${highFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">High FB Velo</div></div>`;
+    const allHistoryPitches=sessions.flatMap(s=>(s.pitches||[]).map((p,i)=>({...p,num:Number(p.num)||i+1,targetZones:new Set(Array.isArray(p.targetZones)?p.targetZones:[])})));
+    const missBias=lateralMissBias(allHistoryPitches);
+    const biasValue=missBias.sided ? `${missBias.pct}% ${missBias.direction}` : '—';
+    const biasSub=missBias.sided ? `${missBias.left} L · ${missBias.right} R` : 'No lateral misses';
+    trend+=`<div class="trend-card"><div class="trend-value">${avgFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">Avg. FB Velo</div></div><div class="trend-card"><div class="trend-value">${highFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">Personal Best FB Velo</div></div><div class="trend-card"><div class="trend-value">${biasValue}</div><div class="trend-label">Lateral Miss Bias · ${biasSub}</div></div>`;
   }
   document.getElementById('trendCards').innerHTML=trend;
   document.getElementById('historyList').innerHTML = sessions.length ? `
@@ -1971,6 +2004,35 @@ function buildHistoryStrikeSvg(sessions){
   return `<div class="chartlegend">${legend}</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Strike percentage by session and pitch type">${grid}${paths}${labels}</svg>`;
 }
 
+
+function buildFbVelocitySvg(sessions){
+  const ordered=sessions.slice().sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)));
+  let runningBest=null;
+  const rows=ordered.map(s=>{
+    const vals=(s.pitches||[]).filter(p=>p.type==='FB' && Number.isFinite(Number(p.velocity)) && Number(p.velocity)>0).map(p=>Number(p.velocity));
+    const avg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+    const sessionHigh=vals.length?Math.max(...vals):null;
+    if(sessionHigh!=null) runningBest=runningBest==null?sessionHigh:Math.max(runningBest,sessionHigh);
+    return {date:new Date(s.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}),avg,best:runningBest};
+  }).filter(r=>r.avg!=null || r.best!=null);
+  if(!rows.length) return '<div style="color:#6686a4;font-size:10px">No fastball velocity has been tracked yet.</div>';
+  const vals=rows.flatMap(r=>[r.avg,r.best]).filter(Number.isFinite);
+  let min=Math.floor(Math.min(...vals)-2), max=Math.ceil(Math.max(...vals)+2);
+  if(max-min<8){const mid=(max+min)/2;min=Math.floor(mid-4);max=Math.ceil(mid+4);}
+  const W=760,H=285,L=48,R=20,T=24,B=42,iw=W-L-R,ih=H-T-B;
+  const x=i=>rows.length<=1?L+iw/2:L+(i/(rows.length-1))*iw;
+  const y=v=>T+ih-((v-min)/(max-min))*ih;
+  const ticks=5;
+  const grid=Array.from({length:ticks},(_,i)=>{const v=min+(max-min)*(i/(ticks-1));return `<line x1="${L}" y1="${y(v)}" x2="${W-R}" y2="${y(v)}" stroke="#26374a" stroke-width="1"/><text x="${L-7}" y="${y(v)+4}" fill="#6f879f" font-size="10" text-anchor="end">${v.toFixed(0)}</text>`;}).join('');
+  const line=(key,color,width)=>{
+    let d='',started=false;
+    rows.forEach((r,i)=>{const v=r[key];if(v==null){started=false;return;}d+=(started?' L ':' M ')+x(i).toFixed(1)+' '+y(v).toFixed(1);started=true;});
+    return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/>`+rows.map((r,i)=>r[key]!=null?`<circle cx="${x(i)}" cy="${y(r[key])}" r="3" fill="${color}"/>`:'').join('');
+  };
+  const labels=rows.map((r,i)=>`<text x="${x(i)}" y="${H-17}" fill="#6f879f" font-size="9" text-anchor="middle">${printSafe(r.date)}</text>`).join('');
+  return `<div class="chartlegend"><span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px"><i style="width:10px;height:3px;background:#00d4ff;display:inline-block;border-radius:3px"></i>Avg FB Velo</span><span style="display:inline-flex;align-items:center;gap:5px"><i style="width:10px;height:3px;background:#ff5c35;display:inline-block;border-radius:3px"></i>Personal Best FB Velo</span></div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Fastball velocity progression in miles per hour">${grid}${line('avg','#00d4ff',2.5)}${line('best','#ff5c35',3)}${labels}</svg>`;
+}
+
 function exportHistoryPdf(playerId){
   const player=appData.players.find(p=>p.id===playerId); if(!player)return;
   const team=appData.teams.find(t=>t.id===player.teamId);
@@ -1983,6 +2045,11 @@ function exportHistoryPdf(playerId){
   const latestPb=sessionCommandScore(latest);
   const heat=historicalHeatBackground(sessions);
   const trendSvg=buildHistoryStrikeSvg(sessions);
+  const velocitySvg=buildFbVelocitySvg(sessions);
+  const allHistoryPitches=sessions.flatMap(s=>(s.pitches||[]).map((p,i)=>({...p,num:Number(p.num)||i+1,targetZones:new Set(Array.isArray(p.targetZones)?p.targetZones:[])})));
+  const bias=lateralMissBias(allHistoryPitches);
+  const allFbVelos=sessions.flatMap(s=>(s.pitches||[]).filter(p=>p.type==='FB' && Number.isFinite(Number(p.velocity)) && Number(p.velocity)>0).map(p=>Number(p.velocity)));
+  const personalBestFb=allFbVelos.length?Math.max(...allFbVelos).toFixed(1):'—';
   const sessionRows=sessions.slice().reverse().map(s=>`<tr><td>${new Date(s.createdAt).toLocaleDateString()}</td><td>${s.totalPitches}</td><td>${s.strikePct}%</td><td>${s.locationPct}%</td><td>${sessionCommandScore(s)}</td></tr>`).join('');
   const notes=sessions.slice().reverse().filter(s=>(s.notes||'').trim()).map(s=>`<div class="note"><strong>${new Date(s.createdAt).toLocaleDateString()}</strong><div>${printSafe((s.notes||'').trim())}</div></div>`).join('') || '<div class="note">No session notes.</div>';
   const win=window.open('','_blank');
@@ -2002,8 +2069,10 @@ function exportHistoryPdf(playerId){
   </style></head><body><div class="preview-nav"><button id="backToAppBtn">← Back to Pocket Bullpen</button><button class="printbtn" id="printPdfBtn">Print / Save PDF</button></div><div class="page">
     <div class="brand"><div class="logo"><span class="p">POCKET</span><span class="b">BULLPEN</span></div><div class="name">${printSafe(player.name)}</div><div class="sub">${printSafe(team?.name||'')} · Complete Bullpen History · ${sessions.length} sessions</div></div>
     <div class="cards"><div class="card"><label>Sessions</label><strong class="cyan">${sessions.length}</strong></div><div class="card"><label>Total Pitches</label><strong class="yellow">${totalPitches}</strong></div><div class="card"><label>Avg Strike %</label><strong class="green">${avgStrike}%</strong></div><div class="card"><label>Latest PB Score</label><strong class="orange">${latestPb}</strong></div></div>
+    <div class="cards" style="grid-template-columns:1fr 1fr"><div class="card"><label>Personal Best FB Velo</label><strong class="cyan">${personalBestFb}${personalBestFb!=='—'?' MPH':''}</strong></div><div class="card"><label>Lateral Miss Bias</label><strong class="orange">${bias.sided?`${bias.pct}% ${bias.direction}`:'—'}</strong><small>${bias.sided?`${bias.left} left · ${bias.right} right · catcher-view orientation`:'Not enough lateral misses'}</small></div></div>
     <div class="section"><h2>Strike % trend by pitch</h2>${trendSvg}</div>
-    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div></div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Pitch dots are intentionally omitted for a cleaner historical view.</div></div></div></div>
+    <div class="section"><h2>Fastball velocity progression</h2>${velocitySvg}</div>
+    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div></div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Pitch dots are intentionally omitted for a cleaner historical view.</div><div style="color:#6686a4;font-size:10px;line-height:1.5;margin-top:8px"><strong style="color:#edf5ff">Lateral Miss Bias:</strong> compares each missed pitch to its intended target, not simply to the middle of the plate. Left/right are shown from the catcher-view orientation used by the on-screen strike zone.</div></div></div></div>
     <div class="section"><h2>Bullpen sessions</h2><table><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th><th>PB Score</th></tr></thead><tbody>${sessionRows}</tbody></table></div>
     <div class="section"><h2>Session notes</h2><div class="notes">${notes}</div></div><div class="footer">Pocket Bullpen · Player History Report</div>
     <script>
