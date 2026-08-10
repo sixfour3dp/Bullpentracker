@@ -1414,6 +1414,46 @@
   .roster-team-logo img { width:100%;height:100%;object-fit:cover; }
   .roster-team-copy { min-width:0; }
 
+
+  .team-card-shell {
+    padding:2px;
+    border-radius:16px;
+    background:linear-gradient(135deg,var(--team-c1),var(--team-c2));
+    margin-bottom:10px;
+  }
+  .team-card-shell .team-card { margin-bottom:0; border:0; border-radius:14px; }
+  .team-settings-btn {
+    width:36px; height:36px; flex:0 0 36px;
+    border-radius:50%;
+    border:1px solid var(--border);
+    background:var(--surface2);
+    color:var(--muted);
+    display:flex; align-items:center; justify-content:center;
+    padding:7px;
+  }
+  .team-settings-btn svg { width:100%; height:100%; }
+  .team-settings-btn:active { color:var(--accent); }
+  .team-color-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; }
+  .team-color-field {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:8px; padding:10px;
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:10px;
+    color:var(--text);
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:800;
+    font-size:12px;
+  }
+  .team-color-field input[type="color"] {
+    width:42px; height:34px; padding:0; border:0; background:transparent;
+  }
+  .team-gradient-preview {
+    width:100%; height:22px; border-radius:999px;
+    border:1px solid var(--border);
+    margin-top:10px;
+  }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 </head>
@@ -1483,6 +1523,33 @@
     </div>
 
     <input id="teamLogoFile" type="file" accept="image/*" style="display:none">
+
+    <div class="edit-modal" id="teamSettingsModal">
+      <div class="edit-sheet">
+        <div class="edit-title">Team Appearance</div>
+        <div class="edit-grid">
+          <div class="edit-field full">
+            <label id="teamSettingsName">Team</label>
+          </div>
+          <div class="team-color-row">
+            <label class="team-color-field">
+              <span>Primary Color 1</span>
+              <input id="teamColor1" type="color" value="#00d4ff">
+            </label>
+            <label class="team-color-field">
+              <span>Primary Color 2</span>
+              <input id="teamColor2" type="color" value="#ff5c35">
+            </label>
+          </div>
+          <div class="team-gradient-preview" id="teamGradientPreview"></div>
+        </div>
+        <div class="edit-actions">
+          <button id="cancelTeamSettingsBtn" class="btn btn-secondary" type="button">CANCEL</button>
+          <button id="saveTeamSettingsBtn" class="btn btn-primary" type="button">SAVE COLORS</button>
+        </div>
+      </div>
+    </div>
+
     <select id="teamSelect" style="display:none" aria-hidden="true"></select>
   </div>
 
@@ -1820,26 +1887,35 @@ function renderManager() {
   teamList.innerHTML=appData.teams.length ? appData.teams.map(team=>{
     const players=appData.players.filter(p=>p.teamId===team.id);
     const sessionCount=players.reduce((n,p)=>n+appData.sessions.filter(s=>s.playerId===p.id).length,0);
-    return `<div class="team-card" data-team-id="${team.id}">
-      <button type="button" class="team-logo-btn" data-logo-team-id="${team.id}" aria-label="${team.logoDataUrl?'Change':'Add'} ${escAttr(team.name)} logo">
-        ${team.logoDataUrl
-          ? `<img src="${team.logoDataUrl}" alt="${escAttr(team.name)} logo">`
-          : `<span class="team-logo-placeholder">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19h16M6 16l2-8 4 5 4-5 2 8"/><circle cx="12" cy="5" r="2"/></svg>
-              ADD LOGO
-            </span>`}
-      </button>
-      <div class="team-card-main">
-        <div class="team-card-name">${esc(team.name)}</div>
-        <div class="team-card-meta">${players.length} player${players.length===1?'':'s'} · ${sessionCount} session${sessionCount===1?'':'s'}</div>
+    const c1=team.primaryColor1||'#00d4ff';
+    const c2=team.primaryColor2||'#ff5c35';
+    return `<div class="team-card-shell" style="--team-c1:${c1};--team-c2:${c2}">
+      <div class="team-card" data-team-id="${team.id}">
+        <button type="button" class="team-logo-btn" data-logo-team-id="${team.id}" aria-label="${team.logoDataUrl?'Change':'Add'} ${escAttr(team.name)} logo">
+          ${team.logoDataUrl
+            ? `<img src="${team.logoDataUrl}" alt="${escAttr(team.name)} logo">`
+            : `<span class="team-logo-placeholder">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19h16M6 16l2-8 4 5 4-5 2 8"/><circle cx="12" cy="5" r="2"/></svg>
+                ADD LOGO
+              </span>`}
+        </button>
+        <div class="team-card-main">
+          <div class="team-card-name">${esc(team.name)}</div>
+          <div class="team-card-meta">${players.length} player${players.length===1?'':'s'} · ${sessionCount} session${sessionCount===1?'':'s'}</div>
+        </div>
+        <button type="button" class="team-settings-btn" data-settings-team-id="${team.id}" aria-label="Team settings" title="Team settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.99l.05.05-2.83 2.83-.05-.05a1.8 1.8 0 0 0-1.99-.36 1.8 1.8 0 0 0-1.09 1.65V21h-4v-.07A1.8 1.8 0 0 0 8.76 19.3a1.8 1.8 0 0 0-1.99.36l-.05.05-2.83-2.83.05-.05A1.8 1.8 0 0 0 4.3 14.84a1.8 1.8 0 0 0-1.65-1.09H2v-4h.65A1.8 1.8 0 0 0 4.3 8.66a1.8 1.8 0 0 0-.36-1.99l-.05-.05 2.83-2.83.05.05a1.8 1.8 0 0 0 1.99.36A1.8 1.8 0 0 0 9.85 2.6V2h4v.6a1.8 1.8 0 0 0 1.09 1.65 1.8 1.8 0 0 0 1.99-.36l.05-.05 2.83 2.83-.05.05a1.8 1.8 0 0 0-.36 1.99 1.8 1.8 0 0 0 1.65 1.09H22v4h-.65A1.8 1.8 0 0 0 19.4 15z"></path>
+          </svg>
+        </button>
       </div>
-      <div class="team-card-chevron">›</div>
     </div>`;
   }).join('') : '<div class="empty-state">Add your first team to build a roster and save bullpen sessions.</div>';
 
   teamList.querySelectorAll('.team-card').forEach(card=>{
     card.addEventListener('click',e=>{
-      if(e.target.closest('.team-logo-btn')) return;
+      if(e.target.closest('.team-logo-btn') || e.target.closest('.team-settings-btn')) return;
       openRoster(card.dataset.teamId);
     });
   });
@@ -1848,6 +1924,13 @@ function renderManager() {
       e.stopPropagation();
       logoEditingTeamId=btn.dataset.logoTeamId;
       teamLogoFile.click();
+    });
+  });
+
+  teamList.querySelectorAll('.team-settings-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      openTeamSettings(btn.dataset.settingsTeamId);
     });
   });
 
@@ -1978,9 +2061,46 @@ teamLogoFile.addEventListener('change',()=>{
   teamLogoFile.value='';
 });
 
+
+let settingsEditingTeamId=null;
+const teamSettingsModal=document.getElementById('teamSettingsModal');
+const teamColor1=document.getElementById('teamColor1');
+const teamColor2=document.getElementById('teamColor2');
+const teamGradientPreview=document.getElementById('teamGradientPreview');
+
+function refreshTeamGradientPreview(){
+  if(teamGradientPreview) teamGradientPreview.style.background=`linear-gradient(135deg,${teamColor1.value},${teamColor2.value})`;
+}
+function openTeamSettings(teamId){
+  const team=appData.teams.find(t=>t.id===teamId);
+  if(!team) return;
+  settingsEditingTeamId=teamId;
+  document.getElementById('teamSettingsName').textContent=team.name;
+  teamColor1.value=team.primaryColor1||'#00d4ff';
+  teamColor2.value=team.primaryColor2||'#ff5c35';
+  refreshTeamGradientPreview();
+  teamSettingsModal.classList.add('visible');
+}
+function closeTeamSettings(){
+  teamSettingsModal.classList.remove('visible');
+  settingsEditingTeamId=null;
+}
+teamColor1.addEventListener('input',refreshTeamGradientPreview);
+teamColor2.addEventListener('input',refreshTeamGradientPreview);
+document.getElementById('cancelTeamSettingsBtn').addEventListener('click',closeTeamSettings);
+document.getElementById('saveTeamSettingsBtn').addEventListener('click',()=>{
+  const team=appData.teams.find(t=>t.id===settingsEditingTeamId);
+  if(!team) return closeTeamSettings();
+  team.primaryColor1=teamColor1.value;
+  team.primaryColor2=teamColor2.value;
+  saveAppData();
+  closeTeamSettings();
+  renderManager();
+});
+
 document.getElementById('addTeamBtn').addEventListener('click', () => {
   const input=document.getElementById('teamNameInput'); const name=input.value.trim(); if(!name) return;
-  const team={id:uid('team'),name,logoDataUrl:null};
+  const team={id:uid('team'),name,logoDataUrl:null,primaryColor1:'#00d4ff',primaryColor2:'#ff5c35'};
   appData.teams.push(team);
   appData.selectedTeamId=team.id;
   managerView='teams';
