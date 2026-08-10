@@ -1491,6 +1491,31 @@
     outline-offset:2px;
   }
 
+
+  .team-color-field .team-native-color {
+    -webkit-appearance:none !important;
+    appearance:none !important;
+    width:40px !important;
+    height:40px !important;
+    min-width:40px !important;
+    max-width:40px !important;
+    flex:0 0 40px !important;
+    padding:0 !important;
+    margin:0 !important;
+    border:1px solid rgba(255,255,255,.24) !important;
+    border-radius:5px !important;
+    background:transparent !important;
+    overflow:hidden !important;
+  }
+  .team-color-field .team-native-color::-webkit-color-swatch-wrapper {
+    padding:0 !important;
+    border-radius:4px !important;
+  }
+  .team-color-field .team-native-color::-webkit-color-swatch {
+    border:0 !important;
+    border-radius:3px !important;
+  }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 </head>
@@ -1571,16 +1596,13 @@
           <div class="team-color-row">
             <label class="team-color-field">
               <span>Primary Color 1</span>
-              <button id="teamColor1Btn" class="color-square" type="button" aria-label="Choose primary color 1"></button>
-              <input id="teamColor1" type="hidden" value="#00d4ff">
+              <input id="teamColor1" class="team-native-color" type="color" value="#00d4ff" aria-label="Choose primary color 1">
             </label>
             <label class="team-color-field">
               <span>Primary Color 2</span>
-              <button id="teamColor2Btn" class="color-square" type="button" aria-label="Choose primary color 2"></button>
-              <input id="teamColor2" type="hidden" value="#ff5c35">
+              <input id="teamColor2" class="team-native-color" type="color" value="#ff5c35" aria-label="Choose primary color 2">
             </label>
           </div>
-          <div class="team-color-palette" id="teamColorPalette" aria-label="Team color choices"></div>
           <div class="team-gradient-preview" id="teamGradientPreview"></div>
         </div>
         <div class="edit-actions">
@@ -2118,44 +2140,15 @@ function openTeamSettings(teamId){
   document.getElementById('teamSettingsName').textContent=team.name;
   teamColor1.value=team.primaryColor1||'#00d4ff';
   teamColor2.value=team.primaryColor2||'#ff5c35';
-  activeTeamColorField=1;
   refreshTeamGradientPreview();
-  renderTeamColorPicker();
   teamSettingsModal.classList.add('visible');
 }
 function closeTeamSettings(){
   teamSettingsModal.classList.remove('visible');
   settingsEditingTeamId=null;
 }
-const teamColor1Btn=document.getElementById('teamColor1Btn');
-const teamColor2Btn=document.getElementById('teamColor2Btn');
-const teamColorPalette=document.getElementById('teamColorPalette');
-let activeTeamColorField=1;
-const TEAM_COLORS=[
-  '#ffffff','#cbd5e1','#64748b','#111827',
-  '#ef4444','#f97316','#facc15','#22c55e',
-  '#14b8a6','#06b6d4','#0ea5e9','#2563eb',
-  '#4f46e5','#7c3aed','#a855f7','#ec4899',
-  '#991b1b','#9a3412','#854d0e','#166534',
-  '#115e59','#155e75','#1e3a8a','#581c87'
-];
-
-function renderTeamColorPicker(){
-  teamColor1Btn.style.background=teamColor1.value;
-  teamColor2Btn.style.background=teamColor2.value;
-  const current=activeTeamColorField===1?teamColor1.value:teamColor2.value;
-  teamColorPalette.innerHTML=TEAM_COLORS.map(c=>`<button type="button" class="palette-swatch ${c.toLowerCase()===current.toLowerCase()?'selected':''}" data-color="${c}" style="background:${c}" aria-label="${c}"></button>`).join('');
-  teamColorPalette.querySelectorAll('.palette-swatch').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      if(activeTeamColorField===1) teamColor1.value=btn.dataset.color;
-      else teamColor2.value=btn.dataset.color;
-      refreshTeamGradientPreview();
-      renderTeamColorPicker();
-    });
-  });
-}
-teamColor1Btn.addEventListener('click',()=>{activeTeamColorField=1;renderTeamColorPicker();});
-teamColor2Btn.addEventListener('click',()=>{activeTeamColorField=2;renderTeamColorPicker();});
+teamColor1.addEventListener('input',refreshTeamGradientPreview);
+teamColor2.addEventListener('input',refreshTeamGradientPreview);
 document.getElementById('cancelTeamSettingsBtn').addEventListener('click',closeTeamSettings);
 document.getElementById('saveTeamSettingsBtn').addEventListener('click',()=>{
   const team=appData.teams.find(t=>t.id===settingsEditingTeamId);
