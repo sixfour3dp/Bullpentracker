@@ -1275,6 +1275,24 @@
     height:auto;
     background:var(--bg);
   }
+
+  .history-player-heading { display:flex; align-items:center; gap:9px; min-width:0; }
+  .player-profile-btn {
+    width:34px; height:34px; flex:0 0 34px; border-radius:50%;
+    border:1px solid var(--border); background:var(--surface2); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; padding:7px;
+  }
+  .player-profile-btn svg { width:100%; height:100%; }
+  .throw-hand-options { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .throw-hand-btn {
+    padding:12px; border-radius:10px; border:1px solid var(--border);
+    background:var(--surface2); color:var(--muted);
+    font-family:'Barlow Condensed',sans-serif; font-weight:900; letter-spacing:1px;
+  }
+  .throw-hand-btn.active {
+    color:#071018; background:var(--accent); border-color:var(--accent);
+  }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 </head>
@@ -1329,7 +1347,15 @@
     <div class="manager-scroll">
       <div class="history-header">
         <button id="historyBackBtn" class="back-btn">‹</button>
-        <div><div class="manager-title" id="historyPlayerName">Player</div><div class="manager-sub" id="historyTeamName"></div></div>
+        <div class="history-player-heading">
+          <button id="playerProfileBtn" class="player-profile-btn" type="button" aria-label="Edit player profile" title="Edit player profile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="8" r="4"></circle>
+              <path d="M4.5 21c.8-5 3.3-7.5 7.5-7.5S18.7 16 19.5 21"></path>
+            </svg>
+          </button>
+          <div><div class="manager-title" id="historyPlayerName">Player</div><div class="manager-sub" id="historyTeamName"></div></div>
+        </div>
         <div class="history-actions"><button id="historyPdfBtn" class="pdf-btn">PDF REPORT</button></div>
       </div>
       <div class="trend-cards" id="trendCards"></div>
@@ -1370,9 +1396,7 @@
 
       <div class="zone-wrapper">
         <div class="batter-context">
-          <span class="batter-label">← INSIDE</span>
           <span class="batter-label" style="flex:1;text-align:center;letter-spacing:2px;">STRIKE ZONE</span>
-          <span class="batter-label">OUTSIDE →</span>
         </div>
 
         <!-- Outer zone for balls outside the zone -->
@@ -1492,6 +1516,31 @@
       <div class="notes-actions">
         <button id="skipNotesBtn" class="btn btn-secondary">SKIP</button>
         <button id="saveNotesBtn" class="btn btn-primary">SAVE SESSION</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- PLAYER PROFILE MODAL -->
+  <div class="edit-modal" id="playerProfileModal">
+    <div class="edit-sheet">
+      <div class="edit-title">Player Profile</div>
+      <div class="edit-grid">
+        <div class="edit-field full">
+          <label>Player Name</label>
+          <input id="profilePlayerName" class="edit-control" type="text" maxlength="50">
+        </div>
+        <div class="edit-field full">
+          <label>Throws</label>
+          <div class="throw-hand-options">
+            <button type="button" class="throw-hand-btn" data-hand="R">RIGHT</button>
+            <button type="button" class="throw-hand-btn" data-hand="L">LEFT</button>
+          </div>
+        </div>
+      </div>
+      <div class="edit-actions">
+        <button id="cancelPlayerProfileBtn" class="btn btn-secondary">CANCEL</button>
+        <button id="savePlayerProfileBtn" class="btn btn-primary">SAVE PROFILE</button>
       </div>
     </div>
   </div>
@@ -1699,7 +1748,7 @@ document.getElementById('deleteTeamBtn').addEventListener('click',()=>{
 document.getElementById('addPlayerBtn').addEventListener('click', () => {
   if(!appData.selectedTeamId){ alert('Add a team first.'); return; }
   const input=document.getElementById('playerNameInput'); const name=input.value.trim(); if(!name) return;
-  appData.players.push({id:uid('player'),teamId:appData.selectedTeamId,name}); input.value=''; saveAppData(); renderManager();
+  appData.players.push({id:uid('player'),teamId:appData.selectedTeamId,name,throws:null}); input.value=''; saveAppData(); renderManager();
 });
 
 function startBullpen(playerId) {
@@ -1731,7 +1780,7 @@ function pitchTargetZones(p){
   return p.targetZones instanceof Set ? [...p.targetZones].map(Number) : (Array.isArray(p.targetZones)?p.targetZones.map(Number):[]);
 }
 function zoneRC(z){ return {r:Math.floor((Number(z)-1)/3), c:(Number(z)-1)%3}; }
-function lateralMissBias(pitches){
+function lateralMissBias(pitches, throws=null){
   let left=0,right=0,center=0,total=0,sumDx=0;
   const zoneW=.70/3;
   (pitches||[]).forEach(p=>{
@@ -1749,17 +1798,26 @@ function lateralMissBias(pitches){
   const sided=left+right;
   const rightPct=sided?Math.round(right/sided*100):0;
   const leftPct=sided?100-rightPct:0;
+  let glove=0,throwing=0;
+  if(throws==='R'){ glove=left; throwing=right; }
+  else if(throws==='L'){ glove=right; throwing=left; }
+  const gsSided=glove+throwing;
+  const glovePct=gsSided?Math.round(glove/gsSided*100):0;
+  const throwingPct=gsSided?100-glovePct:0;
   let direction='BALANCED', pct=0;
-  if(sided){
-    if(right>left){direction='RIGHT';pct=rightPct;}
-    else if(left>right){direction='LEFT';pct=leftPct;}
+  if(throws && gsSided){
+    if(glove>throwing){direction='GLOVE SIDE';pct=glovePct;}
+    else if(throwing>glove){direction='THROWING SIDE';pct=throwingPct;}
     else {direction='BALANCED';pct=50;}
   }
   const avgZones=total ? Math.abs(sumDx/total)/zoneW : 0;
-  const signedIndex=sided?Math.round((right-left)/sided*100):0;
-  return {left,right,center,total,sided,leftPct,rightPct,direction,pct,avgZones:Number(avgZones.toFixed(2)),signedIndex};
+  return {
+    left,right,center,total,sided,leftPct,rightPct,
+    glove,throwing,glovePct,throwingPct,
+    direction,pct,avgZones:Number(avgZones.toFixed(2)),
+    throws:throws||null
+  };
 }
-
 function pitchLocationQuality(p){
   if(p.isWildPitch) return 2;
   const targets=pitchTargetZones(p); if(!targets.length) return p.isStrike?55:20;
@@ -1837,7 +1895,8 @@ window.showHistory = function(playerId) {
   const p=appData.players.find(x=>x.id===playerId); if(!p) return;
   currentHistoryPlayerId=playerId;
   const t=appData.teams.find(x=>x.id===p.teamId); const sessions=appData.sessions.filter(s=>s.playerId===playerId).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
-  document.getElementById('historyPlayerName').textContent=p.name; document.getElementById('historyTeamName').textContent=t?.name||'';
+  document.getElementById('historyPlayerName').textContent=p.name;
+  document.getElementById('historyTeamName').textContent=`${t?.name||''}${p.throws ? ' · Throws '+(p.throws==='R'?'Right':'Left') : ' · Throwing hand not set'}`;
   let trend='<div class="trend-card"><div class="trend-value">'+sessions.length+'</div><div class="trend-label">Sessions</div></div>';
   const pitches=sessions.reduce((n,s)=>n+s.totalPitches,0); trend+='<div class="trend-card"><div class="trend-value">'+pitches+'</div><div class="trend-label">Total Pitches</div></div>';
   if(sessions.length){
@@ -1847,10 +1906,10 @@ window.showHistory = function(playerId) {
     const avgFb=fbVelos.length ? (fbVelos.reduce((a,b)=>a+b,0)/fbVelos.length).toFixed(1) : '—';
     const highFb=fbVelos.length ? Math.max(...fbVelos).toFixed(1) : '—';
     const allHistoryPitches=sessions.flatMap(s=>(s.pitches||[]).map((p,i)=>({...p,num:Number(p.num)||i+1,targetZones:new Set(Array.isArray(p.targetZones)?p.targetZones:[])})));
-    const missBias=lateralMissBias(allHistoryPitches);
-    const biasValue=missBias.sided ? `${missBias.pct}% ${missBias.direction}` : '—';
-    const biasSub=missBias.sided ? `${missBias.left} L · ${missBias.right} R` : 'No lateral misses';
-    trend+=`<div class="trend-card"><div class="trend-value">${avgFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">Avg. FB Velo</div></div><div class="trend-card"><div class="trend-value">${highFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">Personal Best FB Velo</div></div><div class="trend-card"><div class="trend-value">${biasValue}</div><div class="trend-label">Lateral Miss Bias · ${biasSub}</div></div>`;
+    const missBias=lateralMissBias(allHistoryPitches,p.throws||null);
+    const biasValue=!p.throws ? 'SET HAND' : (missBias.sided ? `${missBias.pct}% ${missBias.direction}` : '—');
+    const biasSub=!p.throws ? 'Tap player icon to set throwing hand' : (missBias.sided ? `${missBias.glove} glove · ${missBias.throwing} throwing` : 'No lateral misses');
+    trend+=`<div class="trend-card"><div class="trend-value">${avgFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">Avg. FB Velo</div></div><div class="trend-card"><div class="trend-value">${highFb}${fbVelos.length?' MPH':''}</div><div class="trend-label">Personal Best FB Velo</div></div><div class="trend-card"><div class="trend-value">${biasValue}</div><div class="trend-label">Miss-Side Bias · ${biasSub}</div></div>`;
   }
   document.getElementById('trendCards').innerHTML=trend;
   document.getElementById('historyList').innerHTML = sessions.length ? `
@@ -2047,7 +2106,7 @@ function exportHistoryPdf(playerId){
   const trendSvg=buildHistoryStrikeSvg(sessions);
   const velocitySvg=buildFbVelocitySvg(sessions);
   const allHistoryPitches=sessions.flatMap(s=>(s.pitches||[]).map((p,i)=>({...p,num:Number(p.num)||i+1,targetZones:new Set(Array.isArray(p.targetZones)?p.targetZones:[])})));
-  const bias=lateralMissBias(allHistoryPitches);
+  const bias=lateralMissBias(allHistoryPitches,player.throws||null);
   const allFbVelos=sessions.flatMap(s=>(s.pitches||[]).filter(p=>p.type==='FB' && Number.isFinite(Number(p.velocity)) && Number(p.velocity)>0).map(p=>Number(p.velocity)));
   const personalBestFb=allFbVelos.length?Math.max(...allFbVelos).toFixed(1):'—';
   const sessionRows=sessions.slice().reverse().map(s=>`<tr><td>${new Date(s.createdAt).toLocaleDateString()}</td><td>${s.totalPitches}</td><td>${s.strikePct}%</td><td>${s.locationPct}%</td><td>${sessionCommandScore(s)}</td></tr>`).join('');
@@ -2067,12 +2126,12 @@ function exportHistoryPdf(playerId){
     table{width:100%;border-collapse:collapse;font-size:10px}th{color:#6686a4;text-transform:uppercase;font-size:9px;letter-spacing:.7px}th,td{padding:7px;border-bottom:1px solid #20344a;text-align:right}th:first-child,td:first-child{text-align:left}.notes{display:grid;gap:8px}.note{background:#0b121b;border:1px solid #20344a;border-radius:10px;padding:9px;font-size:10px;color:#cbd8e5}.note strong{color:#00d4ff;display:block;margin-bottom:4px}.footer{text-align:right;color:#6686a4;font-size:8px;margin-top:12px}
     @media print{.preview-nav{display:none!important}body{background:#080d14}.page{padding:0}.section,.brand,.card{break-inside:avoid}}
   </style></head><body><div class="preview-nav"><button id="backToAppBtn">← Back to Pocket Bullpen</button><button class="printbtn" id="printPdfBtn">Print / Save PDF</button></div><div class="page">
-    <div class="brand"><div class="logo"><span class="p">POCKET</span><span class="b">BULLPEN</span></div><div class="name">${printSafe(player.name)}</div><div class="sub">${printSafe(team?.name||'')} · Complete Bullpen History · ${sessions.length} sessions</div></div>
+    <div class="brand"><div class="logo"><span class="p">POCKET</span><span class="b">BULLPEN</span></div><div class="name">${printSafe(player.name)}</div><div class="sub">${printSafe(team?.name||'')} · ${player.throws ? 'Throws '+(player.throws==='R'?'Right':'Left')+' · ' : ''}Complete Bullpen History · ${sessions.length} sessions</div></div>
     <div class="cards"><div class="card"><label>Sessions</label><strong class="cyan">${sessions.length}</strong></div><div class="card"><label>Total Pitches</label><strong class="yellow">${totalPitches}</strong></div><div class="card"><label>Avg Strike %</label><strong class="green">${avgStrike}%</strong></div><div class="card"><label>Latest PB Score</label><strong class="orange">${latestPb}</strong></div></div>
-    <div class="cards" style="grid-template-columns:1fr 1fr"><div class="card"><label>Personal Best FB Velo</label><strong class="cyan">${personalBestFb}${personalBestFb!=='—'?' MPH':''}</strong></div><div class="card"><label>Lateral Miss Bias</label><strong class="orange">${bias.sided?`${bias.pct}% ${bias.direction}`:'—'}</strong><small>${bias.sided?`${bias.left} left · ${bias.right} right · catcher-view orientation`:'Not enough lateral misses'}</small></div></div>
+    <div class="cards" style="grid-template-columns:1fr 1fr"><div class="card"><label>Personal Best FB Velo</label><strong class="cyan">${personalBestFb}${personalBestFb!=='—'?' MPH':''}</strong></div><div class="card"><label>Miss-Side Bias</label><strong class="orange">${!player.throws?'HAND NOT SET':(bias.sided?`${bias.pct}% ${bias.direction}`:'—')}</strong><small>${!player.throws?'Set throwing hand in player profile':(bias.sided?`${bias.glove} glove-side · ${bias.throwing} throwing-side · throws ${player.throws==='R'?'right':'left'}`:'Not enough lateral misses')}</small></div></div>
     <div class="section"><h2>Strike % trend by pitch</h2>${trendSvg}</div>
     <div class="section"><h2>Fastball velocity progression</h2>${velocitySvg}</div>
-    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div></div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Pitch dots are intentionally omitted for a cleaner historical view.</div><div style="color:#6686a4;font-size:10px;line-height:1.5;margin-top:8px"><strong style="color:#edf5ff">Lateral Miss Bias:</strong> compares each missed pitch to its intended target, not simply to the middle of the plate. Left/right are shown from the catcher-view orientation used by the on-screen strike zone.</div></div></div></div>
+    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div></div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Pitch dots are intentionally omitted for a cleaner historical view.</div><div style="color:#6686a4;font-size:10px;line-height:1.5;margin-top:8px"><strong style="color:#edf5ff">Miss-Side Bias:</strong> compares each missed pitch to its intended target. For right-handed pitchers, misses left on the on-screen zone are glove-side and misses right are throwing-side; the mapping reverses for left-handed pitchers.</div></div></div></div>
     <div class="section"><h2>Bullpen sessions</h2><table><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th><th>PB Score</th></tr></thead><tbody>${sessionRows}</tbody></table></div>
     <div class="section"><h2>Session notes</h2><div class="notes">${notes}</div></div><div class="footer">Pocket Bullpen · Player History Report</div>
     <script>
@@ -2217,6 +2276,43 @@ function exportSessionPdf(){
 }
 
 document.getElementById('historyPdfBtn').addEventListener('click',()=>{ if(currentHistoryPlayerId) exportHistoryPdf(currentHistoryPlayerId); });
+
+
+let profileEditingPlayerId=null;
+
+function openPlayerProfile(){
+  const p=appData.players.find(x=>x.id===currentHistoryPlayerId);
+  if(!p) return;
+  profileEditingPlayerId=p.id;
+  document.getElementById('profilePlayerName').value=p.name||'';
+  document.querySelectorAll('.throw-hand-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.hand===p.throws));
+  document.getElementById('playerProfileModal').classList.add('visible');
+}
+
+function closePlayerProfile(){
+  document.getElementById('playerProfileModal').classList.remove('visible');
+  profileEditingPlayerId=null;
+}
+
+document.getElementById('playerProfileBtn').addEventListener('click',openPlayerProfile);
+document.getElementById('cancelPlayerProfileBtn').addEventListener('click',closePlayerProfile);
+document.querySelectorAll('.throw-hand-btn').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('.throw-hand-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}));
+document.getElementById('savePlayerProfileBtn').addEventListener('click',()=>{
+  const p=appData.players.find(x=>x.id===profileEditingPlayerId);
+  if(!p) return closePlayerProfile();
+  const name=document.getElementById('profilePlayerName').value.trim();
+  const hand=document.querySelector('.throw-hand-btn.active')?.dataset.hand||null;
+  if(!name){ alert('Enter a player name.'); return; }
+  if(!hand){ alert('Select whether the player throws right or left.'); return; }
+  p.name=name;
+  p.throws=hand;
+  saveAppData();
+  closePlayerProfile();
+  window.showHistory(p.id);
+});
 
 document.getElementById('historyBackBtn').addEventListener('click',()=>{historyScreen.style.display='none';managerScreen.style.display='flex';renderManager();});
 homeBtn.addEventListener('click',()=>{ statsScreen.style.display='none'; trackingScreen.style.display='none'; historyScreen.style.display='none'; managerScreen.style.display='flex'; renderManager(); });
