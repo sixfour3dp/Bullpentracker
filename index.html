@@ -1194,125 +1194,72 @@
 
   .analytics-home-header {
     display:grid;
-    grid-template-columns:128px minmax(0,1fr);
+    grid-template-columns:112px minmax(0,1fr);
     gap:12px;
     align-items:center;
-    padding:17px 18px 16px;
-    background:var(--bg);
-    border-bottom:1px solid var(--border);
+    padding-top:14px;
+    padding-bottom:14px;
+    background:
+      linear-gradient(rgba(10,14,20,.88),rgba(10,14,20,.94)),
+      linear-gradient(90deg,rgba(0,212,255,.05),transparent 48%,rgba(255,92,53,.04));
   }
   .analytics-mark {
-    width:128px;
-    height:105px;
+    width:112px;
+    height:84px;
+    overflow:hidden;
+    border-radius:12px;
     display:flex;
     align-items:center;
     justify-content:center;
-    overflow:visible;
   }
-  .analytics-mark img { display:block;width:100%;height:100%;object-fit:contain; }
+  .analytics-mark img {
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
   .analytics-brand-copy { min-width:0; }
   .analytics-home-header .app-logo {
-    font-size:31px;
+    font-size:28px;
     line-height:1;
-    letter-spacing:.2px;
+    letter-spacing:.4px;
     white-space:nowrap;
   }
   .analytics-home-header .manager-title {
     font-size:16px;
-    letter-spacing:4.2px;
-    margin-top:7px;
+    letter-spacing:4px;
+    margin-top:6px;
     color:var(--text);
-    text-align:center;
   }
   .analytics-home-header .manager-sub {
-    margin-top:4px;
+    margin-top:3px;
     font-family:'Barlow Condensed',sans-serif;
-    letter-spacing:1.65px;
+    letter-spacing:1.8px;
     font-weight:700;
     font-size:10px;
-    text-align:center;
-    color:var(--muted);
   }
-  .analytics-home-header .manager-sub b { color:var(--accent);font-weight:900; }
-  .analytics-rule { height:7px;display:flex;align-items:center;margin-top:7px; }
-  .analytics-rule span,.analytics-rule b { display:block;height:2px;flex:1; }
-  .analytics-rule span { background:linear-gradient(90deg,var(--accent),rgba(0,212,255,.22)); }
-  .analytics-rule b { background:linear-gradient(90deg,rgba(255,92,53,.22),var(--accent2)); }
-  .analytics-rule i { width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 7px rgba(0,212,255,.55);margin:0 5px; }
-
-  .dashboard-scroll { padding:14px 16px 12px; }
-  .manager-view { display:none; }
-  .manager-view.active { display:block; }
-  #dashboardView { padding-top:3px; }
-  .dashboard-card {
-    width:100%;
-    min-height:94px;
-    display:grid;
-    grid-template-columns:70px minmax(0,1fr) 22px;
-    gap:12px;
-    align-items:center;
-    text-align:left;
-    border:1px solid var(--border);
-    border-radius:16px;
-    background:linear-gradient(100deg,#0e1823,#10202d);
-    color:var(--text);
-    margin-bottom:11px;
-    padding:13px 15px 13px 13px;
-    font-family:'Barlow',sans-serif;
-  }
-  .dashboard-card:active { transform:scale(.992);background:#132534; }
-  .dashboard-icon { width:62px;height:62px;display:flex;align-items:center;justify-content:center;color:#11bdf0; }
-  .dashboard-icon svg { width:58px;height:58px;fill:none;stroke:currentColor;stroke-width:4;stroke-linecap:round;stroke-linejoin:round; }
-  .dashboard-icon.bars-icon svg,.dashboard-icon.pitcher-icon svg { fill:currentColor;stroke:none; }
-  .dashboard-copy { min-width:0;display:block; }
-  .dashboard-copy strong { display:block;font-family:'Barlow Condensed',sans-serif;font-size:21px;line-height:1;font-weight:900;letter-spacing:.45px;color:var(--text); }
-  .dashboard-copy small { display:block;color:#86a0bb;font-size:12px;line-height:1.3;margin-top:7px; }
-  .dashboard-chevron { font-family:Arial,sans-serif;font-size:42px;line-height:1;color:#159bd8;font-weight:200;text-align:right; }
-  .view-heading { font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;letter-spacing:1px;margin:2px 2px 12px;color:var(--text); }
-  .settings-actions { margin-top:0; }
-
-  .dashboard-nav {
-    flex:0 0 auto;
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    align-items:end;
-    min-height:76px;
-    padding:7px 8px max(7px,env(safe-area-inset-bottom));
-    background:#071018;
-    border-top:1px solid var(--border);
-  }
-  .dashboard-nav button {
-    position:relative;
-    border:0;
-    background:transparent;
-    color:#6c89a8;
+  .analytics-rule {
+    height:6px;
     display:flex;
-    flex-direction:column;
     align-items:center;
-    gap:3px;
-    font-family:'Barlow Condensed',sans-serif;
-    font-weight:800;
-    font-size:11px;
-    letter-spacing:.5px;
-    padding:2px;
+    margin-top:6px;
   }
-  .dashboard-nav button.active { color:#00bfff; }
-  .dashboard-nav button.active::before { content:'';position:absolute;top:-8px;width:54px;height:2px;border-radius:3px;background:var(--accent); }
-  .nav-icon { width:33px;height:33px;display:block; }
-  .nav-icon svg { width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:4;stroke-linecap:round;stroke-linejoin:round; }
-  .dashboard-nav button:first-child .nav-icon svg { fill:currentColor;stroke:none; }
-
+  .analytics-rule span,.analytics-rule b {
+    display:block;height:1px;flex:1;
+  }
+  .analytics-rule span { background:linear-gradient(90deg,var(--accent),rgba(0,212,255,.15)); }
+  .analytics-rule b { background:linear-gradient(90deg,rgba(255,92,53,.15),var(--accent2)); }
+  .analytics-rule i {
+    width:6px;height:6px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 7px rgba(0,212,255,.65);
+    margin:0 4px;
+  }
   @media (max-width:390px) {
-    .analytics-home-header { grid-template-columns:106px minmax(0,1fr);gap:8px;padding-left:13px;padding-right:13px; }
-    .analytics-mark { width:106px;height:92px; }
-    .analytics-home-header .app-logo { font-size:25px; }
-    .analytics-home-header .manager-title { font-size:13px;letter-spacing:3px; }
-    .analytics-home-header .manager-sub { font-size:9px;letter-spacing:1.15px; }
-    .dashboard-card { grid-template-columns:58px minmax(0,1fr) 18px;min-height:86px;padding:11px;gap:10px; }
-    .dashboard-icon { width:54px;height:54px; }
-    .dashboard-icon svg { width:50px;height:50px; }
-    .dashboard-copy strong { font-size:19px; }
-    .dashboard-copy small { font-size:11px; }
+    .analytics-home-header { grid-template-columns:92px minmax(0,1fr); gap:9px; }
+    .analytics-mark { width:92px;height:72px; }
+    .analytics-home-header .app-logo { font-size:23px; }
+    .analytics-home-header .manager-title { font-size:14px; letter-spacing:3px; }
+    .analytics-home-header .manager-sub { font-size:9px; letter-spacing:1.3px; }
   }
 
 </style>
@@ -1336,81 +1283,40 @@
   <div class="manager-screen" id="managerScreen">
     <div class="header analytics-home-header">
       <div class="analytics-mark" aria-hidden="true">
-        <img src="header-mark-transparent.png" alt="">
+        <img src="header-heatmap.png" alt="">
       </div>
       <div class="analytics-brand-copy">
         <div class="app-logo">POCKET<span>BULLPEN</span></div>
         <div class="analytics-rule"><span></span><i></i><b></b></div>
         <div class="manager-title">Bullpen Tracker</div>
-        <div class="manager-sub">TRACK <b>•</b> ANALYZE <b>•</b> DEVELOP</div>
+        <div class="manager-sub">TRACK · ANALYZE · DEVELOP</div>
       </div>
     </div>
-
-    <div class="manager-scroll dashboard-scroll" id="managerScroll">
-      <section class="manager-view active" id="dashboardView">
-        <button class="dashboard-card" type="button" data-dashboard-target="players">
-          <span class="dashboard-icon target-icon" aria-hidden="true"><svg viewBox="0 0 64 64"><circle cx="30" cy="32" r="23"/><circle cx="30" cy="32" r="14"/><circle cx="30" cy="32" r="4"/><path d="M30 32 49 13M43 13h6v6"/></svg></span>
-          <span class="dashboard-copy"><strong>PITCH SESSIONS</strong><small>Record, review and manage bullpen sessions</small></span>
-          <span class="dashboard-chevron">›</span>
-        </button>
-        <button class="dashboard-card" type="button" data-dashboard-target="players">
-          <span class="dashboard-icon bars-icon" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M10 50V35h10v15zM27 50V25h10v25zM44 50V13h10v37z"/></svg></span>
-          <span class="dashboard-copy"><strong>PLAYER INSIGHTS</strong><small>Analyze performance and command trends</small></span>
-          <span class="dashboard-chevron">›</span>
-        </button>
-        <button class="dashboard-card" type="button" data-dashboard-target="players">
-          <span class="dashboard-icon pitcher-icon" aria-hidden="true"><svg viewBox="0 0 64 64"><circle cx="42" cy="14" r="7"/><path d="M37 21 27 29l-14-4-3 5 17 8 9-5 4 8-9 9-13 1v6h17l14-12 8 9 5-3-12-18-3-11z"/></svg></span>
-          <span class="dashboard-copy"><strong>PITCHER DEVELOPMENT</strong><small>Track progress and build better pitchers</small></span>
-          <span class="dashboard-chevron">›</span>
-        </button>
-        <button class="dashboard-card" type="button" data-dashboard-target="players">
-          <span class="dashboard-icon report-icon" aria-hidden="true"><svg viewBox="0 0 64 64"><rect x="15" y="13" width="36" height="43" rx="4"/><path d="M24 13v-4h18v4M23 27h20M23 36h20M23 45h14"/></svg></span>
-          <span class="dashboard-copy"><strong>HISTORY &amp; REPORTS</strong><small>View history and export reports</small></span>
-          <span class="dashboard-chevron">›</span>
-        </button>
-      </section>
-
-      <section class="manager-view" id="playersView">
-        <div class="view-heading">PLAYERS</div>
-        <div class="panel">
-          <div class="panel-title">Team</div>
-          <select id="teamSelect" class="app-select"></select>
-          <div class="input-row" style="margin-top:8px">
-            <input id="teamNameInput" class="app-input" placeholder="Add a team" maxlength="40">
-            <button id="addTeamBtn" class="mini-btn">ADD</button>
-            <button id="deleteTeamBtn" class="mini-btn team-remove-btn" type="button">REMOVE</button>
-          </div>
+    <div class="manager-scroll">
+      <div class="panel">
+        <div class="panel-title">Team</div>
+        <select id="teamSelect" class="app-select"></select>
+        <div class="input-row" style="margin-top:8px">
+          <input id="teamNameInput" class="app-input" placeholder="Add a team" maxlength="40">
+          <button id="addTeamBtn" class="mini-btn">ADD</button>
+          <button id="deleteTeamBtn" class="mini-btn team-remove-btn" type="button">REMOVE</button>
         </div>
-        <div class="panel">
-          <div class="panel-title">Add Player</div>
-          <div class="input-row">
-            <input id="playerNameInput" class="app-input" placeholder="Player name" maxlength="50">
-            <button id="addPlayerBtn" class="mini-btn">ADD</button>
-          </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Add Player</div>
+        <div class="input-row">
+          <input id="playerNameInput" class="app-input" placeholder="Player name" maxlength="50">
+          <button id="addPlayerBtn" class="mini-btn">ADD</button>
         </div>
-        <div class="panel-title" style="padding:2px 2px 8px">Players</div>
-        <div id="playerList"></div>
-      </section>
-
-      <section class="manager-view" id="settingsView">
-        <div class="view-heading">SETTINGS</div>
-        <div class="panel">
-          <div class="panel-title">Team Backup</div>
-          <div style="color:var(--muted);font-size:12px;line-height:1.45;margin-bottom:12px">Export the selected team to share with another coach, or import a Pocket Bullpen team backup.</div>
-          <div class="utility-row settings-actions">
-            <button id="exportBtn" class="card-btn">EXPORT TEAM</button>
-            <button id="importBtn" class="card-btn">IMPORT TEAM</button>
-            <input id="importFile" type="file" accept="application/json,.json" style="display:none">
-          </div>
-        </div>
-      </section>
+      </div>
+      <div class="panel-title" style="padding:2px 2px 8px">Players</div>
+      <div id="playerList"></div>
+      <div class="utility-row">
+        <button id="exportBtn" class="card-btn">EXPORT TEAM</button>
+        <button id="importBtn" class="card-btn">IMPORT TEAM</button>
+        <input id="importFile" type="file" accept="application/json,.json" style="display:none">
+      </div>
     </div>
-
-    <nav class="dashboard-nav" aria-label="Pocket Bullpen navigation">
-      <button type="button" data-view="players" aria-label="Players"><span class="nav-icon"><svg viewBox="0 0 64 64"><circle cx="25" cy="22" r="10"/><circle cx="45" cy="26" r="8"/><path d="M8 53c1-12 7-19 17-19s16 7 17 19M38 53c0-8 4-14 11-14 6 0 10 5 11 14"/></svg></span><span>PLAYERS</span></button>
-      <button type="button" class="active" data-view="dashboard" aria-label="Dashboard"><span class="nav-icon"><svg viewBox="0 0 64 64"><path d="M12 48a22 22 0 1 1 40 0"/><circle cx="32" cy="43" r="4"/><path d="M32 43 48 25"/></svg></span><span>DASHBOARD</span></button>
-      <button type="button" data-view="settings" aria-label="Settings"><span class="nav-icon"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="9"/><path d="m32 8 5 3 6-1 3 5 6 2v6l4 5-4 5v6l-6 2-3 5-6-1-5 3-5-3-6 1-3-5-6-2v-6l-4-5 4-5v-6l6-2 3-5 6 1z"/></svg></span><span>SETTINGS</span></button>
-    </nav>
   </div>
 
   <!-- PLAYER HISTORY -->
@@ -1671,21 +1577,6 @@ const homeBtn          = document.getElementById('homeBtn');
 const sessionContext   = document.getElementById('sessionContext');
 const teamSelect       = document.getElementById('teamSelect');
 const playerList       = document.getElementById('playerList');
-
-const managerScroll=document.getElementById('managerScroll');
-const dashboardViews={
-  dashboard:document.getElementById('dashboardView'),
-  players:document.getElementById('playersView'),
-  settings:document.getElementById('settingsView')
-};
-function showManagerView(name='dashboard'){
-  Object.entries(dashboardViews).forEach(([key,el])=>el?.classList.toggle('active',key===name));
-  document.querySelectorAll('.dashboard-nav button[data-view]').forEach(btn=>btn.classList.toggle('active',btn.dataset.view===name));
-  if(managerScroll) managerScroll.scrollTop=0;
-}
-document.querySelectorAll('.dashboard-nav button[data-view]').forEach(btn=>btn.addEventListener('click',()=>showManagerView(btn.dataset.view)));
-document.querySelectorAll('[data-dashboard-target]').forEach(btn=>btn.addEventListener('click',()=>showManagerView(btn.dataset.dashboardTarget)));
-
 const STORAGE_KEY      = 'bullpenTrackerDataV1';
 let appData = loadAppData();
 
@@ -2254,7 +2145,7 @@ function exportSessionPdf(){
 document.getElementById('historyPdfBtn').addEventListener('click',()=>{ if(currentHistoryPlayerId) exportHistoryPdf(currentHistoryPlayerId); });
 
 document.getElementById('historyBackBtn').addEventListener('click',()=>{historyScreen.style.display='none';managerScreen.style.display='flex';renderManager();});
-homeBtn.addEventListener('click',()=>{ statsScreen.style.display='none'; trackingScreen.style.display='none'; historyScreen.style.display='none'; managerScreen.style.display='flex'; showManagerView('players'); renderManager(); });
+homeBtn.addEventListener('click',()=>{ statsScreen.style.display='none'; trackingScreen.style.display='none'; historyScreen.style.display='none'; managerScreen.style.display='flex'; renderManager(); });
 
 async function exportSelectedTeamBackup(){
   const team=selectedTeam();
@@ -2382,7 +2273,6 @@ clearTargetBtn.addEventListener('click', () => {
     statsScreen.style.display='none';
     historyScreen.style.display='none';
     managerScreen.style.display='flex';
-    showManagerView('players');
     renderManager();
     return;
   }
@@ -2848,7 +2738,6 @@ function finishSession() {
     statsScreen.style.display='none';
     historyScreen.style.display='none';
     managerScreen.style.display='flex';
-    showManagerView('players');
     renderManager();
     return;
   }
