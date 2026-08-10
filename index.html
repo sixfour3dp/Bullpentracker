@@ -1330,6 +1330,90 @@
     pointer-events:auto;
   }
 
+
+  .team-card {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:12px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    margin-bottom:10px;
+    touch-action:manipulation;
+  }
+  .team-card:active { background:var(--surface2); }
+  .team-logo-btn {
+    width:58px;
+    height:58px;
+    flex:0 0 58px;
+    border-radius:12px;
+    border:1px dashed rgba(0,212,255,.45);
+    background:var(--surface2);
+    color:var(--accent);
+    padding:0;
+    overflow:hidden;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .team-logo-btn img { width:100%; height:100%; object-fit:cover; display:block; }
+  .team-logo-placeholder {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:800;
+    font-size:8px;
+    line-height:1;
+    letter-spacing:.4px;
+  }
+  .team-logo-placeholder svg { width:22px; height:22px; }
+  .team-card-main { flex:1; min-width:0; }
+  .team-card-name {
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:20px;
+    font-weight:900;
+    color:var(--text);
+    letter-spacing:.35px;
+  }
+  .team-card-meta {
+    margin-top:3px;
+    color:var(--muted);
+    font-size:11px;
+  }
+  .team-card-chevron {
+    color:var(--accent);
+    font-size:30px;
+    line-height:1;
+    padding-left:4px;
+  }
+  .roster-header {
+    display:grid;
+    grid-template-columns:38px 44px minmax(0,1fr);
+    align-items:center;
+    gap:9px;
+    margin-bottom:12px;
+  }
+  .roster-team-logo {
+    width:44px;
+    height:44px;
+    border-radius:10px;
+    overflow:hidden;
+    background:var(--surface2);
+    border:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--accent);
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:900;
+  }
+  .roster-team-logo img { width:100%;height:100%;object-fit:cover; }
+  .roster-team-copy { min-width:0; }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
 </head>
@@ -1352,16 +1436,35 @@
     <div class="header preferred-brand-header">
       <img src="pocketbullpen-header.png" alt="PocketBullpen — Bullpen Tracker — Track Analyze Develop">
     </div>
-    <div class="manager-scroll">
+
+    <div class="manager-scroll" id="teamsHomeView">
       <div class="panel">
-        <div class="panel-title">Team</div>
-        <select id="teamSelect" class="app-select"></select>
-        <div class="input-row" style="margin-top:8px">
-          <input id="teamNameInput" class="app-input" placeholder="Add a team" maxlength="40">
+        <div class="panel-title">Add Team</div>
+        <div class="input-row">
+          <input id="teamNameInput" class="app-input" placeholder="Team name" maxlength="40">
           <button id="addTeamBtn" class="mini-btn">ADD</button>
-          <button id="deleteTeamBtn" class="mini-btn team-remove-btn" type="button">REMOVE</button>
         </div>
       </div>
+
+      <div class="panel-title" style="padding:2px 2px 8px">Teams</div>
+      <div id="teamList"></div>
+
+      <div class="utility-row">
+        <button id="importBtn" class="card-btn">IMPORT TEAM</button>
+        <input id="importFile" type="file" accept="application/json,.json" style="display:none">
+      </div>
+    </div>
+
+    <div class="manager-scroll" id="rosterView" style="display:none">
+      <div class="roster-header">
+        <button id="rosterBackBtn" class="back-btn" type="button">‹</button>
+        <div class="roster-team-logo" id="rosterTeamLogo"></div>
+        <div class="roster-team-copy">
+          <div class="manager-title" id="rosterTeamName">Team</div>
+          <div class="manager-sub" id="rosterTeamMeta">Roster</div>
+        </div>
+      </div>
+
       <div class="panel">
         <div class="panel-title">Add Player</div>
         <div class="input-row">
@@ -1369,14 +1472,18 @@
           <button id="addPlayerBtn" class="mini-btn">ADD</button>
         </div>
       </div>
+
       <div class="panel-title" style="padding:2px 2px 8px">Players</div>
       <div id="playerList"></div>
+
       <div class="utility-row">
         <button id="exportBtn" class="card-btn">EXPORT TEAM</button>
-        <button id="importBtn" class="card-btn">IMPORT TEAM</button>
-        <input id="importFile" type="file" accept="application/json,.json" style="display:none">
+        <button id="deleteTeamBtn" class="card-btn team-remove-btn" type="button">REMOVE TEAM</button>
       </div>
     </div>
+
+    <input id="teamLogoFile" type="file" accept="image/*" style="display:none">
+    <select id="teamSelect" style="display:none" aria-hidden="true"></select>
   </div>
 
   <!-- PLAYER HISTORY -->
@@ -1667,7 +1774,17 @@ const historyScreen    = document.getElementById('historyScreen');
 const homeBtn          = document.getElementById('homeBtn');
 const sessionContext   = document.getElementById('sessionContext');
 const teamSelect       = document.getElementById('teamSelect');
+const teamList         = document.getElementById('teamList');
+const teamsHomeView    = document.getElementById('teamsHomeView');
+const rosterView       = document.getElementById('rosterView');
+const rosterBackBtn    = document.getElementById('rosterBackBtn');
+const rosterTeamName   = document.getElementById('rosterTeamName');
+const rosterTeamMeta   = document.getElementById('rosterTeamMeta');
+const rosterTeamLogo   = document.getElementById('rosterTeamLogo');
+const teamLogoFile     = document.getElementById('teamLogoFile');
 const playerList       = document.getElementById('playerList');
+let managerView='teams';
+let logoEditingTeamId=null;
 const STORAGE_KEY      = 'bullpenTrackerDataV1';
 let appData = loadAppData();
 
@@ -1688,18 +1805,74 @@ function strikeClass(pct) { return pct > 50 ? 'strike-good' : pct >= 45 ? 'strik
 function selectedTeam() { return appData.teams.find(t => t.id === appData.selectedTeamId) || null; }
 function activePlayer() { return appData.players.find(p => p.id === state.activePlayerId) || null; }
 
+function teamLogoMarkup(team,large=false){
+  if(team?.logoDataUrl) return `<img src="${team.logoDataUrl}" alt="${escAttr(team.name)} logo">`;
+  const initials=(team?.name||'T').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
+  return `<span>${esc(initials||'T')}</span>`;
+}
+
 function renderManager() {
-  if (!appData.selectedTeamId && appData.teams.length) appData.selectedTeamId = appData.teams[0].id;
+  // Hidden legacy select stays synchronized so existing code remains compatible.
   teamSelect.innerHTML = appData.teams.length
     ? appData.teams.map(t => `<option value="${t.id}" ${t.id===appData.selectedTeamId?'selected':''}>${esc(t.name)}</option>`).join('')
     : '<option value="">No teams yet</option>';
-  const players = appData.players.filter(p => p.teamId === appData.selectedTeamId);
-  playerList.innerHTML = players.length ? players.map(p => {
-    const sessions = appData.sessions.filter(s => s.playerId === p.id);
-    const last = sessions.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt))[0];
-    return `<div class="player-swipe" data-player-id="${p.id}"><button class="player-delete" type="button">DELETE</button><div class="player-card"><div class="player-main"><div class="player-name">${esc(p.name)}</div><div class="player-meta">${sessions.length} session${sessions.length===1?'':'s'}${last ? ' · Last '+new Date(last.createdAt).toLocaleDateString() : ''}</div></div><div class="card-actions"><button class="card-btn" onclick="showHistory('${p.id}')">HISTORY</button><button class="card-btn primary" onclick="startBullpen('${p.id}')">START</button></div></div></div>`;
-  }).join('') : '<div class="empty-state">Add a team and player to start saving bullpen sessions.</div>';
-  setupPlayerSwipe();
+
+  teamList.innerHTML=appData.teams.length ? appData.teams.map(team=>{
+    const players=appData.players.filter(p=>p.teamId===team.id);
+    const sessionCount=players.reduce((n,p)=>n+appData.sessions.filter(s=>s.playerId===p.id).length,0);
+    return `<div class="team-card" data-team-id="${team.id}">
+      <button type="button" class="team-logo-btn" data-logo-team-id="${team.id}" aria-label="${team.logoDataUrl?'Change':'Add'} ${escAttr(team.name)} logo">
+        ${team.logoDataUrl
+          ? `<img src="${team.logoDataUrl}" alt="${escAttr(team.name)} logo">`
+          : `<span class="team-logo-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19h16M6 16l2-8 4 5 4-5 2 8"/><circle cx="12" cy="5" r="2"/></svg>
+              ADD LOGO
+            </span>`}
+      </button>
+      <div class="team-card-main">
+        <div class="team-card-name">${esc(team.name)}</div>
+        <div class="team-card-meta">${players.length} player${players.length===1?'':'s'} · ${sessionCount} session${sessionCount===1?'':'s'}</div>
+      </div>
+      <div class="team-card-chevron">›</div>
+    </div>`;
+  }).join('') : '<div class="empty-state">Add your first team to build a roster and save bullpen sessions.</div>';
+
+  teamList.querySelectorAll('.team-card').forEach(card=>{
+    card.addEventListener('click',e=>{
+      if(e.target.closest('.team-logo-btn')) return;
+      openRoster(card.dataset.teamId);
+    });
+  });
+  teamList.querySelectorAll('.team-logo-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      logoEditingTeamId=btn.dataset.logoTeamId;
+      teamLogoFile.click();
+    });
+  });
+
+  if(managerView==='roster' && selectedTeam()){
+    const team=selectedTeam();
+    const players=appData.players.filter(p=>p.teamId===team.id);
+    rosterTeamName.textContent=team.name;
+    rosterTeamMeta.textContent=`${players.length} player${players.length===1?'':'s'} · Roster`;
+    rosterTeamLogo.innerHTML=teamLogoMarkup(team,true);
+
+    playerList.innerHTML = players.length ? players.map(p => {
+      const sessions = appData.sessions.filter(s => s.playerId === p.id);
+      const last = sessions.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt))[0];
+      return `<div class="player-swipe" data-player-id="${p.id}"><button class="player-delete" type="button">DELETE</button><div class="player-card"><div class="player-main"><div class="player-name">${esc(p.name)}</div><div class="player-meta">${sessions.length} session${sessions.length===1?'':'s'}${last ? ' · Last '+new Date(last.createdAt).toLocaleDateString() : ''}</div></div><div class="card-actions"><button class="card-btn" onclick="showHistory('${p.id}')">HISTORY</button><button class="card-btn primary" onclick="startBullpen('${p.id}')">START</button></div></div></div>`;
+    }).join('') : '<div class="empty-state">Add a player to this roster to start saving bullpen sessions.</div>';
+    setupPlayerSwipe();
+
+    teamsHomeView.style.display='none';
+    rosterView.style.display='block';
+  }else{
+    managerView='teams';
+    teamsHomeView.style.display='block';
+    rosterView.style.display='none';
+  }
+
   const hasTeam=Boolean(selectedTeam());
   const delTeamBtn=document.getElementById('deleteTeamBtn');
   if(delTeamBtn) delTeamBtn.disabled=!hasTeam;
@@ -1708,6 +1881,19 @@ function renderManager() {
   saveAppData();
 }
 
+function openRoster(teamId){
+  const team=appData.teams.find(t=>t.id===teamId);
+  if(!team) return;
+  appData.selectedTeamId=teamId;
+  managerView='roster';
+  saveAppData();
+  renderManager();
+}
+
+function showTeamsHome(){
+  managerView='teams';
+  renderManager();
+}
 
 function setupPlayerSwipe() {
   let openCard = null;
@@ -1760,11 +1946,48 @@ function deletePlayer(playerId) {
   saveAppData(); renderManager();
 }
 
+
+rosterBackBtn.addEventListener('click',showTeamsHome);
+
+teamLogoFile.addEventListener('change',()=>{
+  const file=teamLogoFile.files?.[0];
+  const team=appData.teams.find(t=>t.id===logoEditingTeamId);
+  if(!file || !team){ teamLogoFile.value=''; return; }
+  if(!file.type.startsWith('image/')){ alert('Choose an image file for the team logo.'); teamLogoFile.value=''; return; }
+
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const image=new Image();
+    image.onload=()=>{
+      const size=220;
+      const canvas=document.createElement('canvas');
+      canvas.width=size; canvas.height=size;
+      const ctx=canvas.getContext('2d');
+      ctx.fillStyle='#0b121b';
+      ctx.fillRect(0,0,size,size);
+      const scale=Math.min(size/image.width,size/image.height);
+      const w=image.width*scale,h=image.height*scale;
+      ctx.drawImage(image,(size-w)/2,(size-h)/2,w,h);
+      team.logoDataUrl=canvas.toDataURL('image/jpeg',.84);
+      saveAppData();
+      renderManager();
+    };
+    image.src=reader.result;
+  };
+  reader.readAsDataURL(file);
+  teamLogoFile.value='';
+});
+
 document.getElementById('addTeamBtn').addEventListener('click', () => {
   const input=document.getElementById('teamNameInput'); const name=input.value.trim(); if(!name) return;
-  const team={id:uid('team'),name}; appData.teams.push(team); appData.selectedTeamId=team.id; input.value=''; saveAppData(); renderManager();
+  const team={id:uid('team'),name,logoDataUrl:null};
+  appData.teams.push(team);
+  appData.selectedTeamId=team.id;
+  managerView='teams';
+  input.value='';
+  saveAppData();
+  renderManager();
 });
-teamSelect.addEventListener('change', () => { appData.selectedTeamId=teamSelect.value||null; saveAppData(); renderManager(); });
 
 document.getElementById('deleteTeamBtn').addEventListener('click',()=>{
   const team=selectedTeam();
@@ -1778,6 +2001,7 @@ document.getElementById('deleteTeamBtn').addEventListener('click',()=>{
   appData.players=appData.players.filter(p=>p.teamId!==team.id);
   appData.teams=appData.teams.filter(t=>t.id!==team.id);
   appData.selectedTeamId=appData.teams[0]?.id||null;
+  managerView='teams';
   saveAppData();
   renderManager();
 });
@@ -1785,7 +2009,11 @@ document.getElementById('deleteTeamBtn').addEventListener('click',()=>{
 document.getElementById('addPlayerBtn').addEventListener('click', () => {
   if(!appData.selectedTeamId){ alert('Add a team first.'); return; }
   const input=document.getElementById('playerNameInput'); const name=input.value.trim(); if(!name) return;
-  appData.players.push({id:uid('player'),teamId:appData.selectedTeamId,name,throws:null}); input.value=''; saveAppData(); renderManager();
+  appData.players.push({id:uid('player'),teamId:appData.selectedTeamId,name,throws:null});
+  managerView='roster';
+  input.value='';
+  saveAppData();
+  renderManager();
 });
 
 function startBullpen(playerId) {
@@ -2503,8 +2731,8 @@ document.getElementById('savePlayerProfileBtn').addEventListener('click',()=>{
   window.showHistory(p.id);
 });
 
-document.getElementById('historyBackBtn').addEventListener('click',()=>{historyScreen.style.display='none';managerScreen.style.display='flex';renderManager();});
-homeBtn.addEventListener('click',()=>{ statsScreen.style.display='none'; trackingScreen.style.display='none'; historyScreen.style.display='none'; managerScreen.style.display='flex'; renderManager(); });
+document.getElementById('historyBackBtn').addEventListener('click',()=>{historyScreen.style.display='none';managerScreen.style.display='flex';managerView='roster';renderManager();});
+homeBtn.addEventListener('click',()=>{ statsScreen.style.display='none'; trackingScreen.style.display='none'; historyScreen.style.display='none'; managerScreen.style.display='flex'; managerView='roster'; renderManager(); });
 
 async function exportSelectedTeamBackup(){
   const team=selectedTeam();
@@ -2632,6 +2860,7 @@ clearTargetBtn.addEventListener('click', () => {
     statsScreen.style.display='none';
     historyScreen.style.display='none';
     managerScreen.style.display='flex';
+    managerView='roster';
     renderManager();
     return;
   }
@@ -3097,6 +3326,7 @@ function finishSession() {
     statsScreen.style.display='none';
     historyScreen.style.display='none';
     managerScreen.style.display='flex';
+    managerView='roster';
     renderManager();
     return;
   }
