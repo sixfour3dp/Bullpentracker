@@ -1832,8 +1832,8 @@ function lateralMissBias(pitches, throws=null){
   const throwingPct=gsSided?100-glovePct:0;
   let direction='BALANCED', pct=0;
   if(throws && gsSided){
-    if(glove>throwing){direction='GLOVE SIDE';pct=glovePct;}
-    else if(throwing>glove){direction='THROWING SIDE';pct=throwingPct;}
+    if(glove>throwing){direction='GS';pct=glovePct;}
+    else if(throwing>glove){direction='TS';pct=throwingPct;}
     else {direction='BALANCED';pct=50;}
   }
   const avgZones=total ? Math.abs(sumDx/total)/zoneW : 0;
@@ -2000,7 +2000,7 @@ function buildHistoryMetricCards(allSessions,player){
 
   const miss=agg.missBias;
   const biasValue=!player.throws?'SET HAND':(miss.sided?`${miss.pct}% ${miss.direction}`:'—');
-  const biasSub=!player.throws?'Tap player icon to set throwing hand':(miss.sided?`${miss.glove} glove · ${miss.throwing} throwing`:'No lateral misses');
+  const biasSub=!player.throws?'Tap player icon to set throwing hand':(miss.sided?`${miss.glove} GS · ${miss.throwing} TS`:'No lateral misses');
 
   let cards=`<div class="trend-card"><div class="trend-value">${sessionCount}</div><div class="trend-label">${firstLabel}</div></div>`;
   cards+=`<div class="trend-card"><div class="trend-value">${agg.totalPitches}</div><div class="trend-label">Total Pitches</div></div>`;
@@ -2100,6 +2100,8 @@ function bindSessionHistorySwipe(){
         return;
       }
       card.style.transition=''; card.style.transform='';
+      wrap.classList.remove('open');
+      card.style.transform='';
       // A normal tap selects/deselects this bullpen for combined history metrics.
       const sessionId=wrap.dataset.sessionId;
       if(historySelectedSessionIds.has(sessionId)) historySelectedSessionIds.delete(sessionId);
@@ -2112,6 +2114,8 @@ function bindSessionHistorySwipe(){
       if(e.detail===0) return;
       // Touch browsers already handle tap above; avoid the synthetic click immediately after touch.
       if('ontouchstart' in window) return;
+      wrap.classList.remove('open');
+      card.style.transform='';
       const sessionId=wrap.dataset.sessionId;
       if(historySelectedSessionIds.has(sessionId)) historySelectedSessionIds.delete(sessionId);
       else historySelectedSessionIds.add(sessionId);
@@ -2283,10 +2287,10 @@ function exportHistoryPdf(playerId){
   </style></head><body><div class="preview-nav"><button id="backToAppBtn">← Back to Pocket Bullpen</button><button class="printbtn" id="printPdfBtn">Print / Save PDF</button></div><div class="page">
     <div class="brand"><div class="logo"><span class="p">POCKET</span><span class="b">BULLPEN</span></div><div class="name">${printSafe(player.name)}</div><div class="sub">${printSafe(team?.name||'')} · ${player.throws ? 'Throws '+(player.throws==='R'?'Right':'Left')+' · ' : ''}Complete Bullpen History · ${sessions.length} sessions</div></div>
     <div class="cards"><div class="card"><label>Sessions</label><strong class="cyan">${sessions.length}</strong></div><div class="card"><label>Total Pitches</label><strong class="yellow">${totalPitches}</strong></div><div class="card"><label>Avg Strike %</label><strong class="green">${avgStrike}%</strong></div><div class="card"><label>Latest PB Score</label><strong class="orange">${latestPb}</strong></div></div>
-    <div class="cards" style="grid-template-columns:1fr 1fr"><div class="card"><label>Personal Best FB Velo</label><strong class="cyan">${personalBestFb}${personalBestFb!=='—'?' MPH':''}</strong></div><div class="card"><label>Miss-Side Bias</label><strong class="orange">${!player.throws?'HAND NOT SET':(bias.sided?`${bias.pct}% ${bias.direction}`:'—')}</strong><small>${!player.throws?'Set throwing hand in player profile':(bias.sided?`${bias.glove} glove-side · ${bias.throwing} throwing-side · throws ${player.throws==='R'?'right':'left'}`:'Not enough lateral misses')}</small></div></div>
+    <div class="cards" style="grid-template-columns:1fr 1fr"><div class="card"><label>Personal Best FB Velo</label><strong class="cyan">${personalBestFb}${personalBestFb!=='—'?' MPH':''}</strong></div><div class="card"><label>Miss-Side Bias</label><strong class="orange">${!player.throws?'HAND NOT SET':(bias.sided?`${bias.pct}% ${bias.direction}`:'—')}</strong><small>${!player.throws?'Set throwing hand in player profile':(bias.sided?`${bias.glove} GS · ${bias.throwing} TS · throws ${player.throws==='R'?'right':'left'}`:'Not enough lateral misses')}</small></div></div>
     <div class="section"><h2>Strike % trend by pitch</h2>${trendSvg}</div>
     <div class="section"><h2>Fastball velocity progression</h2>${velocitySvg}</div>
-    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div></div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Pitch dots are intentionally omitted for a cleaner historical view.</div><div style="color:#6686a4;font-size:10px;line-height:1.5;margin-top:8px"><strong style="color:#edf5ff">Miss-Side Bias:</strong> compares each missed pitch to its intended target. For right-handed pitchers, misses left on the on-screen zone are glove-side and misses right are throwing-side; the mapping reverses for left-handed pitchers.</div></div></div></div>
+    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div></div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Pitch dots are intentionally omitted for a cleaner historical view.</div><div style="color:#6686a4;font-size:10px;line-height:1.5;margin-top:8px"><strong style="color:#edf5ff">Miss-Side Bias:</strong> compares each missed pitch to its intended target. For right-handed pitchers, misses left on the on-screen zone are GS and misses right are TS; the mapping reverses for left-handed pitchers.</div></div></div></div>
     <div class="section"><h2>Bullpen sessions</h2><table><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th><th>PB Score</th></tr></thead><tbody>${sessionRows}</tbody></table></div>
     <div class="section"><h2>Session notes</h2><div class="notes">${notes}</div></div><div class="footer">Pocket Bullpen · Player History Report</div>
     <script>
