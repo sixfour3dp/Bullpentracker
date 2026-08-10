@@ -1446,12 +1446,49 @@
     font-size:12px;
   }
   .team-color-field input[type="color"] {
-    width:42px; height:34px; padding:0; border:0; background:transparent;
+    width:38px;
+    height:38px;
+    padding:0;
+    border:0;
+    border-radius:4px;
+    background:transparent;
+    overflow:hidden;
+  }
+  .team-color-field input[type="color"]::-webkit-color-swatch-wrapper { padding:0; }
+  .team-color-field input[type="color"]::-webkit-color-swatch {
+    border:1px solid var(--border);
+    border-radius:4px;
   }
   .team-gradient-preview {
     width:100%; height:22px; border-radius:999px;
     border:1px solid var(--border);
     margin-top:10px;
+  }
+
+
+  .color-square {
+    width:38px; height:38px; flex:0 0 38px;
+    border-radius:4px;
+    border:2px solid rgba(255,255,255,.28);
+    padding:0;
+  }
+  .team-color-palette {
+    display:grid;
+    grid-template-columns:repeat(8,1fr);
+    gap:8px;
+    width:100%;
+    margin-top:10px;
+  }
+  .palette-swatch {
+    aspect-ratio:1;
+    min-width:0;
+    border-radius:5px;
+    border:2px solid rgba(255,255,255,.16);
+    padding:0;
+  }
+  .palette-swatch.selected {
+    outline:2px solid var(--text);
+    outline-offset:2px;
   }
 
 </style>
@@ -1534,13 +1571,16 @@
           <div class="team-color-row">
             <label class="team-color-field">
               <span>Primary Color 1</span>
-              <input id="teamColor1" type="color" value="#00d4ff">
+              <button id="teamColor1Btn" class="color-square" type="button" aria-label="Choose primary color 1"></button>
+              <input id="teamColor1" type="hidden" value="#00d4ff">
             </label>
             <label class="team-color-field">
               <span>Primary Color 2</span>
-              <input id="teamColor2" type="color" value="#ff5c35">
+              <button id="teamColor2Btn" class="color-square" type="button" aria-label="Choose primary color 2"></button>
+              <input id="teamColor2" type="hidden" value="#ff5c35">
             </label>
           </div>
+          <div class="team-color-palette" id="teamColorPalette" aria-label="Team color choices"></div>
           <div class="team-gradient-preview" id="teamGradientPreview"></div>
         </div>
         <div class="edit-actions">
@@ -2078,15 +2118,44 @@ function openTeamSettings(teamId){
   document.getElementById('teamSettingsName').textContent=team.name;
   teamColor1.value=team.primaryColor1||'#00d4ff';
   teamColor2.value=team.primaryColor2||'#ff5c35';
+  activeTeamColorField=1;
   refreshTeamGradientPreview();
+  renderTeamColorPicker();
   teamSettingsModal.classList.add('visible');
 }
 function closeTeamSettings(){
   teamSettingsModal.classList.remove('visible');
   settingsEditingTeamId=null;
 }
-teamColor1.addEventListener('input',refreshTeamGradientPreview);
-teamColor2.addEventListener('input',refreshTeamGradientPreview);
+const teamColor1Btn=document.getElementById('teamColor1Btn');
+const teamColor2Btn=document.getElementById('teamColor2Btn');
+const teamColorPalette=document.getElementById('teamColorPalette');
+let activeTeamColorField=1;
+const TEAM_COLORS=[
+  '#ffffff','#cbd5e1','#64748b','#111827',
+  '#ef4444','#f97316','#facc15','#22c55e',
+  '#14b8a6','#06b6d4','#0ea5e9','#2563eb',
+  '#4f46e5','#7c3aed','#a855f7','#ec4899',
+  '#991b1b','#9a3412','#854d0e','#166534',
+  '#115e59','#155e75','#1e3a8a','#581c87'
+];
+
+function renderTeamColorPicker(){
+  teamColor1Btn.style.background=teamColor1.value;
+  teamColor2Btn.style.background=teamColor2.value;
+  const current=activeTeamColorField===1?teamColor1.value:teamColor2.value;
+  teamColorPalette.innerHTML=TEAM_COLORS.map(c=>`<button type="button" class="palette-swatch ${c.toLowerCase()===current.toLowerCase()?'selected':''}" data-color="${c}" style="background:${c}" aria-label="${c}"></button>`).join('');
+  teamColorPalette.querySelectorAll('.palette-swatch').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      if(activeTeamColorField===1) teamColor1.value=btn.dataset.color;
+      else teamColor2.value=btn.dataset.color;
+      refreshTeamGradientPreview();
+      renderTeamColorPicker();
+    });
+  });
+}
+teamColor1Btn.addEventListener('click',()=>{activeTeamColorField=1;renderTeamColorPicker();});
+teamColor2Btn.addEventListener('click',()=>{activeTeamColorField=2;renderTeamColorPicker();});
 document.getElementById('cancelTeamSettingsBtn').addEventListener('click',closeTeamSettings);
 document.getElementById('saveTeamSettingsBtn').addEventListener('click',()=>{
   const team=appData.teams.find(t=>t.id===settingsEditingTeamId);
