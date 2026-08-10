@@ -1065,10 +1065,12 @@
 
 
   .session-swipe { position:relative; overflow:hidden; border-bottom:1px solid var(--border); }
-  .session-swipe-actions { position:absolute; inset:0 0 0 auto; width:92px; display:flex; justify-content:flex-end; background:var(--accent); }
-  .session-view-btn { width:92px; border:0; background:var(--accent); color:#071018; font-family:'Barlow Condensed',sans-serif; font-weight:900; letter-spacing:1px; }
+  .session-swipe-actions { position:absolute; inset:0 0 0 auto; width:150px; display:flex; justify-content:flex-end; }
+  .session-view-btn { width:88px; border:0; background:var(--accent); color:#071018; font-family:'Barlow Condensed',sans-serif; font-weight:900; letter-spacing:1px; }
+  .session-delete-btn { width:62px; border:0; background:var(--red); color:white; display:flex; align-items:center; justify-content:center; }
+  .session-delete-btn svg { width:20px; height:20px; }
   .session-swipe-card { position:relative; z-index:2; background:var(--surface); transition:transform .18s ease; will-change:transform; }
-  .session-swipe.open .session-swipe-card { transform:translateX(-92px); }
+  .session-swipe.open .session-swipe-card { transform:translateX(-150px); }
   .session-note-row-inline { padding:0 12px 10px; color:var(--text); font-size:12px; }
 
 
@@ -1211,7 +1213,7 @@
     <div class="header">
       <div class="header-top"><div class="app-logo">POCKET<span>BULLPEN</span></div></div>
       <div class="manager-title">Bullpen Tracker</div>
-      <div class="manager-sub">Teams · Players · Session History</div>
+      <div class="manager-sub">TRACK · ANALYZE · DEVELOP</div>
     </div>
     <div class="manager-scroll">
       <div class="panel">
@@ -1743,7 +1745,12 @@ window.showHistory = function(playerId) {
         </div>
         ${sessions.map(s=>{
           return `<div class="session-swipe" data-session-id="${s.id}">
-            <div class="session-swipe-actions"><button type="button" class="session-view-btn">VIEW</button></div>
+            <div class="session-swipe-actions">
+               <button type="button" class="session-view-btn">VIEW</button>
+               <button type="button" class="session-delete-btn" aria-label="Delete session" title="Delete session">
+                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
+               </button>
+             </div>
             <div class="session-swipe-card">
               <div style="display:grid;grid-template-columns:1.15fr .75fr .8fr .9fr .9fr;padding:12px;align-items:center;color:var(--text);text-align:center;">
                 <div style="text-align:left;color:var(--muted);font-family:'Barlow Condensed',sans-serif;letter-spacing:.45px;">${new Date(s.createdAt).toLocaleDateString()}</div>
@@ -1765,24 +1772,35 @@ function bindSessionHistorySwipe(){
   document.querySelectorAll('.session-swipe').forEach(wrap=>{
     const card=wrap.querySelector('.session-swipe-card');
     const viewBtn=wrap.querySelector('.session-view-btn');
+    const deleteBtn=wrap.querySelector('.session-delete-btn');
     let sx=0, sy=0, base=0, drag=false;
     card.addEventListener('touchstart',e=>{
-      const t=e.touches[0]; sx=t.clientX; sy=t.clientY; base=wrap.classList.contains('open')?-92:0; drag=true; card.style.transition='none';
+      const t=e.touches[0]; sx=t.clientX; sy=t.clientY; base=wrap.classList.contains('open')?-150:0; drag=true; card.style.transition='none';
     },{passive:true});
     card.addEventListener('touchmove',e=>{
       if(!drag)return;
       const t=e.touches[0], dx=t.clientX-sx, dy=t.clientY-sy;
       if(Math.abs(dy)>Math.abs(dx)+6)return;
-      const x=Math.max(-92,Math.min(0,base+dx));
+      const x=Math.max(-150,Math.min(0,base+dx));
       card.style.transform=`translateX(${x}px)`;
     },{passive:true});
     card.addEventListener('touchend',e=>{
       if(!drag)return; drag=false;
       const t=e.changedTouches[0], dx=t.clientX-sx;
-      wrap.classList.toggle('open', base+dx < -42);
+      wrap.classList.toggle('open', base+dx < -65);
       card.style.transition=''; card.style.transform='';
     });
     viewBtn.addEventListener('click',()=>openHistoricalSession(wrap.dataset.sessionId));
+    deleteBtn.addEventListener('click',()=>{
+      const sessionId=wrap.dataset.sessionId;
+      const s=appData.sessions.find(x=>x.id===sessionId);
+      if(!s) return;
+      const date=new Date(s.createdAt).toLocaleDateString();
+      if(!confirm(`Delete the bullpen session from ${date}? This cannot be undone.`)) return;
+      appData.sessions=appData.sessions.filter(x=>x.id!==sessionId);
+      saveAppData();
+      openPlayerHistory(historyPlayerId);
+    });
   });
 }
 
