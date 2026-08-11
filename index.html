@@ -875,6 +875,18 @@
     padding: 2px 10px;
     cursor: pointer;
   }
+  .target-record-btn {
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:900;
+    font-size:11px;
+    letter-spacing:.7px;
+    background:var(--accent);
+    color:#071018;
+    border:1px solid var(--accent);
+    border-radius:20px;
+    padding:2px 10px;
+    cursor:pointer;
+  }
 
 
 
@@ -2026,6 +2038,7 @@ let state = {
   sessionSaved: false,
   sessionSetup: {...DEFAULT_SESSION_SETUP},
   pitchCountAlertShown: false,
+  smartSuggestionLabel: '',
 };
 
 // pitch object: { num, type, targetZones, resultZone, resultX, resultY, isStrike, isOnTarget }
@@ -2484,7 +2497,8 @@ function beginBullpenSession(playerId, setup=DEFAULT_SESSION_SETUP) {
       mode:setup.mode==='smart'?'smart':'manual',
       smartPitchTypes:selectedTypes.length?selectedTypes:['4S']
     },
-    pitchCountAlertShown:false
+    pitchCountAlertShown:false,
+    smartSuggestionLabel:''
   };
   resetTrackingUI();
   const p=activePlayer(); const t=appData.teams.find(x=>x.id===p?.teamId);
@@ -2888,7 +2902,8 @@ function openHistoricalSession(sessionId){
     savedSessionId:s.id,
     reportMode:'historical',
     sessionSetup:{...DEFAULT_SESSION_SETUP,...(s.sessionSetup||{})},
-    pitchCountAlertShown:true
+    pitchCountAlertShown:true,
+    smartSuggestionLabel:''
   };
   const t=appData.teams.find(x=>x.id===p?.teamId);
   document.getElementById('statsSubtitle').textContent='';
@@ -3352,21 +3367,59 @@ function smartPitchSuggestion(index){
   const setup=state.sessionSetup || DEFAULT_SESSION_SETUP;
   const types=(setup.smartPitchTypes||[]).filter(code=>PITCH_TYPES.some(p=>p.code===code));
   const selected=types.length?types:['4S'];
-  const pitchType=selected[index % selected.length];
-  const zonePlan=[2,5,8,1,3,7,9,4,6];
-  return { pitchType, zones:[zonePlan[index % zonePlan.length]] };
+  const has=code=>selected.includes(code);
+  const firstAvailable=codes=>codes.find(has) || selected[0];
+  const fastball=firstAvailable(['4S','2S']);
+  const secondary=firstAvailable(['SL','SW','CB','CT','CH','SP']);
+  const soft=firstAvailable(['CH','SP','CB','SL','SW','CT']);
+  const cutter=firstAvailable(['CT','2S','4S']);
+  const breaking=firstAvailable(['SL','SW','CB','CT']);
+  const sequences=[
+    [
+      {pitchType:fastball,zones:[4],label:'SEQUENCE 1 - FB arm side'},
+      {pitchType:secondary,zones:[6],label:'SEQUENCE 1 - secondary away'},
+      {pitchType:fastball,zones:[2],label:'SEQUENCE 1 - FB up'},
+      {pitchType:soft,zones:[9],label:'SEQUENCE 1 - chase down/away'}
+    ],
+    [
+      {pitchType:fastball,zones:[6],label:'SEQUENCE 2 - FB away'},
+      {pitchType:cutter,zones:[4],label:'SEQUENCE 2 - hard in'},
+      {pitchType:breaking,zones:[8],label:'SEQUENCE 2 - spin down'},
+      {pitchType:fastball,zones:[2],label:'SEQUENCE 2 - chase FB up'}
+    ],
+    [
+      {pitchType:fastball,zones:[5],label:'SEQUENCE 3 - establish strike'},
+      {pitchType:soft,zones:[7],label:'SEQUENCE 3 - off-speed down/in'},
+      {pitchType:fastball,zones:[3],label:'SEQUENCE 3 - FB up/away'},
+      {pitchType:breaking,zones:[9],label:'SEQUENCE 3 - chase off plate/down'},
+      {pitchType:fastball,zones:[1],label:'SEQUENCE 3 - finish up/in'}
+    ],
+    [
+      {pitchType:secondary,zones:[6],label:'SEQUENCE 4 - secondary strike away'},
+      {pitchType:fastball,zones:[4],label:'SEQUENCE 4 - FB in'},
+      {pitchType:soft,zones:[8],label:'SEQUENCE 4 - change eye level'},
+      {pitchType:fastball,zones:[2],label:'SEQUENCE 4 - elevated chase'}
+    ]
+  ];
+  const plan=sequences.flat();
+  return plan[index % plan.length];
 }
 
 function applySmartSuggestion(){
   if(state.phase!=='target' || state.sessionSetup?.mode!=='smart') return;
   const suggestion=smartPitchSuggestion(Math.max(0,state.pitchNum-1));
+  state.smartSuggestionLabel=suggestion.label || '';
   setActivePitchType(suggestion.pitchType);
   state.targetZones=new Set(suggestion.zones);
   strikeZoneTarget.querySelectorAll('.zone-cell').forEach(cell=>{
     cell.classList.toggle('target',state.targetZones.has(Number(cell.dataset.zone)));
   });
   updateTargetBadges();
-  showAdvancePrompt(true);
+  phaseInstEl.textContent = state.smartSuggestionLabel || 'SMART SEQUENCE - SUGGESTED PITCH SET';
+  phaseInstEl.className = 'phase-instruction phase-target';
+  doneBtn.textContent = 'DONE SESSION';
+  doneBtn.onclick = finishSession;
+  doneBtn.disabled = false;
 }
 
 document.querySelectorAll('.pitch-btn').forEach(btn => {
@@ -3399,8 +3452,10 @@ function updateTargetBadges() {
   } else {
     const zoneNames = {1:'UP-IN',2:'UP',3:'UP-OUT',4:'MID-IN',5:'MID',6:'MID-OUT',7:'DOWN-IN',8:'DOWN',9:'DOWN-OUT'};
     const pills = [...state.targetZones].map(z => `<span class="target-zone-pill">Z${z} ${zoneNames[z]}</span>`).join('');
-    targetBadgeRow.innerHTML = pills + `<button class="select-all-btn" id="selectAllBtn">ALL</button>`;
+    const smartLabel=state.sessionSetup?.mode==='smart' && state.smartSuggestionLabel ? `<span class="target-zone-pill session-plan-pill">${esc(state.smartSuggestionLabel)}</span>` : '';
+    targetBadgeRow.innerHTML = smartLabel + pills + `<button class="select-all-btn" id="selectAllBtn">ALL</button>` + (state.sessionSetup?.mode==='smart' ? `<button class="target-record-btn" id="targetRecordBtn">RECORD PITCH</button>` : '');
     document.getElementById('selectAllBtn')?.addEventListener('click', selectAllZones);
+    document.getElementById('targetRecordBtn')?.addEventListener('click', toResultPhase);
   }
 }
 
@@ -3501,7 +3556,17 @@ strikeZoneTarget.addEventListener('click', () => {
   setTimeout(() => {
     if (state.phase === 'target' && state.targetZones.size > 0) {
       // Show prompt to move to result phase
-      showAdvancePrompt(true);
+      if(state.sessionSetup?.mode==='smart'){
+        advancePromptShown=false;
+        phaseInstEl.textContent='LOCATION SET - TAP RECORD PITCH OR DONE SESSION';
+        phaseInstEl.className='phase-instruction phase-target';
+        doneBtn.textContent='DONE SESSION';
+        doneBtn.onclick=finishSession;
+        doneBtn.disabled=false;
+        updateTargetBadges();
+      }else{
+        showAdvancePrompt(true);
+      }
     } else {
       showAdvancePrompt(false);
     }
