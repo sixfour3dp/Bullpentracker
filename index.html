@@ -875,18 +875,6 @@
     padding: 2px 10px;
     cursor: pointer;
   }
-  .target-record-btn {
-    font-family:'Barlow Condensed',sans-serif;
-    font-weight:900;
-    font-size:11px;
-    letter-spacing:.7px;
-    background:var(--accent);
-    color:#071018;
-    border:1px solid var(--accent);
-    border-radius:20px;
-    padding:2px 10px;
-    cursor:pointer;
-  }
 
 
 
@@ -1377,6 +1365,7 @@
     color:#071018; background:var(--accent); border-color:var(--accent);
   }
   .setup-mode-options { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  #smartDifficultyOptions { grid-template-columns:repeat(3,1fr); }
   .setup-option-btn {
     padding:12px; border-radius:10px; border:1px solid var(--border);
     background:var(--surface2); color:var(--muted);
@@ -1907,7 +1896,7 @@
     <div class="session-report-notes" id="sessionReportNotes">No session notes.</div>
 
     <div style="display:flex;justify-content:flex-end;padding:0 16px 10px"><button class="pdf-btn" id="sessionPdfBtn">PDF REPORT</button></div>
-    <div class="session-report-actions"><button class="new-session-btn" id="continueSessionBtn" style="background:var(--green);color:#071018">← CONTINUE SESSION</button>
+    <div class="session-report-actions"><button class="new-session-btn" id="continueSessionBtn" style="background:var(--accent);color:#071018">← CONTINUE SESSION</button>
     <button class="new-session-btn" id="newSessionBtn" style="margin-top:6px">+ NEW SESSION</button>
     <button class="new-session-btn" id="homeBtn" style="background:var(--surface2);color:var(--text);margin-top:6px">← PLAYERS</button></div>
   </div>
@@ -1937,7 +1926,13 @@
           </div>
         </div>
         <div class="edit-field full smart-pitch-field disabled" id="smartPitchField">
-          <label>Smart Bullpen Pitches</label>
+          <label>Smart Difficulty</label>
+          <div class="setup-mode-options" id="smartDifficultyOptions">
+            <button type="button" class="setup-option-btn active" data-smart-difficulty="easy">EASY</button>
+            <button type="button" class="setup-option-btn" data-smart-difficulty="medium">MEDIUM</button>
+            <button type="button" class="setup-option-btn" data-smart-difficulty="advanced">ADVANCED</button>
+          </div>
+          <label style="margin-top:10px">Smart Bullpen Pitches</label>
           <div class="smart-pitch-grid" id="smartPitchOptions"></div>
         </div>
       </div>
@@ -2019,6 +2014,7 @@ const DEFAULT_SESSION_SETUP = {
   bullpenType:'Mound',
   pitchCount:25,
   mode:'manual',
+  smartDifficulty:'easy',
   smartPitchTypes:['4S','2S','CH','CB','SL']
 };
 
@@ -2426,6 +2422,7 @@ function openSessionSetup(){
   buildSessionSetupControls();
   setSetupGroupValue('bullpenTypeOptions','bullpenType',DEFAULT_SESSION_SETUP.bullpenType);
   setSetupGroupValue('bullpenModeOptions','bullpenMode',DEFAULT_SESSION_SETUP.mode);
+  setSetupGroupValue('smartDifficultyOptions','smartDifficulty',DEFAULT_SESSION_SETUP.smartDifficulty);
   if(setupPitchCount) setupPitchCount.value=String(DEFAULT_SESSION_SETUP.pitchCount);
   smartPitchOptions?.querySelectorAll('input[type="checkbox"]').forEach(input=>{
     input.checked=DEFAULT_SESSION_SETUP.smartPitchTypes.includes(input.value);
@@ -2447,6 +2444,7 @@ function readSessionSetup(){
     bullpenType:selectedSetupValue('bullpenTypeOptions','bullpenType') || 'Mound',
     pitchCount:Number(setupPitchCount?.value)||25,
     mode,
+    smartDifficulty:selectedSetupValue('smartDifficultyOptions','smartDifficulty') || 'easy',
     smartPitchTypes:smartPitchTypes.length?smartPitchTypes:['4S']
   };
 }
@@ -2456,6 +2454,9 @@ document.querySelectorAll('#bullpenTypeOptions .setup-option-btn').forEach(btn=>
 });
 document.querySelectorAll('#bullpenModeOptions .setup-option-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{ setSetupGroupValue('bullpenModeOptions','bullpenMode',btn.dataset.bullpenMode); syncSmartPitchField(); });
+});
+document.querySelectorAll('#smartDifficultyOptions .setup-option-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>setSetupGroupValue('smartDifficultyOptions','smartDifficulty',btn.dataset.smartDifficulty));
 });
 document.getElementById('cancelSessionSetupBtn').addEventListener('click',closeSessionSetup);
 document.getElementById('beginSessionSetupBtn').addEventListener('click',()=>{
@@ -2495,6 +2496,7 @@ function beginBullpenSession(playerId, setup=DEFAULT_SESSION_SETUP) {
       bullpenType:setup.bullpenType || 'Mound',
       pitchCount:Number(setup.pitchCount)||25,
       mode:setup.mode==='smart'?'smart':'manual',
+      smartDifficulty:['easy','medium','advanced'].includes(setup.smartDifficulty)?setup.smartDifficulty:'easy',
       smartPitchTypes:selectedTypes.length?selectedTypes:['4S']
     },
     pitchCountAlertShown:false,
@@ -2515,7 +2517,7 @@ function resetTrackingUI() {
   strikeZoneTarget.style.display='grid'; outerZone.style.display='none'; outerZone.classList.remove('active');
   strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('target'));
   phaseInstEl.textContent='TAP ZONE(S) TO SET TARGET LOCATION'; phaseInstEl.className='phase-instruction phase-target';
-  clearTargetBtn.textContent='VIEW SESSION'; doneBtn.textContent='DONE SESSION'; doneBtn.onclick=finishSession;
+  clearTargetBtn.textContent='VIEW SESSION'; clearTargetBtn.dataset.action='view'; doneBtn.textContent='DONE SESSION'; doneBtn.onclick=finishSession;
   document.querySelectorAll('.pitch-dot,.click-ring').forEach(d=>d.remove()); updateTargetBadges();
   setActivePitchType(state.currentPitchType || '4S');
   applySmartSuggestion();
@@ -3402,7 +3404,24 @@ function smartPitchSuggestion(index){
     ]
   ];
   const plan=sequences.flat();
-  return plan[index % plan.length];
+  const step=plan[index % plan.length];
+  return {...step,zones:smartZonesForDifficulty(step.zones?.[0]||5,setup.smartDifficulty)};
+}
+
+function smartZonesForDifficulty(baseZone,difficulty='easy'){
+  const z=Number(baseZone)||5;
+  const row=Math.floor((z-1)/3), col=(z-1)%3;
+  if(difficulty==='advanced') return [z];
+  if(difficulty==='medium'){
+    const rows=[row,Math.min(2,row+1)];
+    if(row===2) rows[0]=1;
+    const cols=[col,Math.min(2,col+1)];
+    if(col===2) cols[0]=1;
+    return [...new Set(rows.flatMap(r=>cols.map(c=>r*3+c+1)))].slice(0,4);
+  }
+  if(col===1) return [2,5,8];
+  if(col===0) return [row*3+1,row*3+2];
+  return [row*3+2,row*3+3];
 }
 
 function applySmartSuggestion(){
@@ -3417,9 +3436,26 @@ function applySmartSuggestion(){
   updateTargetBadges();
   phaseInstEl.textContent = state.smartSuggestionLabel || 'SMART SEQUENCE - SUGGESTED PITCH SET';
   phaseInstEl.className = 'phase-instruction phase-target';
-  doneBtn.textContent = 'DONE SESSION';
-  doneBtn.onclick = finishSession;
-  doneBtn.disabled = false;
+  setSmartActionBarReady();
+}
+
+function setSmartActionBarReady(){
+  clearTargetBtn.textContent = 'DONE SESSION';
+  clearTargetBtn.dataset.action = 'finish';
+  doneBtn.textContent = 'RECORD PITCH';
+  doneBtn.onclick = toResultPhase;
+  doneBtn.disabled = state.targetZones.size === 0;
+}
+
+function finishSmartSessionFromTarget(){
+  if(state.phase==='target' && state.targetZones.size>0){
+    const shouldRecord=confirm('Record the staged pitch before ending the session?');
+    if(shouldRecord){
+      toResultPhase();
+      return;
+    }
+  }
+  finishSession();
 }
 
 document.querySelectorAll('.pitch-btn').forEach(btn => {
@@ -3453,9 +3489,8 @@ function updateTargetBadges() {
     const zoneNames = {1:'UP-IN',2:'UP',3:'UP-OUT',4:'MID-IN',5:'MID',6:'MID-OUT',7:'DOWN-IN',8:'DOWN',9:'DOWN-OUT'};
     const pills = [...state.targetZones].map(z => `<span class="target-zone-pill">Z${z} ${zoneNames[z]}</span>`).join('');
     const smartLabel=state.sessionSetup?.mode==='smart' && state.smartSuggestionLabel ? `<span class="target-zone-pill session-plan-pill">${esc(state.smartSuggestionLabel)}</span>` : '';
-    targetBadgeRow.innerHTML = smartLabel + pills + `<button class="select-all-btn" id="selectAllBtn">ALL</button>` + (state.sessionSetup?.mode==='smart' ? `<button class="target-record-btn" id="targetRecordBtn">RECORD PITCH</button>` : '');
+    targetBadgeRow.innerHTML = smartLabel + pills + `<button class="select-all-btn" id="selectAllBtn">ALL</button>`;
     document.getElementById('selectAllBtn')?.addEventListener('click', selectAllZones);
-    document.getElementById('targetRecordBtn')?.addEventListener('click', toResultPhase);
   }
 }
 
@@ -3471,6 +3506,10 @@ clearTargetBtn.addEventListener('click', () => {
   if (pendingVelocityPitch) {
     alert('Finish entering velocity for the current pitch before viewing the session.');
     veloInput?.focus();
+    return;
+  }
+  if(state.sessionSetup?.mode==='smart' && clearTargetBtn.dataset.action==='finish'){
+    finishSmartSessionFromTarget();
     return;
   }
   if (!state.pitches.length) {
@@ -3560,9 +3599,7 @@ strikeZoneTarget.addEventListener('click', () => {
         advancePromptShown=false;
         phaseInstEl.textContent='LOCATION SET - TAP RECORD PITCH OR DONE SESSION';
         phaseInstEl.className='phase-instruction phase-target';
-        doneBtn.textContent='DONE SESSION';
-        doneBtn.onclick=finishSession;
-        doneBtn.disabled=false;
+        setSmartActionBarReady();
         updateTargetBadges();
       }else{
         showAdvancePrompt(true);
@@ -4223,10 +4260,15 @@ continueSessionBtn.addEventListener('click',()=>{
   strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('target'));
   updateTargetBadges();
   toTargetPhase();
-  doneBtn.textContent='DONE SESSION';
-  doneBtn.onclick=finishSession;
-  doneBtn.disabled=false;
-  clearTargetBtn.textContent='VIEW SESSION';
+  if(state.sessionSetup?.mode==='smart'){
+    setSmartActionBarReady();
+  }else{
+    doneBtn.textContent='DONE SESSION';
+    doneBtn.onclick=finishSession;
+    doneBtn.disabled=false;
+    clearTargetBtn.textContent='VIEW SESSION';
+    clearTargetBtn.dataset.action='view';
+  }
   renderPitchLog();
   pitchNumEl.textContent=state.pitchNum;
 });
