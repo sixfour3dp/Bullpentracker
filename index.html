@@ -1070,7 +1070,7 @@
   }
   .command-strike-zone {
     position: absolute;
-    inset: 15%;
+    inset: 20%;
     display: grid;
     grid-template-columns: repeat(3,1fr);
     grid-template-rows: repeat(3,1fr);
@@ -2530,13 +2530,13 @@ function pitchTargetZones(p){
 function zoneRC(z){ return {r:Math.floor((Number(z)-1)/3), c:(Number(z)-1)%3}; }
 function lateralMissBias(pitches, throws=null){
   let left=0,right=0,center=0,total=0,sumDx=0;
-  const zoneW=.70/3;
+  const zoneW=.60/3;
   (pitches||[]).forEach(p=>{
     const targets=pitchTargetZones(p);
     if(!targets.length || p.isOnTarget) return;
     const pt=commandMapPoint(p);
     if(!pt || !Number.isFinite(Number(pt.x))) return;
-    const tx=targets.reduce((n,z)=>{const t=zoneRC(z); return n+(.15+((t.c+.5)/3)*.70);},0)/targets.length;
+    const tx=targets.reduce((n,z)=>{const t=zoneRC(z); return n+(.20+((t.c+.5)/3)*.60);},0)/targets.length;
     const dx=Number(pt.x)-tx;
     sumDx+=dx; total++;
     if(dx < -.035) left++;
@@ -2585,7 +2585,7 @@ function pitchLocationQuality(p){
   if(Number.isFinite(x)&&Number.isFinite(y)){
     let best=10;
     targets.forEach(z=>{
-      const t=zoneRC(z); const tx=.15+((t.c+.5)/3)*.70, ty=.15+((t.r+.5)/3)*.70;
+      const t=zoneRC(z); const tx=.20+((t.c+.5)/3)*.60, ty=.20+((t.r+.5)/3)*.60;
       const d=Math.hypot(x-tx,y-ty);
       const sameH=(t.c===1)||((tx<.5)===(x<.5));
       const sameV=(t.r===1)||((ty<.5)===(y<.5));
@@ -3027,7 +3027,7 @@ function exportHistoryPdf(playerId){
     *{box-sizing:border-box}body{margin:0;background:#080d14;color:#edf5ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .page{padding:12px}.brand{border:1px solid #20344a;background:#0e1722;border-radius:18px;padding:18px 20px}.logo{font-size:25px;font-weight:900}.logo .p{color:#00d4ff}.logo .b{color:#ff5c35}.name{font-size:21px;font-weight:850;margin-top:8px}.sub{color:#6686a4;font-size:11px;margin-top:3px}
     .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:13px 0}.card{background:#0f1924;border:1px solid #20344a;border-radius:14px;padding:12px}.card label{display:block;color:#6686a4;font-size:9px;letter-spacing:1px;text-transform:uppercase}.card strong{display:block;font-size:25px;margin-top:5px}.cyan{color:#00d4ff}.green{color:#22c55e}.orange{color:#ff5c35}.yellow{color:#facc15}
-    .section{background:#0f1924;border:1px solid #20344a;border-radius:15px;padding:13px;margin-top:12px}.section h2{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6686a4;margin:0 0 10px}.heatgrid{display:grid;grid-template-columns:.9fr 1.1fr;gap:14px;align-items:start}.heat{position:relative;aspect-ratio:1;background-color:#0b121b;background-image:${heat||'none'};border:1px solid #294057;border-radius:13px;overflow:hidden}.zone{position:absolute;inset:15%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);border:2px solid rgba(255,255,255,.8)}.zone i{border:1px solid rgba(255,255,255,.22)}
+    .section{background:#0f1924;border:1px solid #20344a;border-radius:15px;padding:13px;margin-top:12px}.section h2{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6686a4;margin:0 0 10px}.heatgrid{display:grid;grid-template-columns:.9fr 1.1fr;gap:14px;align-items:start}.heat{position:relative;aspect-ratio:1;background-color:#0b121b;background-image:${heat||'none'};border:1px solid #294057;border-radius:13px;overflow:hidden}.zone{position:absolute;inset:20%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);border:2px solid rgba(255,255,255,.8)}.zone i{border:1px solid rgba(255,255,255,.22)}
     svg{width:100%;height:auto;background:#0b121b;border-radius:10px}.chartlegend{font-size:9px;color:#8aa0b7;margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px}
     table{width:100%;border-collapse:collapse;font-size:10px}th{color:#6686a4;text-transform:uppercase;font-size:9px;letter-spacing:.7px}th,td{padding:7px;border-bottom:1px solid #20344a;text-align:right}th:first-child,td:first-child{text-align:left}.notes{display:grid;gap:8px}.note{background:#0b121b;border:1px solid #20344a;border-radius:10px;padding:9px;font-size:10px;color:#cbd8e5}.note strong{color:#00d4ff;display:block;margin-bottom:4px}.footer{text-align:right;color:#6686a4;font-size:8px;margin-top:12px}
     @media print{.preview-nav{display:none!important}body{background:#080d14}.page{padding:0}.section,.brand,.card{break-inside:avoid}}
@@ -3138,7 +3138,7 @@ function exportSessionPdf(){
     h2{font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:16px 0 7px}
     .heatwrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
     .heat{position:relative;aspect-ratio:1;border:1px solid #ccd6e2;border-radius:12px;background-color:#0d1520;background-image:${heat||'none'};overflow:hidden}
-    .zone{position:absolute;inset:15%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);border:2px solid rgba(255,255,255,.9)}
+    .zone{position:absolute;inset:20%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);border:2px solid rgba(255,255,255,.9)}
     .zone i{border:1px solid rgba(255,255,255,.28)}
     .legend{font-size:10px;color:#617187;margin-top:5px}.good{color:#22c55e}.blueheat{color:#2f80ed}.bad{color:#ef4444}
     .bars{border:1px solid #dbe3ec;border-radius:12px;padding:10px}.barrow{margin:8px 0}.barlabel,.typehead{display:flex;justify-content:space-between;font-size:10px;font-weight:800}.barlabel span,.typehead span{color:#718197;font-weight:600}
@@ -3673,8 +3673,35 @@ function handleResultCellClick(e) {
   recordPitch(zone, relX, relY, true, cell, e.clientX, e.clientY);
 }
 
+function resultGridStrikeHit(clientX, clientY){
+  const grid=outerZone.querySelector('.result-zone-grid');
+  if(!grid) return null;
+  const rect=grid.getBoundingClientRect();
+  if(!rect.width || !rect.height) return null;
+  const x=(clientX-rect.left)/rect.width;
+  const y=(clientY-rect.top)/rect.height;
+  if(x<0 || x>1 || y<0 || y>1) return null;
+  const col=Math.min(4,Math.max(0,Math.floor(x*5)));
+  const row=Math.min(4,Math.max(0,Math.floor(y*5)));
+  if(col<1 || col>3 || row<1 || row>3) return null;
+  const zone=(row-1)*3+col;
+  const cell=outerZone.querySelector(`.zone-cell[data-zone="${zone}"]`);
+  if(!cell) return null;
+  return {
+    zone,
+    cell,
+    relX:Math.max(0,Math.min(1,x*5-col)),
+    relY:Math.max(0,Math.min(1,y*5-row))
+  };
+}
+
 function handleOuterZoneClick(e) {
   if (e.target.classList.contains('zone-cell')) return;
+  const strikeHit=resultGridStrikeHit(e.clientX,e.clientY);
+  if(strikeHit){
+    recordPitch(strikeHit.zone, strikeHit.relX, strikeHit.relY, true, strikeHit.cell, e.clientX, e.clientY);
+    return;
+  }
   const rect=e.currentTarget.getBoundingClientRect();
   const edge=Math.min(e.clientX-rect.left, rect.right-e.clientX, e.clientY-rect.top, rect.bottom-e.clientY);
   const isWild=outerZone.classList.contains('wild-mode') && edge<=38;
@@ -3682,7 +3709,8 @@ function handleOuterZoneClick(e) {
 }
 
 function capturePitchPoint(clickX, clickY) {
-  const rect=outerZone.getBoundingClientRect();
+  const grid=outerZone.querySelector('.result-zone-grid');
+  const rect=(grid||outerZone).getBoundingClientRect();
   if(clickX==null || clickY==null || !rect.width || !rect.height) return {resultX:null,resultY:null};
   return {
     resultX:Math.max(0,Math.min(1,(clickX-rect.left)/rect.width)),
@@ -3944,7 +3972,7 @@ document.getElementById('savePitchEditBtn').addEventListener('click',()=>{
   if(p.resultZone!==null){
     p.relX=.5; p.relY=.5;
     if(oldResultZone!==p.resultZone || !Number.isFinite(Number(p.resultX)) || !Number.isFinite(Number(p.resultY))){
-      const c=(p.resultZone-1)%3, r=Math.floor((p.resultZone-1)/3), inset=.15, span=.70;
+      const c=(p.resultZone-1)%3, r=Math.floor((p.resultZone-1)/3), inset=.20, span=.60;
       p.resultX=inset+((c+.5)/3)*span; p.resultY=inset+((r+.5)/3)*span;
     }
   } else {
@@ -3999,7 +4027,7 @@ function commandMapPoint(p) {
     const z=Number(p.resultZone), col=(z-1)%3, row=Math.floor((z-1)/3);
     const rx=Number.isFinite(Number(p.relX)) ? Number(p.relX) : .5;
     const ry=Number.isFinite(Number(p.relY)) ? Number(p.relY) : .5;
-    const inset=.15, span=.70;
+    const inset=.20, span=.60;
     return {x:inset+((col+rx)/3)*span, y:inset+((row+ry)/3)*span, exact:false};
   }
   // Old outside-zone pitches did not save an exact click coordinate.
