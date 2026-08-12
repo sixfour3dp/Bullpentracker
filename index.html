@@ -1231,6 +1231,8 @@
     line-height:1.5;
     white-space:pre-wrap;
   }
+  .session-notes-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; padding-right:16px; }
+  .edit-notes-btn { border:1px solid var(--border); background:var(--surface2); color:var(--text); border-radius:8px; padding:7px 10px; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:11px; letter-spacing:.7px; }
 
   .session-report-actions { padding-bottom:max(10px,env(safe-area-inset-bottom)); }
   .session-report-actions .new-session-btn { margin-top:6px; margin-bottom:0; }
@@ -1892,7 +1894,7 @@
       <div class="spread-card" id="spreadCard"></div>
     </div>
 
-    <div class="section-label">SESSION NOTES</div>
+    <div class="section-label session-notes-heading"><span>SESSION NOTES</span><button type="button" class="edit-notes-btn" id="editSessionNotesBtn">EDIT NOTES</button></div>
     <div class="session-report-notes" id="sessionReportNotes">No session notes.</div>
 
     <div style="display:flex;justify-content:flex-end;padding:0 16px 10px"><button class="pdf-btn" id="sessionPdfBtn">PDF REPORT</button></div>
@@ -1947,7 +1949,7 @@
   <div class="modal-backdrop" id="sessionNotesModal" role="dialog" aria-modal="true" aria-labelledby="sessionNotesTitle">
     <div class="notes-modal">
       <div class="notes-title" id="sessionNotesTitle">Session Notes</div>
-      <div class="notes-sub">Optional — add anything you want to remember about this bullpen.</div>
+      <div class="notes-sub" id="sessionNotesSub">Optional — add anything you want to remember about this bullpen.</div>
       <textarea id="sessionNotesInput" class="notes-textarea" maxlength="1200" placeholder="Examples: Fastball command improved after 15 pitches. Curveball was sharp. Worked mostly glove side..."></textarea>
       <div class="notes-actions">
         <button id="skipNotesBtn" class="btn btn-secondary">SKIP</button>
@@ -3014,6 +3016,7 @@ function exportHistoryPdf(playerId){
   const trendSvg=buildHistoryStrikeSvg(sessions);
   const velocitySvg=buildFbVelocitySvg(sessions);
   const allHistoryPitches=sessions.flatMap(s=>(s.pitches||[]).map((p,i)=>({...p,num:Number(p.num)||i+1,targetZones:new Set(Array.isArray(p.targetZones)?p.targetZones:[])})));
+  const historyPitchDots=printablePitchDots(allHistoryPitches,{numbered:false});
   const bias=lateralMissBias(allHistoryPitches,player.throws||null);
   const allFbVelos=sessions.flatMap(s=>(s.pitches||[]).filter(p=>isFastballType(p.type) && Number.isFinite(Number(p.velocity)) && Number(p.velocity)>0).map(p=>Number(p.velocity)));
   const personalBestFb=allFbVelos.length?Math.max(...allFbVelos).toFixed(1):'—';
@@ -3029,7 +3032,7 @@ function exportHistoryPdf(playerId){
     *{box-sizing:border-box}body{margin:0;background:#080d14;color:#edf5ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .page{padding:12px}.brand{border:1px solid #20344a;background:#0e1722;border-radius:18px;padding:18px 20px}.logo{font-size:25px;font-weight:900}.logo .p{color:#00d4ff}.logo .b{color:#ff5c35}.name{font-size:21px;font-weight:850;margin-top:8px}.sub{color:#6686a4;font-size:11px;margin-top:3px}
     .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:13px 0}.card{background:#0f1924;border:1px solid #20344a;border-radius:14px;padding:12px}.card label{display:block;color:#6686a4;font-size:9px;letter-spacing:1px;text-transform:uppercase}.card strong{display:block;font-size:25px;margin-top:5px}.cyan{color:#00d4ff}.green{color:#22c55e}.orange{color:#ff5c35}.yellow{color:#facc15}
-    .section{background:#0f1924;border:1px solid #20344a;border-radius:15px;padding:13px;margin-top:12px}.section h2{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6686a4;margin:0 0 10px}.heatgrid{display:grid;grid-template-columns:.9fr 1.1fr;gap:14px;align-items:start}.heat{position:relative;aspect-ratio:1;background-color:#0b121b;background-image:${heat||'none'};border:1px solid #294057;border-radius:13px;overflow:hidden}.zone{position:absolute;inset:20%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);border:2px solid rgba(255,255,255,.8)}.zone i{border:1px solid rgba(255,255,255,.22)}
+    .section{background:#0f1924;border:1px solid #20344a;border-radius:15px;padding:13px;margin-top:12px}.section h2{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6686a4;margin:0 0 10px}.heatgrid{display:grid;grid-template-columns:.9fr 1.1fr;gap:14px;align-items:start}.heat{position:relative;aspect-ratio:1;background-color:#0b121b;background-image:${heat||'none'};border:1px solid #294057;border-radius:13px;overflow:hidden}.zone{position:absolute;inset:20%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);border:2px solid rgba(255,255,255,.8)}.zone i{border:1px solid rgba(255,255,255,.22)}.pitchdot{position:absolute;z-index:3;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border:1px solid white;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.75)}.pitchdot.hit{background:#22c55e}.pitchdot.strike-miss{background:#2f80ed}.pitchdot.miss{background:#ef4444}
     svg{width:100%;height:auto;background:#0b121b;border-radius:10px}.chartlegend{font-size:9px;color:#8aa0b7;margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px}
     table{width:100%;border-collapse:collapse;font-size:10px}th{color:#6686a4;text-transform:uppercase;font-size:9px;letter-spacing:.7px}th,td{padding:7px;border-bottom:1px solid #20344a;text-align:right}th:first-child,td:first-child{text-align:left}.notes{display:grid;gap:8px}.note{background:#0b121b;border:1px solid #20344a;border-radius:10px;padding:9px;font-size:10px;color:#cbd8e5}.note strong{color:#00d4ff;display:block;margin-bottom:4px}.footer{text-align:right;color:#6686a4;font-size:8px;margin-top:12px}
     @media print{.preview-nav{display:none!important}body{background:#080d14}.page{padding:0}.section,.brand,.card{break-inside:avoid}}
@@ -3039,7 +3042,7 @@ function exportHistoryPdf(playerId){
     <div class="cards" style="grid-template-columns:1fr 1fr"><div class="card"><label>Personal Best FB Velo</label><strong class="cyan">${personalBestFb}${personalBestFb!=='—'?' MPH':''}</strong></div><div class="card"><label>Miss-Side Bias</label><strong class="orange">${!player.throws?'HAND NOT SET':(bias.sided?`${bias.pct}% ${bias.direction}`:'—')}</strong><small>${!player.throws?'Set throwing hand in player profile':(bias.sided?`${bias.glove} GS · ${bias.throwing} TS · throws ${player.throws==='R'?'right':'left'}`:'Not enough lateral misses')}</small></div></div>
     <div class="section"><h2>Strike % trend by pitch</h2>${trendSvg}</div>
     <div class="section"><h2>Fastball velocity progression</h2>${velocitySvg}</div>
-    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div></div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Pitch dots are intentionally omitted for a cleaner historical view.</div><div style="color:#6686a4;font-size:10px;line-height:1.5;margin-top:8px"><strong style="color:#edf5ff">Miss-Side Bias:</strong> compares each missed pitch to its intended target. For right-handed pitchers, misses left on the on-screen zone are GS and misses right are TS; the mapping reverses for left-handed pitchers.</div></div></div></div>
+    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div>${historyPitchDots}</div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Dots show individual pitch locations.</div><div style="color:#6686a4;font-size:10px;line-height:1.5;margin-top:8px"><strong style="color:#edf5ff">Miss-Side Bias:</strong> compares each missed pitch to its intended target. For right-handed pitchers, misses left on the on-screen zone are GS and misses right are TS; the mapping reverses for left-handed pitchers.</div></div></div></div>
     <div class="section"><h2>Bullpen sessions</h2><table><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th><th>PB Score</th></tr></thead><tbody>${sessionRows}</tbody></table></div>
     <div class="section"><h2>Session notes</h2><div class="notes">${notes}</div></div><div class="footer">Pocket Bullpen · Player History Report</div>
     <script>
@@ -3063,8 +3066,17 @@ function heatmapBackgroundCss(pitches){
     const pt=commandMapPoint(p);
     const x=(pt.x*100).toFixed(1), y=(pt.y*100).toFixed(1);
     const c=p.isOnTarget ? '34,197,94' : (p.isStrike ? '47,128,237' : '239,68,68');
-    return `radial-gradient(circle at ${x}% ${y}%, rgba(${c},.58) 0%, rgba(${c},.32) 9%, rgba(${c},.12) 19%, rgba(${c},0) 30%)`;
+    return `radial-gradient(circle at ${x}% ${y}%, rgba(${c},.62) 0%, rgba(${c},.34) 6%, rgba(${c},.12) 13%, rgba(${c},0) 21%)`;
   }).join(',');
+}
+
+function printablePitchDots(pitches,{numbered=true}={}){
+  return pitches.map((p,i)=>{
+    const pt=commandMapPoint(p);
+    const cls=p.isOnTarget?'hit':(p.isStrike?'strike-miss':'miss');
+    const label=numbered ? printSafe(Number(p.num)||i+1) : '';
+    return `<span class="pitchdot ${cls}" style="left:${(pt.x*100).toFixed(1)}%;top:${(pt.y*100).toFixed(1)}%">${label}</span>`;
+  }).join('');
 }
 
 function sessionPitchTypeStats(pitches){
@@ -3096,6 +3108,7 @@ function exportSessionPdf(){
   const types=sessionPitchTypeStats(pitches);
   const notes=(rec?.notes||'').trim();
   const heat=heatmapBackgroundCss(pitches);
+  const pitchDots=printablePitchDots(pitches);
 
   // Chart 1: pitch mix distribution
   const mixRows=Object.entries(types).map(([type,d])=>{
@@ -3142,6 +3155,7 @@ function exportSessionPdf(){
     .heat{position:relative;aspect-ratio:1;border:1px solid #ccd6e2;border-radius:12px;background-color:#0d1520;background-image:${heat||'none'};overflow:hidden}
     .zone{position:absolute;inset:20%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);border:2px solid rgba(255,255,255,.9)}
     .zone i{border:1px solid rgba(255,255,255,.28)}
+    .pitchdot{position:absolute;z-index:3;width:14px;height:14px;margin:-7px 0 0 -7px;border:1.5px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#071018;font-size:6px;font-weight:900;box-shadow:0 1px 3px rgba(0,0,0,.7)}.pitchdot.hit{background:#22c55e}.pitchdot.strike-miss{background:#2f80ed;color:white}.pitchdot.miss{background:#ef4444;color:white}
     .legend{font-size:10px;color:#617187;margin-top:5px}.good{color:#22c55e}.blueheat{color:#2f80ed}.bad{color:#ef4444}
     .bars{border:1px solid #dbe3ec;border-radius:12px;padding:10px}.barrow{margin:8px 0}.barlabel,.typehead{display:flex;justify-content:space-between;font-size:10px;font-weight:800}.barlabel span,.typehead span{color:#718197;font-weight:600}
     .track{height:8px;background:#e9eef4;border-radius:99px;overflow:hidden;flex:1}.fill{height:100%;border-radius:99px}.blue,.cyan{background:#00a9d6}.green{background:#22c55e}
@@ -3164,7 +3178,7 @@ function exportSessionPdf(){
     </div>
     <h2>Command heat map</h2>
     <div class="heatwrap">
-      <div><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div></div><div class="legend"><span class="good">● On-target strike</span> &nbsp; <span style="color:#2f80ed">● Strike, missed location</span> &nbsp; <span class="bad">● Ball / WP</span> · Heat only, pitch dots omitted</div></div>
+      <div><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div>${pitchDots}</div><div class="legend"><span class="good">● On-target strike</span> &nbsp; <span style="color:#2f80ed">● Strike, missed location</span> &nbsp; <span class="bad">● Ball / WP</span> · Dots show each pitch location</div></div>
       <div class="bars"><strong style="font-size:11px">Pitch mix</strong>${mixRows||'<p>No pitch mix data.</p>'}</div>
     </div>
     <h2>Command by pitch type</h2>
@@ -4025,6 +4039,17 @@ document.getElementById('savePitchEditBtn').addEventListener('click',()=>{
 // ============================================================
 const sessionNotesModal=document.getElementById('sessionNotesModal');
 const sessionNotesInput=document.getElementById('sessionNotesInput');
+const sessionNotesTitle=document.getElementById('sessionNotesTitle');
+const sessionNotesSub=document.getElementById('sessionNotesSub');
+const skipNotesBtn=document.getElementById('skipNotesBtn');
+const saveNotesBtn=document.getElementById('saveNotesBtn');
+let editingReportNotes=false;
+function setNotesModalMode(editing){
+  sessionNotesTitle.textContent=editing?'Edit Session Notes':'Session Notes';
+  sessionNotesSub.textContent=editing?'Update the notes saved with this session.':'Optional — add anything you want to remember about this bullpen.';
+  skipNotesBtn.textContent=editing?'CANCEL':'SKIP';
+  saveNotesBtn.textContent=editing?'SAVE NOTES':'SAVE SESSION';
+}
 function finishSession() {
   if(state.phase==='result' || pendingVelocityPitch){ return; }
   if (state.pitches.length === 0) {
@@ -4043,13 +4068,22 @@ function finishSession() {
   }
   if(state.sessionSaved){ state.reportMode='finished'; buildStats(); trackingScreen.style.display='none'; statsScreen.style.display='flex'; return; }
   const existingSession=state.savedSessionId?appData.sessions.find(s=>s.id===state.savedSessionId):null;
-  sessionNotesInput.value=existingSession?.notes||''; sessionNotesModal.classList.add('visible'); setTimeout(()=>sessionNotesInput.focus(),100);
+  setNotesModalMode(false); sessionNotesInput.value=existingSession?.notes||''; sessionNotesModal.classList.add('visible'); setTimeout(()=>sessionNotesInput.focus(),100);
 }
 function finalizeFinishedSession(notes=''){
+  editingReportNotes=false;
   sessionNotesModal.classList.remove('visible'); saveCurrentSession(notes); state.reportMode='finished'; buildStats(); trackingScreen.style.display='none'; statsScreen.style.display='flex';
 }
-document.getElementById('saveNotesBtn').addEventListener('click',()=>finalizeFinishedSession(sessionNotesInput.value));
-document.getElementById('skipNotesBtn').addEventListener('click',()=>finalizeFinishedSession(''));
+saveNotesBtn.addEventListener('click',()=>{
+  if(!editingReportNotes) return finalizeFinishedSession(sessionNotesInput.value);
+  const rec=currentSessionRecord();
+  if(rec){ rec.notes=sessionNotesInput.value.trim(); saveAppData(); }
+  editingReportNotes=false; sessionNotesModal.classList.remove('visible'); buildStats();
+});
+skipNotesBtn.addEventListener('click',()=>{
+  if(!editingReportNotes) return finalizeFinishedSession('');
+  editingReportNotes=false; sessionNotesModal.classList.remove('visible');
+});
 
 
 const ZONE_NAMES = {1:'UP-IN',2:'UP',3:'UP-OUT',4:'MID-IN',5:'MID',6:'MID-OUT',7:'DOWN-IN',8:'DOWN',9:'DOWN-OUT'};
@@ -4092,12 +4126,11 @@ function renderCommandHeatmap(pitches){
 
   const points=pitches.map(p=>({p,pt:commandMapPoint(p)}));
 
-  // Layer multiple soft radial gradients to create a real continuous heat field.
-  // Each on-target pitch adds green energy; each miss adds red energy.
+  // Smaller gradients preserve individual location clusters instead of merging nearby pitches.
   const gradients=points.map(({p,pt})=>{
     const x=(pt.x*100).toFixed(1), y=(pt.y*100).toFixed(1);
     const c=p.isOnTarget ? '34,197,94' : (p.isStrike ? '47,128,237' : '239,68,68');
-    return `radial-gradient(circle at ${x}% ${y}%, rgba(${c},.54) 0%, rgba(${c},.30) 9%, rgba(${c},.11) 18%, rgba(${c},0) 29%)`;
+    return `radial-gradient(circle at ${x}% ${y}%, rgba(${c},.58) 0%, rgba(${c},.32) 6%, rgba(${c},.11) 13%, rgba(${c},0) 21%)`;
   });
   map.style.backgroundImage=gradients.length ? gradients.join(',') : 'none';
 
@@ -4244,6 +4277,15 @@ function buildStats() {
 }
 
 document.getElementById('sessionPdfBtn').addEventListener('click',exportSessionPdf);
+document.getElementById('editSessionNotesBtn').addEventListener('click',()=>{
+  const rec=currentSessionRecord();
+  if(!rec){ alert('Save this session before editing its notes.'); return; }
+  editingReportNotes=true;
+  setNotesModalMode(true);
+  sessionNotesInput.value=rec.notes||'';
+  sessionNotesModal.classList.add('visible');
+  setTimeout(()=>sessionNotesInput.focus(),100);
+});
 
 const continueSessionBtn=document.getElementById('continueSessionBtn');
 continueSessionBtn.addEventListener('click',()=>{
