@@ -1109,6 +1109,7 @@
   .session-note-label { display:block; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:10px; letter-spacing:1px; margin-bottom:3px; }
   .modal-backdrop { position:fixed; inset:0; z-index:1000; display:none; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.72); padding:16px; padding-bottom:max(16px,env(safe-area-inset-bottom)); }
   .modal-backdrop.visible { display:flex; }
+  #stagedPitchModal { align-items:center; padding-bottom:16px; }
   .notes-modal { width:min(100%,430px); background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:18px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
   .notes-title { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:24px; color:var(--text); text-transform:uppercase; }
   .notes-sub { color:var(--muted); font-size:12px; margin:3px 0 12px; }
@@ -2132,6 +2133,18 @@
     </div>
   </div>
 
+  <!-- SMART STAGED PITCH MODAL -->
+  <div class="modal-backdrop" id="stagedPitchModal" role="dialog" aria-modal="true" aria-labelledby="stagedPitchTitle">
+    <div class="notes-modal">
+      <div class="notes-title" id="stagedPitchTitle">Record Staged Pitch?</div>
+      <div class="notes-sub">Do you want to record this suggested pitch before ending the session?</div>
+      <div class="notes-actions">
+        <button id="stagedPitchNoBtn" class="btn btn-secondary" type="button">NO</button>
+        <button id="stagedPitchYesBtn" class="btn btn-primary" type="button">YES</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- PLAYER PROFILE MODAL -->
   <div class="edit-modal" id="playerProfileModal">
@@ -2203,6 +2216,7 @@ const DEFAULT_SESSION_SETUP = {
   smartPlanId:'easy',
   smartPitchTypes:PITCH_TYPES.map(p=>p.code)
 };
+const DEFAULT_SMART_PLAN_PITCH_COUNT = 17;
 
 // Zone positions in a 3x3 grid: [col0-2, row0-2]
 // For coordinate math: zone layout:
@@ -2250,6 +2264,7 @@ const setupPitchCount   = document.getElementById('setupPitchCount');
 const smartPitchField   = document.getElementById('smartPitchField');
 const smartPitchOptions = document.getElementById('smartPitchOptions');
 const smartPlanSelect   = document.getElementById('smartPlanSelect');
+const stagedPitchModal  = document.getElementById('stagedPitchModal');
 const customSessionModal = document.getElementById('customSessionModal');
 const customSessionName  = document.getElementById('customSessionName');
 const customPitchCount   = document.getElementById('customPitchCount');
@@ -2706,6 +2721,25 @@ function refreshSmartPlanOptions(selected='easy'){
   smartPlanSelect.value=[...smartPlanSelect.options].some(o=>o.value===selected)?selected:'easy';
 }
 
+function smartPlanPitchCount(planId){
+  const id=String(planId || 'easy');
+  if(id.startsWith('custom:')){
+    const customId=id.slice(7);
+    const customPlan=(appData.customSmartSequences||[]).find(plan=>plan.id===customId);
+    return customPlan?.steps?.length || DEFAULT_SMART_PLAN_PITCH_COUNT;
+  }
+  return DEFAULT_SMART_PLAN_PITCH_COUNT;
+}
+
+function setSetupPitchCountValue(value){
+  if(!setupPitchCount) return;
+  const n=Number(value)||DEFAULT_SESSION_SETUP.pitchCount;
+  if(![...setupPitchCount.options].some(option=>Number(option.value)===n)){
+    setupPitchCount.add(new Option(`${n} pitches`,String(n)));
+  }
+  setupPitchCount.value=String(n);
+}
+
 function selectedSetupValue(groupId, attr){
   return document.querySelector(`#${groupId} .setup-option-btn.active`)?.dataset[attr] || '';
 }
@@ -2719,6 +2753,10 @@ function setSetupGroupValue(groupId, attr, value){
 function syncSmartPitchField(){
   const isSmart=selectedSetupValue('bullpenModeOptions','bullpenMode')==='smart';
   smartPitchField?.classList.toggle('disabled',!isSmart);
+  if(setupPitchCount){
+    setupPitchCount.disabled=isSmart;
+    if(isSmart) setSetupPitchCountValue(smartPlanPitchCount(smartPlanSelect?.value || 'easy'));
+  }
 }
 
 function openSessionSetup(){
@@ -2901,9 +2939,10 @@ function readSessionSetup(){
   const mode=selectedSetupValue('bullpenModeOptions','bullpenMode') || 'manual';
   const smartPitchTypes=[...smartPitchOptions.querySelectorAll('input[type="checkbox"]:checked')].map(input=>input.value);
   if(!smartPitchTypes.length) throw new Error('session-pitches');
+  const smartCount=smartPlanPitchCount(smartPlanSelect?.value || 'easy');
   return {
     bullpenType:selectedSetupValue('bullpenTypeOptions','bullpenType') || 'Mound',
-    pitchCount:Number(setupPitchCount?.value)||25,
+    pitchCount:mode==='smart'?smartCount:(Number(setupPitchCount?.value)||25),
     mode,
     smartPlanId:smartPlanSelect?.value || 'easy',
     smartPitchTypes:smartPitchTypes.length?smartPitchTypes:['4S']
@@ -2916,6 +2955,7 @@ document.querySelectorAll('#bullpenTypeOptions .setup-option-btn').forEach(btn=>
 document.querySelectorAll('#bullpenModeOptions .setup-option-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{ setSetupGroupValue('bullpenModeOptions','bullpenMode',btn.dataset.bullpenMode); syncSmartPitchField(); });
 });
+smartPlanSelect?.addEventListener('change',syncSmartPitchField);
 document.getElementById('cancelCustomSessionBtn').addEventListener('click',()=>closeCustomSessionSettings(true));
 document.getElementById('startCustomSessionBtn').addEventListener('click',()=>{
   try{
@@ -4110,14 +4150,20 @@ function setSmartActionBarReady(){
 
 function finishSmartSessionFromTarget(){
   if(state.phase==='target' && state.targetZones.size>0){
-    const shouldRecord=confirm('Record the staged pitch before ending the session?');
-    if(shouldRecord){
-      toResultPhase();
-      return;
-    }
+    stagedPitchModal?.classList.add('visible');
+    return;
   }
   finishSession();
 }
+
+document.getElementById('stagedPitchYesBtn').addEventListener('click',()=>{
+  stagedPitchModal?.classList.remove('visible');
+  toResultPhase();
+});
+document.getElementById('stagedPitchNoBtn').addEventListener('click',()=>{
+  stagedPitchModal?.classList.remove('visible');
+  finishSession();
+});
 
 document.querySelectorAll('.pitch-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -4316,6 +4362,9 @@ function toResultPhase() {
   doneBtn.textContent = 'DONE SESSION';
   doneBtn.onclick = finishSession;
   doneBtn.disabled = true;
+  clearTargetBtn.textContent = 'VIEW SESSION';
+  clearTargetBtn.dataset.action = 'view';
+  clearTargetBtn.disabled = false;
 
   // Mark target zones on the inner zone grid
   outerZone.querySelectorAll('.zone-cell').forEach(cell => {
