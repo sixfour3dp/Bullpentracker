@@ -1071,15 +1071,7 @@
     align-items:center;
     justify-content:space-between;
     gap:10px;
-    padding:0 16px 12px;
-  }
-  .session-report-top-actions .new-session-btn {
-    width:auto;
-    margin:0;
-    flex:0 0 auto;
-    padding:10px 14px;
-    font-size:13px;
-    letter-spacing:1px;
+    padding:8px 16px 12px;
   }
 
 
@@ -1854,6 +1846,8 @@
             <span><i class="heat-key bad"></i> BALL / WP</span>
           </div>
           <div class="history-heatmap-note" id="historyHeatmapNote"></div>
+          <div class="section-label" style="padding:12px 0 0;margin:0">BY PITCH TYPE</div>
+          <div class="pitch-breakdown" id="historyPitchBreakdown"></div>
         </div>
       </div>
       <div class="panel">
@@ -1999,7 +1993,7 @@
     </div>
 
     <div class="session-report-top-actions">
-      <button class="new-session-btn" id="homeBtn" style="background:var(--surface2);color:var(--text);margin-top:0;min-height:42px">← PLAYERS</button>
+      <button id="homeBtn" class="back-btn" type="button" aria-label="Back to players" title="Back to players"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
       <button class="pdf-btn" id="sessionPdfBtn">PDF REPORT</button>
     </div>
 
@@ -3088,6 +3082,7 @@ function saveCurrentSession(notes='') {
 
 let currentHistoryPlayerId = null;
 let historySelectedSessionIds = new Set();
+let activeHistoryPitchTypeFilter = null;
 
 function escAttr(s){ return esc(s ?? ''); }
 
@@ -3190,7 +3185,10 @@ window.showHistory = function(playerId) {
   if(managerScreen.style.display!=='none' && (managerView==='roster'||managerView==='teamStats')) historyReturnView=managerView;
 
   // A different player starts with no selected bullpen sessions.
-  if(currentHistoryPlayerId!==playerId) historySelectedSessionIds.clear();
+  if(currentHistoryPlayerId!==playerId) {
+    historySelectedSessionIds.clear();
+    activeHistoryPitchTypeFilter=null;
+  }
   currentHistoryPlayerId=playerId;
 
   const t=appData.teams.find(x=>x.id===p.teamId);
@@ -3425,7 +3423,8 @@ function renderHistoryCommandHeatmap(sessions,player){
   const map=document.getElementById('historyHeatmapGrid');
   const note=document.getElementById('historyHeatmapNote');
   if(!map) return;
-  const pitches=sessions.flatMap(s=>historySessionPitches(s));
+  const allPitches=sessions.flatMap(s=>historySessionPitches(s));
+  const pitches=activeHistoryPitchTypeFilter ? allPitches.filter(p=>p.type===activeHistoryPitchTypeFilter) : allPitches;
   const points=pitches.map((p,i)=>({p,pt:commandMapPoint(p),num:i+1}));
   const gradients=points.map(({p,pt})=>{
     const x=(pt.x*100).toFixed(1), y=(pt.y*100).toFixed(1);
@@ -3451,13 +3450,70 @@ function renderHistoryCommandHeatmap(sessions,player){
   const agg=aggregateHistorySessions(sessions,player);
   const miss=agg.missBias;
   const bias=!player?.throws?'Set throwing hand for miss-side bias.':(miss.sided?`Miss-side bias: ${miss.pct}% ${miss.direction} (${miss.glove} GS / ${miss.throwing} TS).`:'No lateral miss-side bias yet.');
-  if(note) note.textContent=pitches.length ? `Showing ${pitches.length} pitches across ${sessions.length} session${sessions.length===1?'':'s'}. Avg Location %: ${agg.locationPct}%. ${bias}` : 'No saved pitches to map yet.';
+  const filterNote=activeHistoryPitchTypeFilter ? ` Filter: ${activeHistoryPitchTypeFilter}.` : '';
+  if(note) note.textContent=allPitches.length ? `Showing ${pitches.length} of ${allPitches.length} pitches across ${sessions.length} session${sessions.length===1?'':'s'}.${filterNote} Avg Location %: ${agg.locationPct}%. ${bias}` : 'No saved pitches to map yet.';
+}
+
+function renderHistoryPitchBreakdown(sessions,player){
+  const el=document.getElementById('historyPitchBreakdown');
+  if(!el) return;
+  const pitches=sessions.flatMap(s=>historySessionPitches(s));
+  const types={};
+  pitches.forEach(p=>{
+    if(!types[p.type]) types[p.type]={total:0,strikes:0,targeted:0,onTarget:0,velocities:[]};
+    const d=types[p.type];
+    d.total++;
+    if(p.isStrike) d.strikes++;
+    if(pitchTargetZones(p).length){
+      d.targeted++;
+      if(p.isOnTarget) d.onTarget++;
+    }
+    const v=Number(p.velocity);
+    if(Number.isFinite(v)&&v>0) d.velocities.push(v);
+  });
+  el.innerHTML=Object.entries(types).map(([type,d])=>{
+    const sPct=Math.round(d.strikes/d.total*100);
+    const lPct=d.targeted?Math.round(d.onTarget/d.targeted*100):0;
+    const avgVelo=d.velocities.length?(d.velocities.reduce((a,b)=>a+b,0)/d.velocities.length).toFixed(1):null;
+    const highVelo=d.velocities.length?Math.max(...d.velocities).toFixed(1):null;
+    return `
+      <div class="breakdown-row ${activeHistoryPitchTypeFilter===type?'pitch-filter-active':''}" data-history-filter-type="${type}">
+        <div class="breakdown-type">${esc(type)}</div>
+        <div class="breakdown-bars">
+          <div class="mini-bar-wrap">
+            <span class="mini-bar-label">STR</span>
+            <div class="mini-bar-track"><div class="mini-bar-fill strike-fill" style="width:${sPct}%"></div></div>
+            <span class="mini-bar-pct" style="color:var(--green)">${sPct}%</span>
+          </div>
+          ${d.targeted > 0 ? `<div class="mini-bar-wrap">
+            <span class="mini-bar-label">LOC</span>
+            <div class="mini-bar-track"><div class="mini-bar-fill loc-fill" style="width:${lPct}%"></div></div>
+            <span class="mini-bar-pct" style="color:var(--accent)">${lPct}%</span>
+          </div>` : ''}
+          ${avgVelo !== null ? `<div style="display:flex;gap:12px;margin-top:4px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:var(--text);"><span>AVG <strong style="color:var(--accent)">${avgVelo}</strong> MPH</span><span>HIGH <strong style="color:var(--green)">${highVelo}</strong> MPH</span></div>` : ''}
+        </div>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;color:var(--muted);">${d.total}p</span>
+      </div>`;
+  }).join('') || '<div style="text-align:center;color:var(--muted);font-size:13px;padding:12px">No pitches recorded</div>';
+  if(activeHistoryPitchTypeFilter){
+    el.insertAdjacentHTML('afterbegin',`<div class="pitch-filter-note">HEAT MAP FILTER: ${esc(activeHistoryPitchTypeFilter)} - TAP AGAIN TO SHOW ALL</div>`);
+  } else if(Object.keys(types).length){
+    el.insertAdjacentHTML('afterbegin','<div class="pitch-filter-note" style="color:var(--muted)">TAP A PITCH TYPE TO FILTER THE HEAT MAP</div>');
+  }
+  el.querySelectorAll('.breakdown-row[data-history-filter-type]').forEach(row=>{
+    row.addEventListener('click',()=>{
+      const type=row.dataset.historyFilterType;
+      activeHistoryPitchTypeFilter=activeHistoryPitchTypeFilter===type ? null : type;
+      renderHistoryProfileCharts(sessions,player);
+    });
+  });
 }
 
 function renderHistoryProfileCharts(sessions,player){
   const trend=document.getElementById('historyStrikeTrend');
   if(trend) trend.innerHTML=buildHistoryStrikeSvg(sessions);
   renderHistoryCommandHeatmap(sessions,player);
+  renderHistoryPitchBreakdown(sessions,player);
 }
 
 
@@ -3752,7 +3808,19 @@ document.getElementById('savePlayerProfileBtn').addEventListener('click',()=>{
 });
 
 document.getElementById('historyBackBtn').addEventListener('click',()=>{historyScreen.style.display='none';managerScreen.style.display='flex';managerView=historyReturnView;renderManager();});
-homeBtn.addEventListener('click',()=>{ statsScreen.style.display='none'; trackingScreen.style.display='none'; historyScreen.style.display='none'; managerScreen.style.display='flex'; managerView='roster'; renderManager(); });
+homeBtn.addEventListener('click',()=>{
+  statsScreen.style.display='none';
+  trackingScreen.style.display='none';
+  const playerId=state.activePlayerId || currentHistoryPlayerId;
+  if(playerId){
+    window.showHistory(playerId);
+    return;
+  }
+  historyScreen.style.display='none';
+  managerScreen.style.display='flex';
+  managerView='roster';
+  renderManager();
+});
 
 async function exportSelectedTeamBackup(){
   const team=selectedTeam();
