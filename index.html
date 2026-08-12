@@ -969,7 +969,6 @@
   .team-bottom-nav.visible { display:grid; }
   .team-nav-btn { min-height:44px; border:1px solid var(--border); border-radius:11px; background:var(--surface); color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:900; letter-spacing:.8px; }
   .team-nav-btn.active { border-color:rgba(0,212,255,.55); background:rgba(0,212,255,.12); color:var(--accent); }
-  .team-stats-toolbar { display:grid; grid-template-columns:1fr auto; gap:8px; margin-bottom:12px; }
   .team-stats-table { overflow-x:auto; border:1px solid var(--border); border-radius:14px; background:var(--surface); }
   .team-stats-grid { min-width:830px; }
   .team-stats-row { display:grid; grid-template-columns:1.05fr .65fr .75fr .72fr .75fr .78fr .8fr .8fr .8fr; align-items:center; min-height:48px; border-bottom:1px solid var(--border); }
@@ -977,6 +976,8 @@
   .team-stats-row > div { padding:9px 8px; text-align:right; font-size:12px; }
   .team-stats-row > div:first-child { text-align:left; position:sticky; left:0; z-index:1; background:var(--surface); }
   .team-stats-head { min-height:40px; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; }
+  .team-stats-head .team-sort-head { border:0; background:none; color:inherit; font:inherit; text-transform:inherit; letter-spacing:inherit; cursor:pointer; padding:0; text-align:inherit; }
+  .team-stats-head .team-sort-head.active { color:var(--accent); }
   .team-stats-total { background:rgba(0,212,255,.08); border-top:2px solid rgba(0,212,255,.38); font-weight:800; }
   .team-stats-total > div:first-child { background:#102331; color:var(--accent); text-transform:uppercase; letter-spacing:.5px; }
   .team-stats-player { color:var(--text); font-family:'Barlow Condensed',sans-serif; font-size:16px !important; font-weight:800; }
@@ -1011,6 +1012,27 @@
   .utility-row .card-btn { flex:1; min-height:42px; }
   .history-session-tools { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
   .history-new-session-btn { width:100%; margin-top:12px; border-color:var(--green); background:var(--green); color:#071018; }
+  .custom-sessions-btn {
+    width:100%;
+    margin:12px 0 4px;
+    min-height:58px;
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    gap:12px;
+    padding:12px 14px;
+    border-radius:10px;
+    border:1px solid rgba(0,212,255,.36);
+    background:linear-gradient(145deg,rgba(0,212,255,.16),rgba(34,197,94,.10));
+    color:var(--text);
+    text-align:left;
+  }
+  .custom-sessions-btn strong { display:block; font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:900; letter-spacing:1px; color:var(--accent); }
+  .custom-sessions-btn span:last-child { display:block; color:var(--muted); font-size:11px; line-height:1.25; }
+  .strike-zone-icon { width:30px; height:30px; flex:0 0 30px; border:2px solid currentColor; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); border-radius:3px; opacity:.95; color:var(--green); }
+  .strike-zone-icon i { border-right:1px solid currentColor; border-bottom:1px solid currentColor; opacity:.45; }
+  .strike-zone-icon i:nth-child(3n) { border-right:0; }
+  .strike-zone-icon i:nth-child(n+7) { border-bottom:0; }
   .session-context { font-family:'Barlow Condensed',sans-serif; font-size:12px; color:var(--muted); margin-top:4px; }
   .history-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
   .history-profile-header { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
@@ -1731,6 +1753,11 @@
       <div class="panel-title" style="padding:2px 2px 8px">Teams</div>
       <div id="teamList"></div>
 
+      <button id="customSessionsBtn" class="card-btn custom-sessions-btn" type="button">
+        <span class="strike-zone-icon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <span><strong>CUSTOM SESSIONS</strong>Create reusable pitch/location sequences</span>
+      </button>
+
       <div class="utility-row">
         <button id="importBtn" class="card-btn">IMPORT TEAM</button>
         <input id="importFile" type="file" accept="application/json,.json" style="display:none">
@@ -1768,12 +1795,6 @@
       <div class="roster-header team-stats-header">
         <div class="roster-team-logo" id="statsTeamLogo"></div>
         <div class="roster-team-copy"><div class="manager-title" id="statsTeamName">Team Stats</div><div class="manager-sub">Player comparison and improvement</div></div>
-      </div>
-      <div class="team-stats-toolbar">
-        <select id="teamStatsSort" class="app-select" aria-label="Sort team statistics">
-          <option value="improvement">Most improved</option><option value="strikePct">Highest strike %</option><option value="strikeVsTeamAvg">Best vs team avg</option><option value="topVelo">Highest top velo</option><option value="commandScore">Highest PB Command</option><option value="locationPct">Highest location %</option><option value="totalPitches">Most pitches</option><option value="sessions">Most sessions</option><option value="name">Player name</option>
-        </select>
-        <button id="teamStatsDirection" class="card-btn" type="button" aria-label="Reverse sort order">HIGH → LOW</button>
       </div>
       <div id="teamStatsContent"></div>
     </div>
@@ -2057,11 +2078,10 @@
         </div>
         <div class="edit-field full smart-pitch-field disabled" id="smartPitchField">
           <label>Smart Bullpen Plan</label>
-          <div class="input-row">
-            <select id="smartPlanSelect" class="edit-control"></select>
-            <button id="createSmartPlanBtn" class="mini-btn" type="button">CREATE CUSTOM</button>
-          </div>
-          <label style="margin-top:10px">Smart Bullpen Pitches</label>
+          <select id="smartPlanSelect" class="edit-control"></select>
+        </div>
+        <div class="edit-field full" id="sessionPitchField">
+          <label>Pitch Types</label>
           <div class="smart-pitch-grid" id="smartPitchOptions"></div>
         </div>
       </div>
@@ -2179,7 +2199,7 @@ const DEFAULT_SESSION_SETUP = {
   pitchCount:25,
   mode:'manual',
   smartPlanId:'easy',
-  smartPitchTypes:['4S','2S','CH','CB','SL']
+  smartPitchTypes:PITCH_TYPES.map(p=>p.code)
 };
 
 // Zone positions in a 3x3 grid: [col0-2, row0-2]
@@ -2233,6 +2253,7 @@ const customSessionName  = document.getElementById('customSessionName');
 const customPitchCount   = document.getElementById('customPitchCount');
 const customPitchOptions = document.getElementById('customPitchOptions');
 let setupPlayerId = null;
+let customSessionReturnToSetup = false;
 let requireVelocity = false;
 let pendingVelocityPitch = null;
 
@@ -2275,7 +2296,6 @@ const teamLogoFile     = document.getElementById('teamLogoFile');
 const playerList       = document.getElementById('playerList');
 let managerView='teams';
 let teamStatsSortKey='improvement';
-let teamStatsSortDescending=true;
 let historyReturnView='roster';
 let logoEditingTeamId=null;
 const STORAGE_KEY      = 'bullpenTrackerDataV1';
@@ -2441,23 +2461,20 @@ function signedStat(value,suffix=''){
 function renderTeamStats(team,players){
   document.getElementById('statsTeamName').textContent=team.name;
   document.getElementById('statsTeamLogo').innerHTML=teamLogoMarkup(team,true);
-  const sort=document.getElementById('teamStatsSort');
-  sort.value=teamStatsSortKey;
-  document.getElementById('teamStatsDirection').textContent=teamStatsSortDescending?'HIGH → LOW':'LOW → HIGH';
   const playerStats=players.map(teamPlayerStats);
   const teamSessions=appData.sessions.filter(s=>players.some(p=>p.id===s.playerId));
   const teamAggregate=aggregateHistorySessions(teamSessions,null);
   playerStats.forEach(r=>{ r.strikeVsTeamAvg = r.sessions ? (Number(r.strikePct)||0) - (Number(teamAggregate.strikePct)||0) : 0; });
   const rows=playerStats.slice().sort((a,b)=>{
-    if(teamStatsSortKey==='name') return (teamStatsSortDescending?-1:1)*a.player.name.localeCompare(b.player.name);
+    if(teamStatsSortKey==='name') return a.player.name.localeCompare(b.player.name);
     if(teamStatsSortKey==='commandScore'){
       const aHas=Boolean(a.commandEnabled&&a.sessions),bHas=Boolean(b.commandEnabled&&b.sessions);
       if(aHas!==bHas) return aHas?-1:1;
       const av=aHas?a.commandScore:0,bv=bHas?b.commandScore:0;
-      return teamStatsSortDescending?bv-av:av-bv;
+      return bv-av;
     }
     const av=Number(a[teamStatsSortKey])||0,bv=Number(b[teamStatsSortKey])||0;
-    return teamStatsSortDescending?bv-av:av-bv;
+    return bv-av;
   });
   const teamVelos=teamSessions.flatMap(s=>(s.pitches||[]).filter(p=>Number.isFinite(Number(p.velocity)) && Number(p.velocity)>0).map(p=>Number(p.velocity)));
   const teamTopVelo=teamVelos.length?Math.max(...teamVelos):null;
@@ -2466,17 +2483,22 @@ function renderTeamStats(team,players){
   const improvedPlayers=playerStats.filter(r=>r.sessions>1);
   const avgStrikeImprovement=improvedPlayers.length?improvedPlayers.reduce((n,r)=>n+r.strikeDelta,0)/improvedPlayers.length:null;
   const avgLocationImprovement=improvedPlayers.length?improvedPlayers.reduce((n,r)=>n+r.locationDelta,0)/improvedPlayers.length:null;
+  const sortLabel=key=>teamStatsSortKey===key?(key==='name'?' A-Z':' ↓'):'';
   document.getElementById('teamStatsContent').innerHTML=rows.length?`<div class="team-stats-table"><div class="team-stats-grid">
-    <div class="team-stats-row team-stats-head"><div>Player</div><div>Sessions</div><div>Pitches</div><div>Top Velo</div><div>Strike %</div><div>+/- Team Avg</div><div>Location %</div><div>PB Command</div><div>Improvement</div></div>
+    <div class="team-stats-row team-stats-head"><div><button class="team-sort-head ${teamStatsSortKey==='name'?'active':''}" data-sort-key="name" type="button">Player${sortLabel('name')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='sessions'?'active':''}" data-sort-key="sessions" type="button">Sessions${sortLabel('sessions')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='totalPitches'?'active':''}" data-sort-key="totalPitches" type="button">Pitches${sortLabel('totalPitches')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='topVelo'?'active':''}" data-sort-key="topVelo" type="button">Top Velo${sortLabel('topVelo')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='strikePct'?'active':''}" data-sort-key="strikePct" type="button">Strike %${sortLabel('strikePct')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='strikeVsTeamAvg'?'active':''}" data-sort-key="strikeVsTeamAvg" type="button">+/- Team Avg${sortLabel('strikeVsTeamAvg')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='locationPct'?'active':''}" data-sort-key="locationPct" type="button">Location %${sortLabel('locationPct')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='commandScore'?'active':''}" data-sort-key="commandScore" type="button">PB Command${sortLabel('commandScore')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='improvement'?'active':''}" data-sort-key="improvement" type="button">Improvement${sortLabel('improvement')}</button></div></div>
     ${rows.map(r=>`<div class="team-stats-row"><div class="team-stats-player"><button type="button" onclick="showHistory('${r.player.id}')">${esc(r.player.name)}</button></div><div>${r.sessions}</div><div>${r.totalPitches}</div><div>${r.topVelo===null?'—':r.topVelo.toFixed(1)}</div><div class="${strikeClass(r.strikePct)}">${r.sessions?r.strikePct+'%':'—'}</div><div>${r.sessions?signedStat(r.strikeVsTeamAvg,' STR %'):'—'}</div><div>${r.sessions?r.locationPct+'%':'—'}</div><div>${r.sessions?(r.commandEnabled?r.commandScore:'N/A'):'—'}</div><div>${r.sessions>1?`${signedStat(r.strikeDelta,' STR %')}<br>${signedStat(r.locationDelta,' LOC %')}`:'<span class="stat-flat">NEEDS 2</span>'}</div></div>`).join('')}
     <div class="team-stats-row team-stats-total"><div>Team Average</div><div>${teamSessions.length}</div><div>${teamAggregate.totalPitches}</div><div>${teamTopVelo===null?'—':teamTopVelo.toFixed(1)}</div><div class="${strikeClass(teamAggregate.strikePct)}">${teamSessions.length?teamAggregate.strikePct+'%':'—'}</div><div><span class="stat-flat">0 STR %</span></div><div>${teamSessions.length?teamAggregate.locationPct+'%':'—'}</div><div>${teamCommand===null?'N/A':teamCommand}</div><div>${avgStrikeImprovement===null?'<span class="stat-flat">NEEDS 2</span>':`${signedStat(avgStrikeImprovement,' STR %')}<br>${signedStat(avgLocationImprovement,' LOC %')}`}</div></div>
   </div></div><div class="team-stats-note">Improvement compares each player’s latest session with their average before that session. Overall percentages combine all saved pitches. Tap a player’s name to open their history.</div>`:'<div class="empty-state">Add players and save bullpen sessions to compare team stats.</div>';
+  document.querySelectorAll('.team-sort-head').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      teamStatsSortKey=btn.dataset.sortKey || 'improvement';
+      renderManager();
+    });
+  });
 }
 
 document.getElementById('teamRosterNavBtn').addEventListener('click',()=>{managerView='roster';renderManager();});
 document.getElementById('teamStatsNavBtn').addEventListener('click',()=>{managerView='teamStats';renderManager();});
-document.getElementById('teamStatsSort').addEventListener('change',e=>{teamStatsSortKey=e.target.value;renderManager();});
-document.getElementById('teamStatsDirection').addEventListener('click',()=>{teamStatsSortDescending=!teamStatsSortDescending;renderManager();});
 
 function setupPlayerSwipe() {
   let openCard = null;
@@ -2531,6 +2553,10 @@ function deletePlayer(playerId) {
 
 
 rosterBackBtn.addEventListener('click',showTeamsHome);
+document.getElementById('customSessionsBtn').addEventListener('click',()=>{
+  setupPlayerId=null;
+  openCustomSessionSettings({returnToSetup:false});
+});
 
 teamLogoFile.addEventListener('change',()=>{
   const file=teamLogoFile.files?.[0];
@@ -2711,8 +2737,9 @@ function closeSessionSetup(){
   setupPlayerId=null;
 }
 
-function openCustomSessionSettings(){
+function openCustomSessionSettings({returnToSetup=false}={}){
   buildSessionSetupControls();
+  customSessionReturnToSetup=returnToSetup;
   if(customSessionName) customSessionName.value='';
   if(customPitchCount) customPitchCount.value=setupPitchCount?.value || String(DEFAULT_SESSION_SETUP.pitchCount);
   customPitchOptions?.querySelectorAll('input[type="checkbox"]').forEach(input=>{
@@ -2725,7 +2752,16 @@ function openCustomSessionSettings(){
 
 function closeCustomSessionSettings(returnToSetup=true){
   customSessionModal?.classList.remove('visible');
-  if(returnToSetup) sessionSetupModal?.classList.add('visible');
+  if(returnToSetup && customSessionReturnToSetup) sessionSetupModal?.classList.add('visible');
+}
+
+function returnFromCustomSequenceBuilder(){
+  trackingScreen.style.display='none';
+  statsScreen.style.display='none';
+  historyScreen.style.display='none';
+  managerScreen.style.display='flex';
+  managerView=customSessionReturnToSetup ? 'roster' : 'teams';
+  renderManager();
 }
 
 function readCustomSessionSetup(){
@@ -2809,12 +2845,7 @@ function setCustomSequenceActionBar(){
 function cancelCustomSequenceBuilder(){
   state.targetZones.clear();
   state.customSequenceDraft=null;
-  trackingScreen.style.display='none';
-  statsScreen.style.display='none';
-  historyScreen.style.display='none';
-  managerScreen.style.display='flex';
-  managerView='roster';
-  renderManager();
+  returnFromCustomSequenceBuilder();
   customSessionModal?.classList.add('visible');
 }
 
@@ -2852,10 +2883,7 @@ function finalizeCustomSequence(){
   state.targetZones.clear();
   pitchLogEl.innerHTML='';
   logLabel.style.display='none';
-  trackingScreen.style.display='none';
-  managerScreen.style.display='flex';
-  managerView='roster';
-  renderManager();
+  returnFromCustomSequenceBuilder();
   setSetupGroupValue('bullpenModeOptions','bullpenMode','smart');
   syncSmartPitchField();
   refreshSmartPlanOptions(`custom:${plan.id}`);
@@ -2863,13 +2891,14 @@ function finalizeCustomSequence(){
   smartPitchOptions?.querySelectorAll('input[type="checkbox"]').forEach(input=>{
     input.checked=draft.smartPitchTypes.includes(input.value);
   });
-  sessionSetupModal?.classList.add('visible');
+  if(customSessionReturnToSetup && setupPlayerId) sessionSetupModal?.classList.add('visible');
+  customSessionReturnToSetup=false;
 }
 
 function readSessionSetup(){
   const mode=selectedSetupValue('bullpenModeOptions','bullpenMode') || 'manual';
   const smartPitchTypes=[...smartPitchOptions.querySelectorAll('input[type="checkbox"]:checked')].map(input=>input.value);
-  if(mode==='smart' && !smartPitchTypes.length) throw new Error('smart-pitches');
+  if(!smartPitchTypes.length) throw new Error('session-pitches');
   return {
     bullpenType:selectedSetupValue('bullpenTypeOptions','bullpenType') || 'Mound',
     pitchCount:Number(setupPitchCount?.value)||25,
@@ -2885,7 +2914,6 @@ document.querySelectorAll('#bullpenTypeOptions .setup-option-btn').forEach(btn=>
 document.querySelectorAll('#bullpenModeOptions .setup-option-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{ setSetupGroupValue('bullpenModeOptions','bullpenMode',btn.dataset.bullpenMode); syncSmartPitchField(); });
 });
-document.getElementById('createSmartPlanBtn').addEventListener('click',openCustomSessionSettings);
 document.getElementById('cancelCustomSessionBtn').addEventListener('click',()=>closeCustomSessionSettings(true));
 document.getElementById('startCustomSessionBtn').addEventListener('click',()=>{
   if(!setupPlayerId) return closeCustomSessionSettings(false);
@@ -2905,7 +2933,7 @@ document.getElementById('beginSessionSetupBtn').addEventListener('click',()=>{
     closeSessionSetup();
     beginBullpenSession(playerId,setup);
   }catch(err){
-    alert('Choose at least one pitch for Smart Bullpen.');
+    alert('Choose at least one pitch type for this session.');
   }
 });
 
@@ -3962,7 +3990,6 @@ document.getElementById('importSessionFile').addEventListener('change',async e=>
 // ============================================================
 function availablePitchTypesForSession(){
   const setup=state.sessionSetup || DEFAULT_SESSION_SETUP;
-  if(setup.mode!=='custom' && setup.mode!=='custom-builder') return PITCH_TYPES.map(p=>p.code);
   const selected=(setup.smartPitchTypes||[]).filter(code=>PITCH_TYPES.some(p=>p.code===code));
   return selected.length ? selected : [PITCH_TYPES[0].code];
 }
