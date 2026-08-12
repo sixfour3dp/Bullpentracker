@@ -970,16 +970,22 @@
   .team-nav-btn.active { border-color:rgba(0,212,255,.55); background:rgba(0,212,255,.12); color:var(--accent); }
   .team-stats-toolbar { display:grid; grid-template-columns:1fr auto; gap:8px; margin-bottom:12px; }
   .team-stats-table { overflow-x:auto; border:1px solid var(--border); border-radius:14px; background:var(--surface); }
-  .team-stats-grid { min-width:680px; }
-  .team-stats-row { display:grid; grid-template-columns:1.35fr .65fr .75fr .75fr .8fr .8fr .8fr; align-items:center; min-height:48px; border-bottom:1px solid var(--border); }
+  .team-stats-grid { min-width:650px; }
+  .team-stats-row { display:grid; grid-template-columns:1.05fr .65fr .75fr .75fr .8fr .8fr .8fr; align-items:center; min-height:48px; border-bottom:1px solid var(--border); }
   .team-stats-row:last-child { border-bottom:0; }
   .team-stats-row > div { padding:9px 8px; text-align:right; font-size:12px; }
   .team-stats-row > div:first-child { text-align:left; position:sticky; left:0; z-index:1; background:var(--surface); }
   .team-stats-head { min-height:40px; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; }
+  .team-stats-total { background:rgba(0,212,255,.08); border-top:2px solid rgba(0,212,255,.38); font-weight:800; }
+  .team-stats-total > div:first-child { background:#102331; color:var(--accent); text-transform:uppercase; letter-spacing:.5px; }
   .team-stats-player { color:var(--text); font-family:'Barlow Condensed',sans-serif; font-size:16px !important; font-weight:800; }
   .team-stats-player button { border:0; padding:0; background:none; color:inherit; font:inherit; cursor:pointer; }
   .stat-up { color:var(--green); font-weight:800; }.stat-down { color:var(--red); font-weight:800; }.stat-flat { color:var(--muted); }
   .team-stats-note { color:var(--muted); font-size:11px; line-height:1.45; margin:8px 2px 0; }
+  .team-stats-header { grid-template-columns:44px minmax(0,1fr); gap:12px; }
+  .team-stats-header .roster-team-copy { min-width:0; display:flex; flex-direction:column; justify-content:center; gap:3px; }
+  .team-stats-header .manager-title { line-height:1; }
+  .team-stats-header .manager-sub { margin-top:0; line-height:1.35; }
   .manager-title { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:30px; text-transform:uppercase; }
   .manager-sub { color:var(--muted); font-size:12px; margin-top:2px; }
   .panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; }
@@ -1704,7 +1710,7 @@
     </div>
 
     <div class="manager-scroll" id="teamStatsView" style="display:none">
-      <div class="roster-header">
+      <div class="roster-header team-stats-header">
         <div class="roster-team-logo" id="statsTeamLogo"></div>
         <div class="roster-team-copy"><div class="manager-title" id="statsTeamName">Team Stats</div><div class="manager-sub">Player comparison and improvement</div></div>
       </div>
@@ -2155,6 +2161,7 @@ const playerList       = document.getElementById('playerList');
 let managerView='teams';
 let teamStatsSortKey='improvement';
 let teamStatsSortDescending=true;
+let historyReturnView='roster';
 let logoEditingTeamId=null;
 const STORAGE_KEY      = 'bullpenTrackerDataV1';
 let appData = loadAppData();
@@ -2312,7 +2319,8 @@ function renderTeamStats(team,players){
   const sort=document.getElementById('teamStatsSort');
   sort.value=teamStatsSortKey;
   document.getElementById('teamStatsDirection').textContent=teamStatsSortDescending?'HIGH → LOW':'LOW → HIGH';
-  const rows=players.map(teamPlayerStats).sort((a,b)=>{
+  const playerStats=players.map(teamPlayerStats);
+  const rows=playerStats.slice().sort((a,b)=>{
     if(teamStatsSortKey==='name') return (teamStatsSortDescending?-1:1)*a.player.name.localeCompare(b.player.name);
     if(teamStatsSortKey==='commandScore'){
       const aHas=Boolean(a.commandEnabled&&a.sessions),bHas=Boolean(b.commandEnabled&&b.sessions);
@@ -2323,9 +2331,18 @@ function renderTeamStats(team,players){
     const av=Number(a[teamStatsSortKey])||0,bv=Number(b[teamStatsSortKey])||0;
     return teamStatsSortDescending?bv-av:av-bv;
   });
+  const teamSessions=appData.sessions.filter(s=>players.some(p=>p.id===s.playerId));
+  const teamAggregate=aggregateHistorySessions(teamSessions,null);
+  const commandSessions=appData.sessions.filter(s=>players.some(p=>p.id===s.playerId&&p.showCommandGrade!==false));
+  const teamCommand=commandSessions.length?aggregateHistorySessions(commandSessions,null).commandScore:null;
+  const improvedPlayers=playerStats.filter(r=>r.sessions>1);
+  const avgStrikeImprovement=improvedPlayers.length?improvedPlayers.reduce((n,r)=>n+r.strikeDelta,0)/improvedPlayers.length:null;
+  const commandImprovers=improvedPlayers.filter(r=>r.commandEnabled);
+  const avgCommandImprovement=commandImprovers.length?commandImprovers.reduce((n,r)=>n+r.commandDelta,0)/commandImprovers.length:null;
   document.getElementById('teamStatsContent').innerHTML=rows.length?`<div class="team-stats-table"><div class="team-stats-grid">
     <div class="team-stats-row team-stats-head"><div>Player</div><div>Sessions</div><div>Pitches</div><div>Strike %</div><div>Location %</div><div>PB Command</div><div>Improvement</div></div>
     ${rows.map(r=>`<div class="team-stats-row"><div class="team-stats-player"><button type="button" onclick="showHistory('${r.player.id}')">${esc(r.player.name)}</button></div><div>${r.sessions}</div><div>${r.totalPitches}</div><div class="${strikeClass(r.strikePct)}">${r.sessions?r.strikePct+'%':'—'}</div><div>${r.sessions?r.locationPct+'%':'—'}</div><div>${r.sessions?(r.commandEnabled?r.commandScore:'N/A'):'—'}</div><div>${r.sessions>1?`${signedStat(r.strikeDelta,' STR')}<br>${r.commandEnabled?signedStat(r.commandDelta,' CMD'):'<span class="stat-flat">CMD N/A</span>'}`:'<span class="stat-flat">NEEDS 2</span>'}</div></div>`).join('')}
+    <div class="team-stats-row team-stats-total"><div>Team Average</div><div>${teamSessions.length}</div><div>${teamAggregate.totalPitches}</div><div class="${strikeClass(teamAggregate.strikePct)}">${teamSessions.length?teamAggregate.strikePct+'%':'—'}</div><div>${teamSessions.length?teamAggregate.locationPct+'%':'—'}</div><div>${teamCommand===null?'N/A':teamCommand}</div><div>${avgStrikeImprovement===null?'<span class="stat-flat">NEEDS 2</span>':`${signedStat(avgStrikeImprovement,' STR')}<br>${avgCommandImprovement===null?'<span class="stat-flat">CMD N/A</span>':signedStat(avgCommandImprovement,' CMD')}`}</div></div>
   </div></div><div class="team-stats-note">Improvement compares each player’s latest session with their earliest session. Overall percentages combine all saved pitches. Tap a player’s name to open their history.</div>`:'<div class="empty-state">Add players and save bullpen sessions to compare team stats.</div>';
 }
 
@@ -2846,6 +2863,7 @@ function buildHistoryMetricCards(allSessions,player){
 
 window.showHistory = function(playerId) {
   const p=appData.players.find(x=>x.id===playerId); if(!p) return;
+  if(managerScreen.style.display!=='none' && (managerView==='roster'||managerView==='teamStats')) historyReturnView=managerView;
 
   // A different player starts with no selected bullpen sessions.
   if(currentHistoryPlayerId!==playerId) historySelectedSessionIds.clear();
@@ -3368,7 +3386,7 @@ document.getElementById('savePlayerProfileBtn').addEventListener('click',()=>{
   window.showHistory(p.id);
 });
 
-document.getElementById('historyBackBtn').addEventListener('click',()=>{historyScreen.style.display='none';managerScreen.style.display='flex';managerView='roster';renderManager();});
+document.getElementById('historyBackBtn').addEventListener('click',()=>{historyScreen.style.display='none';managerScreen.style.display='flex';managerView=historyReturnView;renderManager();});
 homeBtn.addEventListener('click',()=>{ statsScreen.style.display='none'; trackingScreen.style.display='none'; historyScreen.style.display='none'; managerScreen.style.display='flex'; managerView='roster'; renderManager(); });
 
 async function exportSelectedTeamBackup(){

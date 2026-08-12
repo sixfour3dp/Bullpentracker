@@ -1,4 +1,4 @@
-const CACHE='pocketbullpen-v52-back-buttons';
+const CACHE='pocketbullpen-v54-team-averages';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./apple-touch-icon.png','./icon-192.png','./icon-512.png','./header-heatmap.png','./pocketbullpen-header.png'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));});
 self.addEventListener('activate',e=>e.waitUntil(Promise.all([
