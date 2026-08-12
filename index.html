@@ -964,6 +964,22 @@
   /* ===== TEAM / PLAYER / HISTORY ===== */
   .manager-screen { flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); }
   .manager-scroll { flex:1; overflow-y:auto; padding:16px 16px calc(24px + env(safe-area-inset-bottom)); }
+  .team-bottom-nav { display:none; grid-template-columns:1fr 1fr; gap:8px; padding:9px 16px max(9px,env(safe-area-inset-bottom)); background:rgba(11,18,27,.97); border-top:1px solid var(--border); }
+  .team-bottom-nav.visible { display:grid; }
+  .team-nav-btn { min-height:44px; border:1px solid var(--border); border-radius:11px; background:var(--surface); color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:900; letter-spacing:.8px; }
+  .team-nav-btn.active { border-color:rgba(0,212,255,.55); background:rgba(0,212,255,.12); color:var(--accent); }
+  .team-stats-toolbar { display:grid; grid-template-columns:1fr auto; gap:8px; margin-bottom:12px; }
+  .team-stats-table { overflow-x:auto; border:1px solid var(--border); border-radius:14px; background:var(--surface); }
+  .team-stats-grid { min-width:680px; }
+  .team-stats-row { display:grid; grid-template-columns:1.35fr .65fr .75fr .75fr .8fr .8fr .8fr; align-items:center; min-height:48px; border-bottom:1px solid var(--border); }
+  .team-stats-row:last-child { border-bottom:0; }
+  .team-stats-row > div { padding:9px 8px; text-align:right; font-size:12px; }
+  .team-stats-row > div:first-child { text-align:left; position:sticky; left:0; z-index:1; background:var(--surface); }
+  .team-stats-head { min-height:40px; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; }
+  .team-stats-player { color:var(--text); font-family:'Barlow Condensed',sans-serif; font-size:16px !important; font-weight:800; }
+  .team-stats-player button { border:0; padding:0; background:none; color:inherit; font:inherit; cursor:pointer; }
+  .stat-up { color:var(--green); font-weight:800; }.stat-down { color:var(--red); font-weight:800; }.stat-flat { color:var(--muted); }
+  .team-stats-note { color:var(--muted); font-size:11px; line-height:1.45; margin:8px 2px 0; }
   .manager-title { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:30px; text-transform:uppercase; }
   .manager-sub { color:var(--muted); font-size:12px; margin-top:2px; }
   .panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; }
@@ -989,7 +1005,11 @@
   .history-session-tools { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
   .session-context { font-family:'Barlow Condensed',sans-serif; font-size:12px; color:var(--muted); margin-top:4px; }
   .history-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
-  .back-btn { width:42px; height:42px; border-radius:10px; background:var(--surface2); color:var(--text); border:1px solid var(--border); font-size:20px; }
+  .back-btn { flex:0 0 42px; width:42px; height:42px; display:grid; place-items:center; padding:0; border-radius:50%; background:linear-gradient(145deg,var(--surface2),var(--surface)); color:var(--accent); border:1px solid rgba(0,212,255,.32); box-shadow:0 5px 14px rgba(0,0,0,.22); cursor:pointer; transition:transform .15s ease,background .15s ease,border-color .15s ease; }
+  .back-btn svg { width:20px; height:20px; }
+  .back-btn:hover { background:rgba(0,212,255,.10); border-color:rgba(0,212,255,.65); }
+  .back-btn:active { transform:scale(.94); }
+  .back-btn:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
   .history-table { width:100%; border-collapse:collapse; font-size:12px; }
   .history-table th { color:var(--muted); text-align:left; padding:8px 6px; border-bottom:1px solid var(--border); font-family:'Barlow Condensed',sans-serif; letter-spacing:.5px; }
   .history-table td { padding:10px 6px; border-bottom:1px solid rgba(30,45,66,.6); color:var(--text); }
@@ -1658,7 +1678,7 @@
 
     <div class="manager-scroll" id="rosterView" style="display:none">
       <div class="roster-header">
-        <button id="rosterBackBtn" class="back-btn" type="button">‹</button>
+        <button id="rosterBackBtn" class="back-btn" type="button" aria-label="Back to teams" title="Back to teams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
         <div class="roster-team-logo" id="rosterTeamLogo"></div>
         <div class="roster-team-copy">
           <div class="manager-title" id="rosterTeamName">Team</div>
@@ -1682,6 +1702,25 @@
         <button id="deleteTeamBtn" class="card-btn team-remove-btn" type="button">REMOVE TEAM</button>
       </div>
     </div>
+
+    <div class="manager-scroll" id="teamStatsView" style="display:none">
+      <div class="roster-header">
+        <div class="roster-team-logo" id="statsTeamLogo"></div>
+        <div class="roster-team-copy"><div class="manager-title" id="statsTeamName">Team Stats</div><div class="manager-sub">Player comparison and improvement</div></div>
+      </div>
+      <div class="team-stats-toolbar">
+        <select id="teamStatsSort" class="app-select" aria-label="Sort team statistics">
+          <option value="improvement">Most improved</option><option value="strikePct">Highest strike %</option><option value="commandScore">Highest PB Command</option><option value="locationPct">Highest location %</option><option value="totalPitches">Most pitches</option><option value="sessions">Most sessions</option><option value="name">Player name</option>
+        </select>
+        <button id="teamStatsDirection" class="card-btn" type="button" aria-label="Reverse sort order">HIGH → LOW</button>
+      </div>
+      <div id="teamStatsContent"></div>
+    </div>
+
+    <nav class="team-bottom-nav" id="teamBottomNav" aria-label="Team pages">
+      <button class="team-nav-btn active" id="teamRosterNavBtn" type="button">ROSTER</button>
+      <button class="team-nav-btn" id="teamStatsNavBtn" type="button">TEAM STATS</button>
+    </nav>
 
     <input id="teamLogoFile" type="file" accept="image/*" style="display:none">
 
@@ -1718,7 +1757,7 @@
   <div class="manager-screen" id="historyScreen" style="display:none">
     <div class="manager-scroll">
       <div class="history-header">
-        <button id="historyBackBtn" class="back-btn">‹</button>
+        <button id="historyBackBtn" class="back-btn" type="button" aria-label="Back to roster" title="Back to roster"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
         <div class="history-player-heading">
           <button id="playerProfileBtn" class="player-profile-btn" type="button" aria-label="Edit player profile" title="Edit player profile">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -2105,6 +2144,8 @@ const teamSelect       = document.getElementById('teamSelect');
 const teamList         = document.getElementById('teamList');
 const teamsHomeView    = document.getElementById('teamsHomeView');
 const rosterView       = document.getElementById('rosterView');
+const teamStatsView    = document.getElementById('teamStatsView');
+const teamBottomNav    = document.getElementById('teamBottomNav');
 const rosterBackBtn    = document.getElementById('rosterBackBtn');
 const rosterTeamName   = document.getElementById('rosterTeamName');
 const rosterTeamMeta   = document.getElementById('rosterTeamMeta');
@@ -2112,6 +2153,8 @@ const rosterTeamLogo   = document.getElementById('rosterTeamLogo');
 const teamLogoFile     = document.getElementById('teamLogoFile');
 const playerList       = document.getElementById('playerList');
 let managerView='teams';
+let teamStatsSortKey='improvement';
+let teamStatsSortDescending=true;
 let logoEditingTeamId=null;
 const STORAGE_KEY      = 'bullpenTrackerDataV1';
 let appData = loadAppData();
@@ -2196,7 +2239,7 @@ function renderManager() {
     });
   });
 
-  if(managerView==='roster' && selectedTeam()){
+  if((managerView==='roster' || managerView==='teamStats') && selectedTeam()){
     const team=selectedTeam();
     const players=appData.players.filter(p=>p.teamId===team.id);
     rosterTeamName.textContent=team.name;
@@ -2211,11 +2254,18 @@ function renderManager() {
     setupPlayerSwipe();
 
     teamsHomeView.style.display='none';
-    rosterView.style.display='block';
+    rosterView.style.display=managerView==='roster'?'block':'none';
+    teamStatsView.style.display=managerView==='teamStats'?'block':'none';
+    teamBottomNav.classList.add('visible');
+    document.getElementById('teamRosterNavBtn').classList.toggle('active',managerView==='roster');
+    document.getElementById('teamStatsNavBtn').classList.toggle('active',managerView==='teamStats');
+    if(managerView==='teamStats') renderTeamStats(team,players);
   }else{
     managerView='teams';
     teamsHomeView.style.display='block';
     rosterView.style.display='none';
+    teamStatsView.style.display='none';
+    teamBottomNav.classList.remove('visible');
   }
 
   const hasTeam=Boolean(selectedTeam());
@@ -2239,6 +2289,50 @@ function showTeamsHome(){
   managerView='teams';
   renderManager();
 }
+
+function teamPlayerStats(player){
+  const sessions=appData.sessions.filter(s=>s.playerId===player.id).sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)));
+  const aggregate=aggregateHistorySessions(sessions,player);
+  const first=sessions[0], last=sessions[sessions.length-1];
+  const strikeDelta=sessions.length>1?(Number(last.strikePct)||0)-(Number(first.strikePct)||0):0;
+  const commandDelta=sessions.length>1?sessionCommandScore(last)-sessionCommandScore(first):0;
+  const commandEnabled=player.showCommandGrade!==false;
+  const improvement=commandEnabled?(strikeDelta+commandDelta)/2:strikeDelta;
+  return {player,sessions:sessions.length,totalPitches:aggregate.totalPitches,strikePct:aggregate.strikePct,locationPct:aggregate.locationPct,commandScore:aggregate.commandScore,strikeDelta,commandDelta,improvement,commandEnabled};
+}
+
+function signedStat(value,suffix=''){
+  const n=Math.round(Number(value)||0), cls=n>0?'stat-up':n<0?'stat-down':'stat-flat';
+  return `<span class="${cls}">${n>0?'+':''}${n}${suffix}</span>`;
+}
+
+function renderTeamStats(team,players){
+  document.getElementById('statsTeamName').textContent=team.name;
+  document.getElementById('statsTeamLogo').innerHTML=teamLogoMarkup(team,true);
+  const sort=document.getElementById('teamStatsSort');
+  sort.value=teamStatsSortKey;
+  document.getElementById('teamStatsDirection').textContent=teamStatsSortDescending?'HIGH → LOW':'LOW → HIGH';
+  const rows=players.map(teamPlayerStats).sort((a,b)=>{
+    if(teamStatsSortKey==='name') return (teamStatsSortDescending?-1:1)*a.player.name.localeCompare(b.player.name);
+    if(teamStatsSortKey==='commandScore'){
+      const aHas=Boolean(a.commandEnabled&&a.sessions),bHas=Boolean(b.commandEnabled&&b.sessions);
+      if(aHas!==bHas) return aHas?-1:1;
+      const av=aHas?a.commandScore:0,bv=bHas?b.commandScore:0;
+      return teamStatsSortDescending?bv-av:av-bv;
+    }
+    const av=Number(a[teamStatsSortKey])||0,bv=Number(b[teamStatsSortKey])||0;
+    return teamStatsSortDescending?bv-av:av-bv;
+  });
+  document.getElementById('teamStatsContent').innerHTML=rows.length?`<div class="team-stats-table"><div class="team-stats-grid">
+    <div class="team-stats-row team-stats-head"><div>Player</div><div>Sessions</div><div>Pitches</div><div>Strike %</div><div>Location %</div><div>PB Command</div><div>Improvement</div></div>
+    ${rows.map(r=>`<div class="team-stats-row"><div class="team-stats-player"><button type="button" onclick="showHistory('${r.player.id}')">${esc(r.player.name)}</button></div><div>${r.sessions}</div><div>${r.totalPitches}</div><div class="${strikeClass(r.strikePct)}">${r.sessions?r.strikePct+'%':'—'}</div><div>${r.sessions?r.locationPct+'%':'—'}</div><div>${r.sessions?(r.commandEnabled?r.commandScore:'N/A'):'—'}</div><div>${r.sessions>1?`${signedStat(r.strikeDelta,' STR')}<br>${r.commandEnabled?signedStat(r.commandDelta,' CMD'):'<span class="stat-flat">CMD N/A</span>'}`:'<span class="stat-flat">NEEDS 2</span>'}</div></div>`).join('')}
+  </div></div><div class="team-stats-note">Improvement compares each player’s latest session with their earliest session. Overall percentages combine all saved pitches. Tap a player’s name to open their history.</div>`:'<div class="empty-state">Add players and save bullpen sessions to compare team stats.</div>';
+}
+
+document.getElementById('teamRosterNavBtn').addEventListener('click',()=>{managerView='roster';renderManager();});
+document.getElementById('teamStatsNavBtn').addEventListener('click',()=>{managerView='teamStats';renderManager();});
+document.getElementById('teamStatsSort').addEventListener('change',e=>{teamStatsSortKey=e.target.value;renderManager();});
+document.getElementById('teamStatsDirection').addEventListener('click',()=>{teamStatsSortDescending=!teamStatsSortDescending;renderManager();});
 
 function setupPlayerSwipe() {
   let openCard = null;
@@ -2731,7 +2825,8 @@ function buildHistoryMetricCards(allSessions,player){
   const latestStrikeLabel=usingSelection?(sessionCount===1?'Strike %':'Combined Strike %'):'Latest Strike %';
   const avgStrikeValue=agg.strikePct;
   const avgStrikeLabel=usingSelection?(sessionCount===1?'Session Strike %':'Selected Strike %'):'Avg Strike %';
-  const commandValue=usingSelection?agg.commandScore:sessionCommandScore(latest);
+  const showCommandGrade=player?.showCommandGrade!==false;
+  const commandValue=showCommandGrade?(usingSelection?agg.commandScore:sessionCommandScore(latest)):'N/A';
   const commandLabel=usingSelection?(sessionCount===1?'PB Command Score':'Combined PB Score'):'PB Command Score';
 
   const miss=agg.missBias;
@@ -2742,7 +2837,7 @@ function buildHistoryMetricCards(allSessions,player){
   cards+=`<div class="trend-card"><div class="trend-value">${agg.totalPitches}</div><div class="trend-label">Total Pitches</div></div>`;
   cards+=`<div class="trend-card"><div class="trend-value strike-pct ${strikeClass(latestStrikeValue)}">${latestStrikeValue}%${latestArrow}</div><div class="trend-label">${latestStrikeLabel}</div></div>`;
   cards+=`<div class="trend-card"><div class="trend-value strike-pct ${strikeClass(avgStrikeValue)}">${avgStrikeValue}%${avgArrow}</div><div class="trend-label">${avgStrikeLabel}</div></div>`;
-  cards+=`<div class="trend-card"><div class="trend-value">${commandValue}${commandArrow}</div><div class="trend-label">${commandLabel}</div></div>`;
+  cards+=`<div class="trend-card"><div class="trend-value">${commandValue}${showCommandGrade?commandArrow:''}</div><div class="trend-label">${commandLabel}</div></div>`;
   cards+=`<div class="trend-card"><div class="trend-value">${agg.avgFb}${agg.fbVelos.length?' MPH':''}</div><div class="trend-label">Avg. FB Velo</div></div>`;
   cards+=`<div class="trend-card"><div class="trend-value">${agg.bestFb}${agg.fbVelos.length?' MPH':''}</div><div class="trend-label">Personal Best FB Velo</div></div>`;
   cards+=`<div class="trend-card"><div class="trend-value">${biasValue}</div><div class="trend-label">Miss-Side Bias · ${biasSub}</div></div>`;
@@ -2794,7 +2889,7 @@ window.showHistory = function(playerId) {
                 <div>${s.totalPitches}</div>
                 <div class="strike-pct ${strikeClass(s.strikePct)}">${s.strikePct}%</div>
                 <div>${s.locationPct}%</div>
-                <div style="font-weight:800">${sessionCommandScore(s)}</div>
+                <div style="font-weight:800">${p.showCommandGrade!==false?sessionCommandScore(s):'N/A'}</div>
               </div>
             </div>
           </div>`;
@@ -3020,7 +3115,8 @@ function exportHistoryPdf(playerId){
   const avgStrike=Math.round(sessions.reduce((n,s)=>n+(Number(s.strikePct)||0),0)/sessions.length);
   const avgLoc=Math.round(sessions.reduce((n,s)=>n+(Number(s.locationPct)||0),0)/sessions.length);
   const latest=sessions[sessions.length-1];
-  const latestPb=sessionCommandScore(latest);
+  const showCommandGrade=player.showCommandGrade!==false;
+  const latestPb=showCommandGrade?sessionCommandScore(latest):'N/A';
   const heat=historicalHeatBackground(sessions);
   const trendSvg=buildHistoryStrikeSvg(sessions);
   const velocitySvg=buildFbVelocitySvg(sessions);
@@ -3029,7 +3125,7 @@ function exportHistoryPdf(playerId){
   const bias=lateralMissBias(allHistoryPitches,player.throws||null);
   const allFbVelos=sessions.flatMap(s=>(s.pitches||[]).filter(p=>isFastballType(p.type) && Number.isFinite(Number(p.velocity)) && Number(p.velocity)>0).map(p=>Number(p.velocity)));
   const personalBestFb=allFbVelos.length?Math.max(...allFbVelos).toFixed(1):'—';
-  const sessionRows=sessions.slice().reverse().map(s=>`<tr><td>${new Date(s.createdAt).toLocaleDateString()}</td><td>${s.totalPitches}</td><td>${s.strikePct}%</td><td>${s.locationPct}%</td><td>${sessionCommandScore(s)}</td></tr>`).join('');
+  const sessionRows=sessions.slice().reverse().map(s=>`<tr><td>${new Date(s.createdAt).toLocaleDateString()}</td><td>${s.totalPitches}</td><td>${s.strikePct}%</td><td>${s.locationPct}%</td><td>${showCommandGrade?sessionCommandScore(s):'N/A'}</td></tr>`).join('');
   const notes=sessions.slice().reverse().filter(s=>(s.notes||'').trim()).map(s=>`<div class="note"><strong>${new Date(s.createdAt).toLocaleDateString()}</strong><div>${printSafe((s.notes||'').trim())}</div></div>`).join('') || '<div class="note">No session notes.</div>';
   const win=window.open('','_blank');
   if(!win){alert('Allow pop-ups for Pocket Bullpen to create the PDF report.');return;}
@@ -3049,7 +3145,7 @@ function exportHistoryPdf(playerId){
     <div class="brand"><div class="logo"><span class="p">POCKET</span><span class="b">BULLPEN</span></div><div class="name">${printSafe(player.name)}</div><div class="sub">${printSafe(team?.name||'')} · ${player.throws ? 'Throws '+(player.throws==='R'?'Right':'Left')+' · ' : ''}Complete Bullpen History · ${sessions.length} sessions</div></div>
     <div class="cards"><div class="card"><label>Sessions</label><strong class="cyan">${sessions.length}</strong></div><div class="card"><label>Total Pitches</label><strong class="yellow">${totalPitches}</strong></div><div class="card"><label>Avg Strike %</label><strong class="green">${avgStrike}%</strong></div><div class="card"><label>Latest PB Score</label><strong class="orange">${latestPb}</strong></div></div>
     <div class="cards" style="grid-template-columns:1fr 1fr"><div class="card"><label>Personal Best FB Velo</label><strong class="cyan">${personalBestFb}${personalBestFb!=='—'?' MPH':''}</strong></div><div class="card"><label>Miss-Side Bias</label><strong class="orange">${!player.throws?'HAND NOT SET':(bias.sided?`${bias.pct}% ${bias.direction}`:'—')}</strong><small>${!player.throws?'Set throwing hand in player profile':(bias.sided?`${bias.glove} GS · ${bias.throwing} TS · throws ${player.throws==='R'?'right':'left'}`:'Not enough lateral misses')}</small></div></div>
-    <div class="section"><h2>Strike % trend by pitch</h2>${trendSvg}</div>
+    <div class="section"><h2>Strike % trend by session</h2>${trendSvg}</div>
     <div class="section"><h2>Fastball velocity progression</h2>${velocitySvg}</div>
     <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div>${historyPitchDots}</div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Dots show individual pitch locations.</div><div style="color:#6686a4;font-size:10px;line-height:1.5;margin-top:8px"><strong style="color:#edf5ff">Miss-Side Bias:</strong> compares each missed pitch to its intended target. For right-handed pitchers, misses left on the on-screen zone are GS and misses right are TS; the mapping reverses for left-handed pitchers.</div></div></div></div>
     <div class="section"><h2>Bullpen sessions</h2><table><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th><th>PB Score</th></tr></thead><tbody>${sessionRows}</tbody></table></div>
@@ -3133,7 +3229,9 @@ function exportSessionPdf(){
   const strikePct=Math.round(strikes/pitches.length*100);
   const locPct=targeted.length?Math.round(onTarget/targeted.length*100):0;
   const cmd=pocketCommandMetrics(pitches);
-  const wild=pitches.filter(p=>p.isWildPitch).length;
+  const missBias=lateralMissBias(pitches,player?.throws||null);
+  const missBiasValue=!player?.throws?'HAND NOT SET':(missBias.sided?`${missBias.pct}% ${missBias.direction}`:'—');
+  const missBiasSub=!player?.throws?'Set throwing hand in player profile':(missBias.sided?`${missBias.glove} GS · ${missBias.throwing} TS`:'No lateral misses');
   const types=sessionPitchTypeStats(pitches);
   const notes=(rec?.notes||'').trim();
   const heat=heatmapBackgroundCss(pitches);
@@ -3181,7 +3279,7 @@ function exportSessionPdf(){
     .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}.card{background:#0f1924;border:1px solid #20344a;border-radius:10px;padding:10px}
     .card label{display:block;color:#7890a8;font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase}.card strong{display:block;font-size:22px;margin-top:4px}.card small{color:#7890a8}
     h2{font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:16px 0 7px}
-    .heatwrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+    .heatwrap{display:grid;grid-template-columns:1fr;gap:10px;align-items:start}.heatpanel{width:min(100%,360px)}
     .heat{position:relative;aspect-ratio:1;border:1px solid #294057;border-radius:12px;background-color:#0d1520;background-image:${heat||'none'};overflow:hidden}
     .zone{position:absolute;inset:20%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);border:2px solid rgba(255,255,255,.9)}
     .zone i{border:1px solid rgba(255,255,255,.28)}
@@ -3203,23 +3301,22 @@ function exportSessionPdf(){
     <div class="cards">
       <div class="card"><label>Strike %</label><strong>${strikePct}%</strong><small>${strikes}/${pitches.length} strikes</small></div>
       <div class="card"><label>Location %</label><strong>${locPct}%</strong><small>${onTarget}/${targeted.length} on target</small></div>
-      <div class="card"><label>PB Command</label><strong>${cmd.score}</strong>${showCommandGrade?`<small>${cmd.grade}</small>`:''}</div>
-      <div class="card"><label>Wild Pitches</label><strong>${wild}</strong><small>${pitches.length-wild} non-WP</small></div>
+      <div class="card"><label>PB Command</label><strong>${showCommandGrade?cmd.score:'N/A'}</strong>${showCommandGrade?`<small>${cmd.grade}</small>`:''}</div>
+      <div class="card"><label>Miss-Side Bias</label><strong>${missBiasValue}</strong><small>${missBiasSub}</small></div>
     </div>
     <h2>Strike % by pitch</h2>
     ${strikeProgressSvg}
     <div class="legend"><span class="good">● Location strike</span> &nbsp; <span style="color:#2f80ed">● Strike</span> &nbsp; <span class="bad">● Ball</span> &nbsp; <span class="wild">● Wild pitch</span></div>
     <h2>Command heat map</h2>
     <div class="heatwrap">
-      <div><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div>${pitchDots}</div><div class="legend"><span class="good">● On-target strike</span> &nbsp; <span style="color:#2f80ed">● Strike, missed location</span> &nbsp; <span class="bad">● Ball / WP</span> · Dots show each pitch location</div></div>
-      <div class="bars"><strong style="font-size:11px">Pitch mix</strong>${mixRows||'<p>No pitch mix data.</p>'}</div>
+      <div class="heatpanel"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div>${pitchDots}</div><div class="legend"><span class="good">● On-target strike</span> &nbsp; <span style="color:#2f80ed">● Strike, missed location</span> &nbsp; <span class="bad">● Ball / WP</span> · Dots show each pitch location</div><div class="bars" style="margin-top:10px"><strong style="font-size:11px">Pitch mix</strong>${mixRows||'<p>No pitch mix data.</p>'}</div></div>
     </div>
     <h2>Command by pitch type</h2>
     <div class="bars">${commandRows}</div>
     <h2>By pitch type</h2>
     <table><thead><tr><th>Pitch</th><th>Count</th><th>Strike</th><th>Location</th><th>Avg MPH</th><th>High MPH</th></tr></thead><tbody>${pitchRows}</tbody></table>
     <h2>PB Command metrics</h2>
-    <div class="command"><strong>${cmd.score}${showCommandGrade?` — ${cmd.grade}`:''}</strong><br>On-location strikes: ${cmd.onTargetStrikePct}% · Overall strikes: ${cmd.strikePct}% · Location quality: ${cmd.locationQuality}</div>
+    <div class="command"><strong>${showCommandGrade?`${cmd.score} — ${cmd.grade}`:'N/A'}</strong><br>On-location strikes: ${cmd.onTargetStrikePct}% · Overall strikes: ${cmd.strikePct}% · Location quality: ${cmd.locationQuality}</div>
     <h2>Session notes</h2><div class="notes">${notes?printSafe(notes):'No session notes.'}</div>
     <div class="footer">Pocket Bullpen Session Report</div></div>
     <script>
@@ -4223,7 +4320,7 @@ function buildStats() {
     { label:'STRIKE %', value: strikePct + '%', sub: `${strikes}/${total} strikes`, cls:'green' },
     { label:'LOCATION %', value: locPct + '%', sub: `${onTarget}/${withTarget.length} on target`, cls:'blue' },
     { label:'TOTAL PITCHES', value: total, sub: strikes + ' strikes · ' + (total-strikes) + ' balls' + (pitches.filter(p=>p.isWildPitch).length ? ' · '+pitches.filter(p=>p.isWildPitch).length+' wild' : ''), cls:'yellow' },
-    { label:'PB COMMAND', value: pocketCommandMetrics(pitches).score, sub: showCommandGrade?pocketCommandMetrics(pitches).grade:'Command score', cls:'orange' },
+    { label:'PB COMMAND', value: showCommandGrade?pocketCommandMetrics(pitches).score:'N/A', sub: showCommandGrade?pocketCommandMetrics(pitches).grade:'Command grade is off', cls:'orange' },
   ];
 
   document.getElementById('statCards').innerHTML = cards.map(c => `
@@ -4303,7 +4400,7 @@ function buildStats() {
   document.getElementById('spreadCard').innerHTML=`
     <div class="spread-title">POCKET BULLPEN COMMAND</div>
     <div class="spread-grid">
-      <div class="spread-stat"><div class="spread-val" style="color:${gradeColor}">${cmd.score}</div><div class="spread-lbl">PB COMMAND SCORE</div></div>
+      <div class="spread-stat"><div class="spread-val" style="color:${gradeColor}">${showCommandGrade?cmd.score:'N/A'}</div><div class="spread-lbl">PB COMMAND SCORE</div></div>
       ${showCommandGrade?`<div class="spread-stat"><div class="spread-val" style="color:${gradeColor};font-size:18px">${cmd.grade}</div><div class="spread-lbl">COMMAND GRADE</div></div>`:''}
       <div class="spread-stat"><div class="spread-val">${cmd.onTargetStrikePct}%</div><div class="spread-lbl">ON-LOCATION STRIKES</div></div>
       <div class="spread-stat"><div class="spread-val">${cmd.locationQuality}</div><div class="spread-lbl">LOCATION QUALITY</div></div>
