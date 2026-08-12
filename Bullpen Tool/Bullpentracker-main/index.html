@@ -329,7 +329,7 @@
     display:grid;
     grid-template-columns:repeat(5,1fr);
     grid-template-rows:repeat(5,1fr);
-    gap:3px;
+    gap:0;
     width:100%;
     aspect-ratio:1;
     position:relative;
@@ -344,7 +344,7 @@
   .ball-zone {
     border:1px solid rgba(255,92,53,.18);
     background:rgba(255,92,53,.055);
-    border-radius:4px;
+    border-radius:0;
     min-width:0;
     min-height:0;
     position:relative;
@@ -932,6 +932,7 @@
   .result-zone-grid .ball-zone {
     min-width:0;
     min-height:0;
+    border-radius:0;
   }
   .result-zone-grid .strike-zone {
     display:contents;
@@ -964,6 +965,29 @@
   /* ===== TEAM / PLAYER / HISTORY ===== */
   .manager-screen { flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); }
   .manager-scroll { flex:1; overflow-y:auto; padding:16px 16px calc(24px + env(safe-area-inset-bottom)); }
+  .team-bottom-nav { display:none; grid-template-columns:1fr 1fr; gap:8px; padding:9px 16px max(9px,env(safe-area-inset-bottom)); background:rgba(11,18,27,.97); border-top:1px solid var(--border); }
+  .team-bottom-nav.visible { display:grid; }
+  .team-nav-btn { min-height:44px; border:1px solid var(--border); border-radius:11px; background:var(--surface); color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:900; letter-spacing:.8px; }
+  .team-nav-btn.active { border-color:rgba(0,212,255,.55); background:rgba(0,212,255,.12); color:var(--accent); }
+  .team-stats-table { overflow-x:auto; border:1px solid var(--border); border-radius:14px; background:var(--surface); }
+  .team-stats-grid { min-width:830px; }
+  .team-stats-row { display:grid; grid-template-columns:1.05fr .65fr .75fr .72fr .75fr .78fr .8fr .8fr .8fr; align-items:center; min-height:48px; border-bottom:1px solid var(--border); }
+  .team-stats-row:last-child { border-bottom:0; }
+  .team-stats-row > div { padding:9px 8px; text-align:right; font-size:12px; }
+  .team-stats-row > div:first-child { text-align:left; position:sticky; left:0; z-index:1; background:var(--surface); }
+  .team-stats-head { min-height:40px; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; }
+  .team-stats-head .team-sort-head { border:0; background:none; color:inherit; font:inherit; text-transform:inherit; letter-spacing:inherit; cursor:pointer; padding:0; text-align:inherit; }
+  .team-stats-head .team-sort-head.active { color:var(--accent); }
+  .team-stats-total { background:rgba(0,212,255,.08); border-top:2px solid rgba(0,212,255,.38); font-weight:800; }
+  .team-stats-total > div:first-child { background:#102331; color:var(--accent); text-transform:uppercase; letter-spacing:.5px; }
+  .team-stats-player { color:var(--text); font-family:'Barlow Condensed',sans-serif; font-size:16px !important; font-weight:800; }
+  .team-stats-player button { border:0; padding:0; background:none; color:inherit; font:inherit; cursor:pointer; }
+  .stat-up { color:var(--green); font-weight:800; }.stat-down { color:var(--red); font-weight:800; }.stat-flat { color:var(--muted); }
+  .team-stats-note { color:var(--muted); font-size:11px; line-height:1.45; margin:8px 2px 0; }
+  .team-stats-header { grid-template-columns:44px minmax(0,1fr); gap:12px; }
+  .team-stats-header .roster-team-copy { min-width:0; display:flex; flex-direction:column; justify-content:center; gap:3px; }
+  .team-stats-header .manager-title { line-height:1; }
+  .team-stats-header .manager-sub { margin-top:0; line-height:1.35; }
   .manager-title { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:30px; text-transform:uppercase; }
   .manager-sub { color:var(--muted); font-size:12px; margin-top:2px; }
   .panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; margin-bottom:12px; }
@@ -986,10 +1010,48 @@
   .empty-state { text-align:center; color:var(--muted); font-size:13px; padding:20px 8px; }
   .utility-row { display:flex; gap:8px; margin-top:12px; }
   .utility-row .card-btn { flex:1; min-height:42px; }
+  .add-team-import-btn { width:100%; margin-top:10px; }
   .history-session-tools { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+  .history-new-session-btn { width:100%; margin-top:12px; border-color:var(--green); background:var(--green); color:#071018; }
+  .home-section-divider { height:1px; background:linear-gradient(90deg,transparent,rgba(0,212,255,.55),rgba(34,197,94,.42),transparent); margin:14px 0 10px; }
+  .custom-sessions-btn {
+    width:100%;
+    margin:12px 0 4px;
+    min-height:58px;
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    gap:12px;
+    padding:12px 14px;
+    border-radius:10px;
+    border:1px solid rgba(0,212,255,.58);
+    background:linear-gradient(145deg,rgba(0,212,255,.28),rgba(34,197,94,.22));
+    color:var(--text);
+    text-align:left;
+    box-shadow:0 10px 24px rgba(0,212,255,.10);
+  }
+  .custom-sessions-btn strong { display:block; font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:900; letter-spacing:1px; color:var(--accent); }
+  .custom-sessions-btn span:last-child { display:block; color:var(--muted); font-size:11px; line-height:1.25; }
+  .strike-zone-icon { width:30px; height:30px; flex:0 0 30px; border:2px solid currentColor; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); border-radius:3px; opacity:.95; color:var(--green); }
+  .strike-zone-icon i { border-right:1px solid currentColor; border-bottom:1px solid currentColor; opacity:.45; }
+  .strike-zone-icon i:nth-child(3n) { border-right:0; }
+  .strike-zone-icon i:nth-child(n+7) { border-bottom:0; }
+  .custom-session-row { display:flex; align-items:center; gap:10px; padding:12px; border:1px solid var(--border); border-radius:10px; background:var(--surface); margin-bottom:8px; }
+  .custom-session-main { flex:1; min-width:0; }
+  .custom-session-name { font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:900; color:var(--text); letter-spacing:.6px; }
+  .custom-session-meta { color:var(--muted); font-size:11px; margin-top:2px; }
+  .custom-session-delete { flex:0 0 auto; border:1px solid rgba(239,68,68,.35); background:rgba(239,68,68,.14); color:var(--red); border-radius:8px; padding:9px 10px; font-family:'Barlow Condensed',sans-serif; font-weight:900; letter-spacing:.8px; }
   .session-context { font-family:'Barlow Condensed',sans-serif; font-size:12px; color:var(--muted); margin-top:4px; }
   .history-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
-  .back-btn { width:42px; height:42px; border-radius:10px; background:var(--surface2); color:var(--text); border:1px solid var(--border); font-size:20px; }
+  .history-profile-header { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+  .history-profile-header .history-player-heading { align-items:center; }
+  .history-sub-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .history-sub-actions .pdf-btn { margin-left:auto; }
+  .back-btn { flex:0 0 42px; width:42px; height:42px; display:grid; place-items:center; padding:0; border-radius:50%; background:linear-gradient(145deg,var(--surface2),var(--surface)); color:var(--accent); border:1px solid rgba(0,212,255,.32); box-shadow:0 5px 14px rgba(0,0,0,.22); cursor:pointer; transition:transform .15s ease,background .15s ease,border-color .15s ease; }
+  .back-btn svg { width:20px; height:20px; }
+  .back-btn:hover { background:rgba(0,212,255,.10); border-color:rgba(0,212,255,.65); }
+  .back-btn:active { transform:scale(.94); }
+  .back-btn:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
   .history-table { width:100%; border-collapse:collapse; font-size:12px; }
   .history-table th { color:var(--muted); text-align:left; padding:8px 6px; border-bottom:1px solid var(--border); font-family:'Barlow Condensed',sans-serif; letter-spacing:.5px; }
   .history-table td { padding:10px 6px; border-bottom:1px solid rgba(30,45,66,.6); color:var(--text); }
@@ -1001,6 +1063,47 @@
   .trend-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px; }
   .trend-value { font-family:'Barlow Condensed',sans-serif; font-size:26px; font-weight:900; color:var(--text); }
   .trend-label { color:var(--muted); font-size:10px; letter-spacing:1px; text-transform:uppercase; }
+  .history-chart-panel, .stats-chart-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .history-chart-title, .stats-chart-title {
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:900;
+    font-size:13px;
+    letter-spacing:1px;
+    color:var(--muted);
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  .history-chart-panel svg, .stats-chart-panel svg, .strike-progress {
+    display:block;
+    width:100%;
+    height:auto;
+    background:#0b121b;
+    border:1px solid var(--border);
+    border-radius:10px;
+  }
+  .chartlegend {
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px 12px;
+    color:var(--muted);
+    font-size:10px;
+    margin-bottom:8px;
+  }
+  .history-chart-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+  .history-heatmap-note { color:var(--muted); font-size:11px; line-height:1.45; margin-top:8px; }
+  .session-report-top-actions {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:8px 16px 12px;
+  }
 
 
   /* ===== SESSION NOTES / PDF REPORT ===== */
@@ -1011,6 +1114,7 @@
   .session-note-label { display:block; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:10px; letter-spacing:1px; margin-bottom:3px; }
   .modal-backdrop { position:fixed; inset:0; z-index:1000; display:none; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.72); padding:16px; padding-bottom:max(16px,env(safe-area-inset-bottom)); }
   .modal-backdrop.visible { display:flex; }
+  #stagedPitchModal, #appConfirmModal { align-items:center; padding-bottom:16px; }
   .notes-modal { width:min(100%,430px); background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:18px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
   .notes-title { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:24px; color:var(--text); text-transform:uppercase; }
   .notes-sub { color:var(--muted); font-size:12px; margin:3px 0 12px; }
@@ -1058,7 +1162,7 @@
   }
   .command-strike-zone {
     position: absolute;
-    inset: 15%;
+    inset: 20%;
     display: grid;
     grid-template-columns: repeat(3,1fr);
     grid-template-rows: repeat(3,1fr);
@@ -1231,6 +1335,8 @@
     line-height:1.5;
     white-space:pre-wrap;
   }
+  .session-notes-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; padding-right:16px; }
+  .edit-notes-btn { border:1px solid var(--border); background:var(--surface2); color:var(--text); border-radius:8px; padding:7px 10px; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:11px; letter-spacing:.7px; }
 
   .session-report-actions { padding-bottom:max(10px,env(safe-area-inset-bottom)); }
   .session-report-actions .new-session-btn { margin-top:6px; margin-bottom:0; }
@@ -1509,6 +1615,15 @@
   }
   .roster-team-logo img { width:100%;height:100%;object-fit:cover; }
   .roster-team-copy { min-width:0; }
+  .roster-header.team-stats-header {
+    grid-template-columns:44px minmax(0,1fr);
+    gap:12px;
+  }
+  .team-stats-header .manager-sub {
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
 
 
   .team-card-shell {
@@ -1631,7 +1746,7 @@
 
   <!-- TEAM / PLAYER HOME -->
   <div class="manager-screen" id="managerScreen">
-    <div class="header preferred-brand-header">
+    <div class="header preferred-brand-header" id="brandHeader">
       <img src="pocketbullpen-header.png" alt="PocketBullpen — Bullpen Tracker — Track Analyze Develop">
     </div>
 
@@ -1642,20 +1757,24 @@
           <input id="teamNameInput" class="app-input" placeholder="Team name" maxlength="40">
           <button id="addTeamBtn" class="mini-btn">ADD</button>
         </div>
+        <button id="importBtn" class="card-btn add-team-import-btn" type="button">IMPORT TEAM</button>
+        <input id="importFile" type="file" accept="application/json,.json" style="display:none">
       </div>
 
       <div class="panel-title" style="padding:2px 2px 8px">Teams</div>
       <div id="teamList"></div>
 
-      <div class="utility-row">
-        <button id="importBtn" class="card-btn">IMPORT TEAM</button>
-        <input id="importFile" type="file" accept="application/json,.json" style="display:none">
-      </div>
+      <div class="home-section-divider" aria-hidden="true"></div>
+
+      <button id="customSessionsBtn" class="card-btn custom-sessions-btn" type="button">
+        <span class="strike-zone-icon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <span><strong>CUSTOM SESSIONS</strong>Create reusable pitch/location sequences</span>
+      </button>
     </div>
 
     <div class="manager-scroll" id="rosterView" style="display:none">
       <div class="roster-header">
-        <button id="rosterBackBtn" class="back-btn" type="button">‹</button>
+        <button id="rosterBackBtn" class="back-btn" type="button" aria-label="Back to teams" title="Back to teams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
         <div class="roster-team-logo" id="rosterTeamLogo"></div>
         <div class="roster-team-copy">
           <div class="manager-title" id="rosterTeamName">Team</div>
@@ -1679,6 +1798,37 @@
         <button id="deleteTeamBtn" class="card-btn team-remove-btn" type="button">REMOVE TEAM</button>
       </div>
     </div>
+
+    <div class="manager-scroll" id="teamStatsView" style="display:none">
+      <div class="roster-header team-stats-header">
+        <div class="roster-team-logo" id="statsTeamLogo"></div>
+        <div class="roster-team-copy"><div class="manager-title" id="statsTeamName">Team Stats</div><div class="manager-sub">Player comparison and improvement</div></div>
+      </div>
+      <div id="teamStatsContent"></div>
+    </div>
+
+    <div class="manager-scroll" id="customSessionsView" style="display:none">
+      <div class="roster-header">
+        <button id="customSessionsBackBtn" class="back-btn" type="button" aria-label="Back to home" title="Back to home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="roster-team-copy">
+          <div class="manager-title">Custom Sessions</div>
+          <div class="manager-sub">Reusable Smart Bullpen pitch/location plans</div>
+        </div>
+      </div>
+      <button id="createCustomSessionPageBtn" class="card-btn custom-sessions-btn" type="button">
+        <span class="strike-zone-icon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <span><strong>CREATE CUSTOM</strong>Build a new pitch/location sequence</span>
+      </button>
+      <div class="panel">
+        <div class="panel-title">Saved Custom Sessions</div>
+        <div id="customSessionsList"></div>
+      </div>
+    </div>
+
+    <nav class="team-bottom-nav" id="teamBottomNav" aria-label="Team pages">
+      <button class="team-nav-btn active" id="teamRosterNavBtn" type="button">ROSTER</button>
+      <button class="team-nav-btn" id="teamStatsNavBtn" type="button">TEAM STATS</button>
+    </nav>
 
     <input id="teamLogoFile" type="file" accept="image/*" style="display:none">
 
@@ -1714,8 +1864,7 @@
   <!-- PLAYER HISTORY -->
   <div class="manager-screen" id="historyScreen" style="display:none">
     <div class="manager-scroll">
-      <div class="history-header">
-        <button id="historyBackBtn" class="back-btn">‹</button>
+      <div class="history-profile-header">
         <div class="history-player-heading">
           <button id="playerProfileBtn" class="player-profile-btn" type="button" aria-label="Edit player profile" title="Edit player profile">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1725,12 +1874,34 @@
           </button>
           <div><div class="manager-title" id="historyPlayerName">Player</div><div class="manager-sub" id="historyTeamName"></div></div>
         </div>
-        <div class="history-actions"><button id="historyPdfBtn" class="pdf-btn">PDF REPORT</button></div>
+        <div class="history-sub-actions">
+          <button id="historyBackBtn" class="back-btn" type="button" aria-label="Back to roster" title="Back to roster"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <button id="historyPdfBtn" class="pdf-btn">PDF REPORT</button>
+        </div>
       </div>
       <div class="trend-cards" id="trendCards"></div>
+      <div class="history-chart-grid">
+        <div class="history-chart-panel">
+          <div class="history-chart-title">Strike % Trend By Session</div>
+          <div id="historyStrikeTrend"></div>
+        </div>
+        <div class="history-chart-panel">
+          <div class="history-chart-title">Historical Command Heatmap</div>
+          <div class="command-map" id="historyHeatmapGrid" aria-label="Historical command heatmap"></div>
+          <div class="command-map-legend">
+            <span><i class="heat-key good"></i> ON TARGET STRIKE</span>
+            <span><i class="heat-key blue"></i> STRIKE - MISSED LOCATION</span>
+            <span><i class="heat-key bad"></i> BALL / WP</span>
+          </div>
+          <div class="history-heatmap-note" id="historyHeatmapNote"></div>
+          <div class="section-label" style="padding:12px 0 0;margin:0">BY PITCH TYPE</div>
+          <div class="pitch-breakdown" id="historyPitchBreakdown"></div>
+        </div>
+      </div>
       <div class="panel">
         <div class="panel-title">Bullpen Sessions</div>
         <div id="historyList"></div>
+        <button id="historyNewSessionBtn" class="card-btn history-new-session-btn" type="button">+ NEW SESSION</button>
         <div class="utility-row history-session-tools">
           <button id="importSessionBtn" class="card-btn" type="button">IMPORT SESSION</button>
           <button id="exportSessionDataBtn" class="card-btn" type="button">EXPORT SESSION</button>
@@ -1870,7 +2041,15 @@
       <div class="stats-subtitle" id="statsSubtitle"></div>
     </div>
 
+    <div class="session-report-top-actions">
+      <button id="homeBtn" class="back-btn" type="button" aria-label="Back to players" title="Back to players"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <button class="pdf-btn" id="sessionPdfBtn">PDF REPORT</button>
+    </div>
+
     <div class="stat-cards" id="statCards"></div>
+
+    <div class="section-label">STRIKE % BY PITCH</div>
+    <div class="stats-chart-panel" id="sessionStrikePitchChart"></div>
 
     <div class="section-label">COMMAND HEAT MAP — TAP A PITCH</div>
     <div class="stats-zone-section">
@@ -1891,13 +2070,12 @@
       <div class="spread-card" id="spreadCard"></div>
     </div>
 
-    <div class="section-label">SESSION NOTES</div>
+    <div class="section-label session-notes-heading"><span>SESSION NOTES</span><button type="button" class="edit-notes-btn" id="editSessionNotesBtn">EDIT NOTES</button></div>
     <div class="session-report-notes" id="sessionReportNotes">No session notes.</div>
 
-    <div style="display:flex;justify-content:flex-end;padding:0 16px 10px"><button class="pdf-btn" id="sessionPdfBtn">PDF REPORT</button></div>
-    <div class="session-report-actions"><button class="new-session-btn" id="continueSessionBtn" style="background:var(--green);color:#071018">← CONTINUE SESSION</button>
-    <button class="new-session-btn" id="newSessionBtn" style="margin-top:6px">+ NEW SESSION</button>
-    <button class="new-session-btn" id="homeBtn" style="background:var(--surface2);color:var(--text);margin-top:6px">← PLAYERS</button></div>
+    <div class="session-report-actions"><button class="new-session-btn" id="continueSessionBtn" style="background:var(--accent);color:#071018">← CONTINUE SESSION</button>
+    <button class="new-session-btn" id="newSessionBtn" style="margin-top:6px;background:var(--green);color:#071018">+ NEW SESSION</button>
+    </div>
   </div>
 </div>
 
@@ -1925,7 +2103,11 @@
           </div>
         </div>
         <div class="edit-field full smart-pitch-field disabled" id="smartPitchField">
-          <label>Smart Bullpen Pitches</label>
+          <label>Smart Bullpen Plan</label>
+          <select id="smartPlanSelect" class="edit-control"></select>
+        </div>
+        <div class="edit-field full" id="sessionPitchField">
+          <label>Pitch Types</label>
           <div class="smart-pitch-grid" id="smartPitchOptions"></div>
         </div>
       </div>
@@ -1936,15 +2118,64 @@
     </div>
   </div>
 
+  <!-- CUSTOM SESSION SETTINGS MODAL -->
+  <div class="edit-modal" id="customSessionModal">
+    <div class="edit-sheet">
+      <div class="edit-title">Custom Session Settings</div>
+      <div class="edit-grid">
+        <div class="edit-field full">
+          <label>Session Name</label>
+          <input id="customSessionName" class="edit-control" type="text" maxlength="40" placeholder="Example: Game Sequence Work">
+        </div>
+        <div class="edit-field full">
+          <label>Number of Pitches in Sequence</label>
+          <select id="customPitchCount" class="edit-control"></select>
+        </div>
+        <div class="edit-field full">
+          <label>Pitches to Include</label>
+          <div class="smart-pitch-grid" id="customPitchOptions"></div>
+        </div>
+      </div>
+      <div class="edit-actions">
+        <button id="cancelCustomSessionBtn" class="btn btn-secondary" type="button">BACK</button>
+        <button id="startCustomSessionBtn" class="btn btn-primary" type="button">BUILD SEQUENCE</button>
+      </div>
+    </div>
+  </div>
+
   <!-- SESSION NOTES MODAL -->
   <div class="modal-backdrop" id="sessionNotesModal" role="dialog" aria-modal="true" aria-labelledby="sessionNotesTitle">
     <div class="notes-modal">
       <div class="notes-title" id="sessionNotesTitle">Session Notes</div>
-      <div class="notes-sub">Optional — add anything you want to remember about this bullpen.</div>
+      <div class="notes-sub" id="sessionNotesSub">Optional — add anything you want to remember about this bullpen.</div>
       <textarea id="sessionNotesInput" class="notes-textarea" maxlength="1200" placeholder="Examples: Fastball command improved after 15 pitches. Curveball was sharp. Worked mostly glove side..."></textarea>
       <div class="notes-actions">
-        <button id="skipNotesBtn" class="btn btn-secondary">SKIP</button>
+        <button id="skipNotesBtn" class="btn btn-secondary">BACK TO SESSION</button>
         <button id="saveNotesBtn" class="btn btn-primary">SAVE SESSION</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SMART STAGED PITCH MODAL -->
+  <div class="modal-backdrop" id="stagedPitchModal" role="dialog" aria-modal="true" aria-labelledby="stagedPitchTitle">
+    <div class="notes-modal">
+      <div class="notes-title" id="stagedPitchTitle">Record Staged Pitch?</div>
+      <div class="notes-sub">Do you want to record this suggested pitch before ending the session?</div>
+      <div class="notes-actions">
+        <button id="stagedPitchNoBtn" class="btn btn-secondary" type="button">NO</button>
+        <button id="stagedPitchYesBtn" class="btn btn-primary" type="button">YES</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GENERAL CONFIRM MODAL -->
+  <div class="modal-backdrop" id="appConfirmModal" role="dialog" aria-modal="true" aria-labelledby="appConfirmTitle">
+    <div class="notes-modal">
+      <div class="notes-title" id="appConfirmTitle">Confirm</div>
+      <div class="notes-sub" id="appConfirmMessage"></div>
+      <div class="notes-actions">
+        <button id="appConfirmNoBtn" class="btn btn-secondary" type="button">NO</button>
+        <button id="appConfirmYesBtn" class="btn btn-primary" type="button">YES</button>
       </div>
     </div>
   </div>
@@ -1966,6 +2197,15 @@
             <button type="button" class="throw-hand-btn" data-hand="L">LEFT</button>
           </div>
         </div>
+        <div class="edit-field full">
+          <label class="smart-pitch-toggle">
+            <span>Show Command Grade</span>
+            <span class="velo-switch">
+              <input id="profileShowCommandGrade" type="checkbox" checked aria-label="Show Command Grade">
+              <span class="velo-slider"></span>
+            </span>
+          </label>
+        </div>
       </div>
       <div class="edit-actions">
         <button id="cancelPlayerProfileBtn" class="btn btn-secondary">CANCEL</button>
@@ -1980,9 +2220,9 @@
       <div class="edit-title">Update Pitch <span id="editPitchNum"></span></div>
       <div class="edit-grid">
         <div class="edit-field"><label>Pitch Type</label><select id="editPitchType" class="edit-control"><option value="4S">4-Seam</option><option value="2S">2-Seam</option><option value="CH">Change-up</option><option value="CB">Curveball</option><option value="SW">Sweeper</option><option value="SL">Slider</option><option value="CT">Cutter</option><option value="SP">Splitter</option></select></div>
-        <div class="edit-field"><label>Velocity (MPH)</label><input id="editPitchVelocity" class="edit-control" type="number" inputmode="decimal" step="0.1" placeholder="Not tracked"></div>
+        <div class="edit-field" id="editVelocityField"><label>Velocity (MPH)</label><input id="editPitchVelocity" class="edit-control" type="number" inputmode="decimal" step="0.1" placeholder="Not tracked"></div>
         <div class="edit-field full"><label>Target Zone(s)</label><div class="edit-targets" id="editTargetZones"></div></div>
-        <div class="edit-field full"><label>Actual Result</label><select id="editResultZone" class="edit-control"><option value="1">Zone 1</option><option value="2">Zone 2</option><option value="3">Zone 3</option><option value="4">Zone 4</option><option value="5">Zone 5</option><option value="6">Zone 6</option><option value="7">Zone 7</option><option value="8">Zone 8</option><option value="9">Zone 9</option><option value="OOZ">Outside Zone (Ball)</option></select><button id="selectResultOnZoneBtn" type="button" class="edit-control result-zone-btn">SELECT ON ZONE</button></div>
+        <div class="edit-field full" id="editResultField"><label>Actual Result</label><select id="editResultZone" class="edit-control"><option value="1">Zone 1</option><option value="2">Zone 2</option><option value="3">Zone 3</option><option value="4">Zone 4</option><option value="5">Zone 5</option><option value="6">Zone 6</option><option value="7">Zone 7</option><option value="8">Zone 8</option><option value="9">Zone 9</option><option value="OOZ">Outside Zone (Ball)</option></select><button id="selectResultOnZoneBtn" type="button" class="edit-control result-zone-btn">SELECT ON ZONE</button></div>
       </div>
       <div class="edit-actions"><button id="cancelPitchEditBtn" class="btn btn-secondary">CANCEL</button><button id="savePitchEditBtn" class="btn btn-primary">UPDATE PITCH</button></div>
     </div>
@@ -2004,11 +2244,14 @@ const PITCH_TYPES = [
   {code:'SP',label:'Splitter'}
 ];
 const DEFAULT_SESSION_SETUP = {
+  sessionName:'',
   bullpenType:'Mound',
   pitchCount:25,
   mode:'manual',
-  smartPitchTypes:['4S','2S','CH','CB','SL']
+  smartPlanId:'easy',
+  smartPitchTypes:PITCH_TYPES.map(p=>p.code)
 };
+const DEFAULT_SMART_PLAN_PITCH_COUNT = 17;
 
 // Zone positions in a 3x3 grid: [col0-2, row0-2]
 // For coordinate math: zone layout:
@@ -2026,6 +2269,8 @@ let state = {
   sessionSaved: false,
   sessionSetup: {...DEFAULT_SESSION_SETUP},
   pitchCountAlertShown: false,
+  smartSuggestionLabel: '',
+  customSequenceDraft: null,
 };
 
 // pitch object: { num, type, targetZones, resultZone, resultX, resultY, isStrike, isOnTarget }
@@ -2053,7 +2298,15 @@ const sessionSetupModal = document.getElementById('sessionSetupModal');
 const setupPitchCount   = document.getElementById('setupPitchCount');
 const smartPitchField   = document.getElementById('smartPitchField');
 const smartPitchOptions = document.getElementById('smartPitchOptions');
+const smartPlanSelect   = document.getElementById('smartPlanSelect');
+const stagedPitchModal  = document.getElementById('stagedPitchModal');
+const customSessionModal = document.getElementById('customSessionModal');
+const customSessionName  = document.getElementById('customSessionName');
+const customPitchCount   = document.getElementById('customPitchCount');
+const customPitchOptions = document.getElementById('customPitchOptions');
 let setupPlayerId = null;
+let customSessionReturnToSetup = false;
+let customSessionReturnView = 'teams';
 let requireVelocity = false;
 let pendingVelocityPitch = null;
 
@@ -2078,6 +2331,7 @@ if (veloToggle) veloToggle.addEventListener('change', syncVeloMode);
 syncVeloMode();
 
 const managerScreen    = document.getElementById('managerScreen');
+const brandHeader      = document.getElementById('brandHeader');
 const historyScreen    = document.getElementById('historyScreen');
 const homeBtn          = document.getElementById('homeBtn');
 const sessionContext   = document.getElementById('sessionContext');
@@ -2085,6 +2339,9 @@ const teamSelect       = document.getElementById('teamSelect');
 const teamList         = document.getElementById('teamList');
 const teamsHomeView    = document.getElementById('teamsHomeView');
 const rosterView       = document.getElementById('rosterView');
+const teamStatsView    = document.getElementById('teamStatsView');
+const customSessionsView = document.getElementById('customSessionsView');
+const teamBottomNav    = document.getElementById('teamBottomNav');
 const rosterBackBtn    = document.getElementById('rosterBackBtn');
 const rosterTeamName   = document.getElementById('rosterTeamName');
 const rosterTeamMeta   = document.getElementById('rosterTeamMeta');
@@ -2092,17 +2349,51 @@ const rosterTeamLogo   = document.getElementById('rosterTeamLogo');
 const teamLogoFile     = document.getElementById('teamLogoFile');
 const playerList       = document.getElementById('playerList');
 let managerView='teams';
+let teamStatsSortKey='improvement';
+let historyReturnView='roster';
 let logoEditingTeamId=null;
 const STORAGE_KEY      = 'bullpenTrackerDataV1';
 let appData = loadAppData();
 
 function uid(prefix='id') { return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function appConfirm(title,message,yesText='YES',noText='NO'){
+  const modal=document.getElementById('appConfirmModal');
+  const titleEl=document.getElementById('appConfirmTitle');
+  const messageEl=document.getElementById('appConfirmMessage');
+  const yesBtn=document.getElementById('appConfirmYesBtn');
+  const noBtn=document.getElementById('appConfirmNoBtn');
+  if(!modal || !titleEl || !messageEl || !yesBtn || !noBtn) return Promise.resolve(window.confirm(message));
+  titleEl.textContent=title;
+  messageEl.textContent=message;
+  yesBtn.textContent=yesText;
+  noBtn.textContent=noText;
+  modal.classList.add('visible');
+  return new Promise(resolve=>{
+    const cleanup=value=>{
+      modal.classList.remove('visible');
+      yesBtn.removeEventListener('click',onYes);
+      noBtn.removeEventListener('click',onNo);
+      modal.removeEventListener('click',onBackdrop);
+      resolve(value);
+    };
+    const onYes=()=>cleanup(true);
+    const onNo=()=>cleanup(false);
+    const onBackdrop=e=>{ if(e.target===modal) cleanup(false); };
+    yesBtn.addEventListener('click',onYes);
+    noBtn.addEventListener('click',onNo);
+    modal.addEventListener('click',onBackdrop);
+  });
+}
 function loadAppData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const data=JSON.parse(raw);
+      if(!Array.isArray(data.customSmartSequences)) data.customSmartSequences=[];
+      return data;
+    }
   } catch(e) { console.warn('Could not load saved data', e); }
-  return { teams: [], players: [], sessions: [], selectedTeamId: null };
+  return { teams: [], players: [], sessions: [], selectedTeamId: null, customSmartSequences: [] };
 }
 function saveAppData() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); }
@@ -2176,7 +2467,8 @@ function renderManager() {
     });
   });
 
-  if(managerView==='roster' && selectedTeam()){
+  if((managerView==='roster' || managerView==='teamStats') && selectedTeam()){
+    if(brandHeader) brandHeader.style.display='none';
     const team=selectedTeam();
     const players=appData.players.filter(p=>p.teamId===team.id);
     rosterTeamName.textContent=team.name;
@@ -2187,15 +2479,33 @@ function renderManager() {
       const sessions = appData.sessions.filter(s => s.playerId === p.id);
       const last = sessions.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt))[0];
       return `<div class="player-swipe" data-player-id="${p.id}"><button class="player-delete" type="button">DELETE</button><div class="player-card"><div class="player-main"><div class="player-name">${esc(p.name)}</div><div class="player-meta">${sessions.length} session${sessions.length===1?'':'s'}${last ? ' · Last '+new Date(last.createdAt).toLocaleDateString() : ''}</div></div><div class="card-actions"><button class="card-btn" onclick="showHistory('${p.id}')">HISTORY</button><button class="card-btn primary" onclick="startBullpen('${p.id}')">START</button></div></div></div>`;
-    }).join('') : '<div class="empty-state">Add a player to this roster to start saving bullpen sessions.</div>';
+    }).join('').replace(/>HISTORY<\/button>/g,'>PROFILE</button>') : '<div class="empty-state">Add a player to this roster to start saving bullpen sessions.</div>';
     setupPlayerSwipe();
 
     teamsHomeView.style.display='none';
-    rosterView.style.display='block';
+    rosterView.style.display=managerView==='roster'?'block':'none';
+    teamStatsView.style.display=managerView==='teamStats'?'block':'none';
+    customSessionsView.style.display='none';
+    teamBottomNav.classList.add('visible');
+    document.getElementById('teamRosterNavBtn').classList.toggle('active',managerView==='roster');
+    document.getElementById('teamStatsNavBtn').classList.toggle('active',managerView==='teamStats');
+    if(managerView==='teamStats') renderTeamStats(team,players);
+  }else if(managerView==='customSessions'){
+    if(brandHeader) brandHeader.style.display='none';
+    teamsHomeView.style.display='none';
+    rosterView.style.display='none';
+    teamStatsView.style.display='none';
+    customSessionsView.style.display='block';
+    teamBottomNav.classList.remove('visible');
+    renderCustomSessionsPage();
   }else{
     managerView='teams';
+    if(brandHeader) brandHeader.style.display='';
     teamsHomeView.style.display='block';
     rosterView.style.display='none';
+    teamStatsView.style.display='none';
+    customSessionsView.style.display='none';
+    teamBottomNav.classList.remove('visible');
   }
 
   const hasTeam=Boolean(selectedTeam());
@@ -2219,6 +2529,100 @@ function showTeamsHome(){
   managerView='teams';
   renderManager();
 }
+
+function renderCustomSessionsPage(){
+  const list=document.getElementById('customSessionsList');
+  if(!list) return;
+  const plans=Array.isArray(appData.customSmartSequences)?appData.customSmartSequences:[];
+  list.innerHTML=plans.length ? plans.map(plan=>{
+    const pitchTypes=[...new Set((plan.steps||[]).map(step=>step.pitchType).filter(Boolean))].join(', ') || 'No pitch types';
+    const count=(plan.steps||[]).length;
+    return `<div class="custom-session-row" data-custom-plan-id="${escAttr(plan.id)}">
+      <div class="strike-zone-icon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="custom-session-main">
+        <div class="custom-session-name">${esc(plan.name)}</div>
+        <div class="custom-session-meta">${count} pitch${count===1?'':'es'} - ${esc(pitchTypes)}</div>
+      </div>
+      <button class="custom-session-delete" type="button">REMOVE</button>
+    </div>`;
+  }).join('') : '<div class="empty-state">No custom sessions yet. Create one to add it to the Smart Bullpen plan dropdown.</div>';
+  list.querySelectorAll('.custom-session-delete').forEach(btn=>{
+    btn.addEventListener('click',async ()=>{
+      const row=btn.closest('.custom-session-row');
+      const id=row?.dataset.customPlanId;
+      const plan=plans.find(p=>p.id===id);
+      if(!plan) return;
+      const ok=await appConfirm('Remove Custom Session?', `Remove "${plan.name}" from saved Smart Bullpen plans?`, 'YES', 'NO');
+      if(!ok) return;
+      appData.customSmartSequences=plans.filter(p=>p.id!==id);
+      saveAppData();
+      refreshSmartPlanOptions(smartPlanSelect?.value || 'easy');
+      renderCustomSessionsPage();
+    });
+  });
+}
+
+function teamPlayerStats(player){
+  const sessions=appData.sessions.filter(s=>s.playerId===player.id).sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)));
+  const aggregate=aggregateHistorySessions(sessions,player);
+  const last=sessions[sessions.length-1];
+  const priorSessions=sessions.slice(0,-1);
+  const priorAggregate=aggregateHistorySessions(priorSessions,player);
+  const strikeDelta=sessions.length>1?(Number(last.strikePct)||0)-(Number(priorAggregate.strikePct)||0):0;
+  const locationDelta=sessions.length>1?(Number(last.locationPct)||0)-(Number(priorAggregate.locationPct)||0):0;
+  const commandEnabled=player.showCommandGrade!==false;
+  const improvement=(strikeDelta+locationDelta)/2;
+  const velos=sessions.flatMap(s=>(s.pitches||[]).filter(p=>Number.isFinite(Number(p.velocity)) && Number(p.velocity)>0).map(p=>Number(p.velocity)));
+  const topVelo=velos.length?Math.max(...velos):null;
+  return {player,sessions:sessions.length,totalPitches:aggregate.totalPitches,topVelo,strikePct:aggregate.strikePct,locationPct:aggregate.locationPct,commandScore:aggregate.commandScore,strikeDelta,locationDelta,improvement,commandEnabled};
+}
+
+function signedStat(value,suffix=''){
+  const n=Math.round(Number(value)||0), cls=n>0?'stat-up':n<0?'stat-down':'stat-flat';
+  return `<span class="${cls}">${n>0?'+':''}${n}${suffix}</span>`;
+}
+
+function renderTeamStats(team,players){
+  document.getElementById('statsTeamName').textContent=team.name;
+  document.getElementById('statsTeamLogo').innerHTML=teamLogoMarkup(team,true);
+  const playerStats=players.map(teamPlayerStats);
+  const teamSessions=appData.sessions.filter(s=>players.some(p=>p.id===s.playerId));
+  const teamAggregate=aggregateHistorySessions(teamSessions,null);
+  playerStats.forEach(r=>{ r.strikeVsTeamAvg = r.sessions ? (Number(r.strikePct)||0) - (Number(teamAggregate.strikePct)||0) : 0; });
+  const rows=playerStats.slice().sort((a,b)=>{
+    if(teamStatsSortKey==='name') return a.player.name.localeCompare(b.player.name);
+    if(teamStatsSortKey==='commandScore'){
+      const aHas=Boolean(a.commandEnabled&&a.sessions),bHas=Boolean(b.commandEnabled&&b.sessions);
+      if(aHas!==bHas) return aHas?-1:1;
+      const av=aHas?a.commandScore:0,bv=bHas?b.commandScore:0;
+      return bv-av;
+    }
+    const av=Number(a[teamStatsSortKey])||0,bv=Number(b[teamStatsSortKey])||0;
+    return bv-av;
+  });
+  const teamVelos=teamSessions.flatMap(s=>(s.pitches||[]).filter(p=>Number.isFinite(Number(p.velocity)) && Number(p.velocity)>0).map(p=>Number(p.velocity)));
+  const teamTopVelo=teamVelos.length?Math.max(...teamVelos):null;
+  const commandSessions=appData.sessions.filter(s=>players.some(p=>p.id===s.playerId&&p.showCommandGrade!==false));
+  const teamCommand=commandSessions.length?aggregateHistorySessions(commandSessions,null).commandScore:null;
+  const improvedPlayers=playerStats.filter(r=>r.sessions>1);
+  const avgStrikeImprovement=improvedPlayers.length?improvedPlayers.reduce((n,r)=>n+r.strikeDelta,0)/improvedPlayers.length:null;
+  const avgLocationImprovement=improvedPlayers.length?improvedPlayers.reduce((n,r)=>n+r.locationDelta,0)/improvedPlayers.length:null;
+  const sortLabel=key=>teamStatsSortKey===key?(key==='name'?' A-Z':' ↓'):'';
+  document.getElementById('teamStatsContent').innerHTML=rows.length?`<div class="team-stats-table"><div class="team-stats-grid">
+    <div class="team-stats-row team-stats-head"><div><button class="team-sort-head ${teamStatsSortKey==='name'?'active':''}" data-sort-key="name" type="button">Player${sortLabel('name')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='sessions'?'active':''}" data-sort-key="sessions" type="button">Sessions${sortLabel('sessions')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='totalPitches'?'active':''}" data-sort-key="totalPitches" type="button">Pitches${sortLabel('totalPitches')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='topVelo'?'active':''}" data-sort-key="topVelo" type="button">Top Velo${sortLabel('topVelo')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='strikePct'?'active':''}" data-sort-key="strikePct" type="button">Strike %${sortLabel('strikePct')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='strikeVsTeamAvg'?'active':''}" data-sort-key="strikeVsTeamAvg" type="button">+/- Team Avg${sortLabel('strikeVsTeamAvg')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='locationPct'?'active':''}" data-sort-key="locationPct" type="button">Location %${sortLabel('locationPct')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='commandScore'?'active':''}" data-sort-key="commandScore" type="button">PB Command${sortLabel('commandScore')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='improvement'?'active':''}" data-sort-key="improvement" type="button">Improvement${sortLabel('improvement')}</button></div></div>
+    ${rows.map(r=>`<div class="team-stats-row"><div class="team-stats-player"><button type="button" onclick="showHistory('${r.player.id}')">${esc(r.player.name)}</button></div><div>${r.sessions}</div><div>${r.totalPitches}</div><div>${r.topVelo===null?'—':r.topVelo.toFixed(1)}</div><div class="${strikeClass(r.strikePct)}">${r.sessions?r.strikePct+'%':'—'}</div><div>${r.sessions?signedStat(r.strikeVsTeamAvg,' STR %'):'—'}</div><div>${r.sessions?r.locationPct+'%':'—'}</div><div>${r.sessions?(r.commandEnabled?r.commandScore:'N/A'):'—'}</div><div>${r.sessions>1?`${signedStat(r.strikeDelta,' STR %')}<br>${signedStat(r.locationDelta,' LOC %')}`:'<span class="stat-flat">NEEDS 2</span>'}</div></div>`).join('')}
+    <div class="team-stats-row team-stats-total"><div>Team Average</div><div>${teamSessions.length}</div><div>${teamAggregate.totalPitches}</div><div>${teamTopVelo===null?'—':teamTopVelo.toFixed(1)}</div><div class="${strikeClass(teamAggregate.strikePct)}">${teamSessions.length?teamAggregate.strikePct+'%':'—'}</div><div><span class="stat-flat">0 STR %</span></div><div>${teamSessions.length?teamAggregate.locationPct+'%':'—'}</div><div>${teamCommand===null?'N/A':teamCommand}</div><div>${avgStrikeImprovement===null?'<span class="stat-flat">NEEDS 2</span>':`${signedStat(avgStrikeImprovement,' STR %')}<br>${signedStat(avgLocationImprovement,' LOC %')}`}</div></div>
+  </div></div><div class="team-stats-note">Improvement compares each player’s latest session with their average before that session. Overall percentages combine all saved pitches. Tap a player’s name to open their history.</div>`:'<div class="empty-state">Add players and save bullpen sessions to compare team stats.</div>';
+  document.querySelectorAll('.team-sort-head').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      teamStatsSortKey=btn.dataset.sortKey || 'improvement';
+      renderManager();
+    });
+  });
+}
+
+document.getElementById('teamRosterNavBtn').addEventListener('click',()=>{managerView='roster';renderManager();});
+document.getElementById('teamStatsNavBtn').addEventListener('click',()=>{managerView='teamStats';renderManager();});
 
 function setupPlayerSwipe() {
   let openCard = null;
@@ -2259,13 +2663,13 @@ function setupPlayerSwipe() {
   });
 }
 
-function deletePlayer(playerId) {
+async function deletePlayer(playerId) {
   const p=appData.players.find(x=>x.id===playerId); if(!p) return;
   const sessionCount=appData.sessions.filter(s=>s.playerId===playerId).length;
   const msg = sessionCount
     ? `Delete ${p.name} and ${sessionCount} saved bullpen session${sessionCount===1?'':'s'}? This cannot be undone.`
     : `Delete ${p.name}? This cannot be undone.`;
-  if(!confirm(msg)) return;
+  if(!await appConfirm('Delete Player?',msg,'YES','NO')) return;
   appData.players=appData.players.filter(x=>x.id!==playerId);
   appData.sessions=appData.sessions.filter(s=>s.playerId!==playerId);
   saveAppData(); renderManager();
@@ -2273,6 +2677,15 @@ function deletePlayer(playerId) {
 
 
 rosterBackBtn.addEventListener('click',showTeamsHome);
+document.getElementById('customSessionsBtn').addEventListener('click',()=>{
+  managerView='customSessions';
+  renderManager();
+});
+document.getElementById('customSessionsBackBtn').addEventListener('click',showTeamsHome);
+document.getElementById('createCustomSessionPageBtn').addEventListener('click',()=>{
+  setupPlayerId=null;
+  openCustomSessionSettings({returnToSetup:false,returnView:'customSessions'});
+});
 
 teamLogoFile.addEventListener('change',()=>{
   const file=teamLogoFile.files?.[0];
@@ -2351,14 +2764,14 @@ document.getElementById('addTeamBtn').addEventListener('click', () => {
   renderManager();
 });
 
-document.getElementById('deleteTeamBtn').addEventListener('click',()=>{
+document.getElementById('deleteTeamBtn').addEventListener('click',async ()=>{
   const team=selectedTeam();
   if(!team){ alert('Select a team first.'); return; }
   const players=appData.players.filter(p=>p.teamId===team.id);
   const playerIds=new Set(players.map(p=>p.id));
   const sessionCount=appData.sessions.filter(s=>playerIds.has(s.playerId)).length;
   const msg=`Delete ${team.name}, ${players.length} player${players.length===1?'':'s'}, and ${sessionCount} saved bullpen session${sessionCount===1?'':'s'}? This cannot be undone.`;
-  if(!confirm(msg)) return;
+  if(!await appConfirm('Delete Team?',msg,'YES','NO')) return;
   appData.sessions=appData.sessions.filter(s=>!playerIds.has(s.playerId));
   appData.players=appData.players.filter(p=>p.teamId!==team.id);
   appData.teams=appData.teams.filter(t=>t.id!==team.id);
@@ -2371,7 +2784,7 @@ document.getElementById('deleteTeamBtn').addEventListener('click',()=>{
 document.getElementById('addPlayerBtn').addEventListener('click', () => {
   if(!appData.selectedTeamId){ alert('Add a team first.'); return; }
   const input=document.getElementById('playerNameInput'); const name=input.value.trim(); if(!name) return;
-  appData.players.push({id:uid('player'),teamId:appData.selectedTeamId,name,throws:null});
+  appData.players.push({id:uid('player'),teamId:appData.selectedTeamId,name,throws:null,showCommandGrade:true});
   managerView='roster';
   input.value='';
   saveAppData();
@@ -2382,6 +2795,10 @@ function buildSessionSetupControls(){
   if(setupPitchCount && !setupPitchCount.options.length){
     setupPitchCount.innerHTML=Array.from({length:18},(_,i)=>15+i*5).map(n=>`<option value="${n}">${n} pitches</option>`).join('');
   }
+  if(customPitchCount && !customPitchCount.options.length){
+    customPitchCount.innerHTML=Array.from({length:18},(_,i)=>15+i*5).map(n=>`<option value="${n}">${n} pitches</option>`).join('');
+  }
+  refreshSmartPlanOptions();
   if(smartPitchOptions && !smartPitchOptions.children.length){
     smartPitchOptions.innerHTML=PITCH_TYPES.map(p=>`
       <label class="smart-pitch-toggle">
@@ -2392,6 +2809,47 @@ function buildSessionSetupControls(){
         </span>
       </label>`).join('');
   }
+  if(customPitchOptions && !customPitchOptions.children.length){
+    customPitchOptions.innerHTML=PITCH_TYPES.map(p=>`
+      <label class="smart-pitch-toggle">
+        <span>${p.label}</span>
+        <span class="velo-switch">
+          <input type="checkbox" value="${p.code}" ${DEFAULT_SESSION_SETUP.smartPitchTypes.includes(p.code)?'checked':''}>
+          <span class="velo-slider"></span>
+        </span>
+      </label>`).join('');
+  }
+}
+
+function refreshSmartPlanOptions(selected='easy'){
+  if(!smartPlanSelect) return;
+  const custom=Array.isArray(appData.customSmartSequences)?appData.customSmartSequences:[];
+  smartPlanSelect.innerHTML=[
+    `<option value="easy">Easy</option>`,
+    `<option value="medium">Medium</option>`,
+    `<option value="advanced">Advanced</option>`,
+    custom.length?`<optgroup label="Custom">${custom.map(plan=>`<option value="custom:${escAttr(plan.id)}">${esc(plan.name)}</option>`).join('')}</optgroup>`:''
+  ].join('');
+  smartPlanSelect.value=[...smartPlanSelect.options].some(o=>o.value===selected)?selected:'easy';
+}
+
+function smartPlanPitchCount(planId){
+  const id=String(planId || 'easy');
+  if(id.startsWith('custom:')){
+    const customId=id.slice(7);
+    const customPlan=(appData.customSmartSequences||[]).find(plan=>plan.id===customId);
+    return customPlan?.steps?.length || DEFAULT_SMART_PLAN_PITCH_COUNT;
+  }
+  return DEFAULT_SMART_PLAN_PITCH_COUNT;
+}
+
+function setSetupPitchCountValue(value){
+  if(!setupPitchCount) return;
+  const n=Number(value)||DEFAULT_SESSION_SETUP.pitchCount;
+  if(![...setupPitchCount.options].some(option=>Number(option.value)===n)){
+    setupPitchCount.add(new Option(`${n} pitches`,String(n)));
+  }
+  setupPitchCount.value=String(n);
 }
 
 function selectedSetupValue(groupId, attr){
@@ -2407,12 +2865,17 @@ function setSetupGroupValue(groupId, attr, value){
 function syncSmartPitchField(){
   const isSmart=selectedSetupValue('bullpenModeOptions','bullpenMode')==='smart';
   smartPitchField?.classList.toggle('disabled',!isSmart);
+  if(setupPitchCount){
+    setupPitchCount.disabled=isSmart;
+    if(isSmart) setSetupPitchCountValue(smartPlanPitchCount(smartPlanSelect?.value || 'easy'));
+  }
 }
 
 function openSessionSetup(){
   buildSessionSetupControls();
   setSetupGroupValue('bullpenTypeOptions','bullpenType',DEFAULT_SESSION_SETUP.bullpenType);
   setSetupGroupValue('bullpenModeOptions','bullpenMode',DEFAULT_SESSION_SETUP.mode);
+  refreshSmartPlanOptions(DEFAULT_SESSION_SETUP.smartPlanId);
   if(setupPitchCount) setupPitchCount.value=String(DEFAULT_SESSION_SETUP.pitchCount);
   smartPitchOptions?.querySelectorAll('input[type="checkbox"]').forEach(input=>{
     input.checked=DEFAULT_SESSION_SETUP.smartPitchTypes.includes(input.value);
@@ -2426,14 +2889,175 @@ function closeSessionSetup(){
   setupPlayerId=null;
 }
 
+function openCustomSessionSettings({returnToSetup=false,returnView='teams'}={}){
+  buildSessionSetupControls();
+  customSessionReturnToSetup=returnToSetup;
+  customSessionReturnView=returnView;
+  if(customSessionName) customSessionName.value='';
+  if(customPitchCount) customPitchCount.value=setupPitchCount?.value || String(DEFAULT_SESSION_SETUP.pitchCount);
+  customPitchOptions?.querySelectorAll('input[type="checkbox"]').forEach(input=>{
+    input.checked=DEFAULT_SESSION_SETUP.smartPitchTypes.includes(input.value);
+  });
+  sessionSetupModal?.classList.remove('visible');
+  customSessionModal?.classList.add('visible');
+  setTimeout(()=>customSessionName?.focus(),0);
+}
+
+function closeCustomSessionSettings(returnToSetup=true){
+  customSessionModal?.classList.remove('visible');
+  if(returnToSetup && customSessionReturnToSetup) sessionSetupModal?.classList.add('visible');
+}
+
+function returnFromCustomSequenceBuilder(){
+  trackingScreen.style.display='none';
+  statsScreen.style.display='none';
+  historyScreen.style.display='none';
+  managerScreen.style.display='flex';
+  managerView=customSessionReturnToSetup ? 'roster' : customSessionReturnView;
+  renderManager();
+}
+
+function readCustomSessionSetup(){
+  const selectedTypes=[...customPitchOptions.querySelectorAll('input[type="checkbox"]:checked')].map(input=>input.value);
+  if(!selectedTypes.length) throw new Error('custom-pitches');
+  const name=(customSessionName?.value || '').trim();
+  return {
+    sessionName:name || 'Custom Session',
+    bullpenType:selectedSetupValue('bullpenTypeOptions','bullpenType') || 'Mound',
+    pitchCount:Number(customPitchCount?.value)||25,
+    mode:'custom',
+    smartPlanId:'custom-session',
+    smartPitchTypes:selectedTypes
+  };
+}
+
+function beginCustomSequenceBuilder(setup){
+  const selectedTypes=(setup.smartPitchTypes||[]).filter(code=>PITCH_TYPES.some(p=>p.code===code));
+  const p=appData.players.find(player=>player.id===setupPlayerId);
+  const t=appData.teams.find(team=>team.id===p?.teamId);
+  state = {
+    phase:'target',
+    targetZones:new Set(),
+    currentPitchType:selectedTypes[0] || '4S',
+    pitches:[],
+    pitchNum:1,
+    activePlayerId:setupPlayerId,
+    sessionSaved:false,
+    savedSessionId:null,
+    reportMode:null,
+    sessionSetup:{
+      sessionName:setup.sessionName,
+      bullpenType:setup.bullpenType || 'Mound',
+      pitchCount:Number(setup.pitchCount)||25,
+      mode:'custom-builder',
+      smartPlanId:'custom-builder',
+      smartPitchTypes:selectedTypes.length?selectedTypes:['4S']
+    },
+    pitchCountAlertShown:false,
+    smartSuggestionLabel:'',
+    customSequenceDraft:{
+      name:setup.sessionName || 'Custom Session',
+      pitchCount:Number(setup.pitchCount)||25,
+      smartPitchTypes:selectedTypes.length?selectedTypes:['4S'],
+      steps:[]
+    }
+  };
+  closeCustomSessionSettings(false);
+  managerScreen.style.display='none';
+  historyScreen.style.display='none';
+  statsScreen.style.display='none';
+  trackingScreen.style.display='flex';
+  resetTrackingUI();
+  sessionContext.textContent = `${p?.name || 'Custom Sequence'}${t ? ' - '+t.name : ''} - Build ${state.customSequenceDraft.name}`;
+  setCustomSequenceActionBar();
+}
+
+function setCustomSequenceActionBar(){
+  const draft=state.customSequenceDraft;
+  const stepNum=(draft?.steps?.length || 0)+1;
+  const total=draft?.pitchCount || 1;
+  if(draft?.steps?.length>=total){
+    phaseInstEl.textContent = 'REVIEW SEQUENCE OR SAVE';
+    phaseInstEl.className='phase-instruction phase-target';
+    clearTargetBtn.textContent='CANCEL';
+    clearTargetBtn.dataset.action='cancel-custom-builder';
+    doneBtn.textContent='SAVE SEQUENCE';
+    doneBtn.onclick=finalizeCustomSequence;
+    doneBtn.disabled=false;
+    return;
+  }
+  phaseInstEl.textContent = `CHOOSE PITCH TYPE AND TARGET LOCATION ${stepNum} OF ${total}`;
+  phaseInstEl.className='phase-instruction phase-target';
+  clearTargetBtn.textContent='CANCEL';
+  clearTargetBtn.dataset.action='cancel-custom-builder';
+  doneBtn.textContent='CHOOSE NEXT';
+  doneBtn.onclick=saveCustomSequenceStep;
+  doneBtn.disabled=state.targetZones.size===0;
+}
+
+function cancelCustomSequenceBuilder(){
+  state.targetZones.clear();
+  state.customSequenceDraft=null;
+  returnFromCustomSequenceBuilder();
+  customSessionModal?.classList.add('visible');
+}
+
+function saveCustomSequenceStep(){
+  const draft=state.customSequenceDraft;
+  if(!draft || state.phase!=='target') return;
+  if(draft.steps.length>=draft.pitchCount) return finalizeCustomSequence();
+  if(!state.targetZones.size){
+    doneBtn.disabled=true;
+    return;
+  }
+  const stepNum=draft.steps.length+1;
+  draft.steps.push({
+    pitchType:state.currentPitchType,
+    zones:[...state.targetZones].sort((a,b)=>a-b),
+    label:`${draft.name} - Pitch ${stepNum}`
+  });
+  renderCustomSequenceLog();
+  state.pitchNum=Math.min(draft.steps.length+1,draft.pitchCount);
+  pitchNumEl.textContent=state.pitchNum;
+  state.targetZones.clear();
+  strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('target'));
+  updateTargetBadges();
+  setCustomSequenceActionBar();
+}
+
+function finalizeCustomSequence(){
+  const draft=state.customSequenceDraft;
+  if(!draft || draft.steps.length<draft.pitchCount) return;
+  const plan={id:uid('smart'),name:draft.name,steps:draft.steps};
+  if(!Array.isArray(appData.customSmartSequences)) appData.customSmartSequences=[];
+  appData.customSmartSequences.push(plan);
+  saveAppData();
+  state.customSequenceDraft=null;
+  state.targetZones.clear();
+  pitchLogEl.innerHTML='';
+  logLabel.style.display='none';
+  returnFromCustomSequenceBuilder();
+  setSetupGroupValue('bullpenModeOptions','bullpenMode','smart');
+  syncSmartPitchField();
+  refreshSmartPlanOptions(`custom:${plan.id}`);
+  if(setupPitchCount) setupPitchCount.value=String(draft.pitchCount);
+  smartPitchOptions?.querySelectorAll('input[type="checkbox"]').forEach(input=>{
+    input.checked=draft.smartPitchTypes.includes(input.value);
+  });
+  if(customSessionReturnToSetup && setupPlayerId) sessionSetupModal?.classList.add('visible');
+  customSessionReturnToSetup=false;
+}
+
 function readSessionSetup(){
   const mode=selectedSetupValue('bullpenModeOptions','bullpenMode') || 'manual';
   const smartPitchTypes=[...smartPitchOptions.querySelectorAll('input[type="checkbox"]:checked')].map(input=>input.value);
-  if(mode==='smart' && !smartPitchTypes.length) throw new Error('smart-pitches');
+  if(!smartPitchTypes.length) throw new Error('session-pitches');
+  const smartCount=smartPlanPitchCount(smartPlanSelect?.value || 'easy');
   return {
     bullpenType:selectedSetupValue('bullpenTypeOptions','bullpenType') || 'Mound',
-    pitchCount:Number(setupPitchCount?.value)||25,
+    pitchCount:mode==='smart'?smartCount:(Number(setupPitchCount?.value)||25),
     mode,
+    smartPlanId:smartPlanSelect?.value || 'easy',
     smartPitchTypes:smartPitchTypes.length?smartPitchTypes:['4S']
   };
 }
@@ -2444,6 +3068,16 @@ document.querySelectorAll('#bullpenTypeOptions .setup-option-btn').forEach(btn=>
 document.querySelectorAll('#bullpenModeOptions .setup-option-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{ setSetupGroupValue('bullpenModeOptions','bullpenMode',btn.dataset.bullpenMode); syncSmartPitchField(); });
 });
+smartPlanSelect?.addEventListener('change',syncSmartPitchField);
+document.getElementById('cancelCustomSessionBtn').addEventListener('click',()=>closeCustomSessionSettings(true));
+document.getElementById('startCustomSessionBtn').addEventListener('click',()=>{
+  try{
+    const setup=readCustomSessionSetup();
+    beginCustomSequenceBuilder(setup);
+  }catch(err){
+    alert('Choose at least one pitch for the custom sequence.');
+  }
+});
 document.getElementById('cancelSessionSetupBtn').addEventListener('click',closeSessionSetup);
 document.getElementById('beginSessionSetupBtn').addEventListener('click',()=>{
   if(!setupPlayerId) return closeSessionSetup();
@@ -2453,7 +3087,7 @@ document.getElementById('beginSessionSetupBtn').addEventListener('click',()=>{
     closeSessionSetup();
     beginBullpenSession(playerId,setup);
   }catch(err){
-    alert('Choose at least one pitch for Smart Bullpen.');
+    alert('Choose at least one pitch type for this session.');
   }
 });
 
@@ -2468,6 +3102,7 @@ function beginBullpenSession(playerId, setup=DEFAULT_SESSION_SETUP) {
   editingResultPitchNum=null;
   activePitchTypeFilter=null;
   const selectedTypes=(setup.smartPitchTypes||[]).filter(code=>PITCH_TYPES.some(p=>p.code===code));
+  const mode=setup.mode==='smart' ? 'smart' : (setup.mode==='custom' ? 'custom' : 'manual');
   state = {
     phase:'target',
     targetZones:new Set(),
@@ -2479,18 +3114,22 @@ function beginBullpenSession(playerId, setup=DEFAULT_SESSION_SETUP) {
     savedSessionId:null,
     reportMode:null,
     sessionSetup:{
+      sessionName:(setup.sessionName || '').trim(),
       bullpenType:setup.bullpenType || 'Mound',
       pitchCount:Number(setup.pitchCount)||25,
-      mode:setup.mode==='smart'?'smart':'manual',
+      mode,
+      smartPlanId:setup.smartPlanId || 'easy',
       smartPitchTypes:selectedTypes.length?selectedTypes:['4S']
     },
-    pitchCountAlertShown:false
+    pitchCountAlertShown:false,
+    smartSuggestionLabel:''
   };
   resetTrackingUI();
   const p=activePlayer(); const t=appData.teams.find(x=>x.id===p?.teamId);
-  if(p) sessionContext.textContent = `${p.name}${t ? ' - '+t.name : ''} - ${state.sessionSetup.bullpenType} - ${state.sessionSetup.pitchCount} pitches`;
-  sessionContext.textContent = p ? `${p.name}${t?' · '+t.name:''}` : '';
-  if(p) sessionContext.textContent = `${p.name}${t ? ' - '+t.name : ''} - ${state.sessionSetup.bullpenType} - ${state.sessionSetup.pitchCount} pitches`;
+  if(p) {
+    const customName=state.sessionSetup.sessionName ? ` - ${state.sessionSetup.sessionName}` : '';
+    sessionContext.textContent = `${p.name}${t ? ' - '+t.name : ''}${customName} - ${state.sessionSetup.bullpenType} - ${state.sessionSetup.pitchCount} pitches`;
+  }
   managerScreen.style.display='none'; historyScreen.style.display='none'; statsScreen.style.display='none'; trackingScreen.style.display='flex';
 }
 
@@ -2501,8 +3140,9 @@ function resetTrackingUI() {
   strikeZoneTarget.style.display='grid'; outerZone.style.display='none'; outerZone.classList.remove('active');
   strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('target'));
   phaseInstEl.textContent='TAP ZONE(S) TO SET TARGET LOCATION'; phaseInstEl.className='phase-instruction phase-target';
-  clearTargetBtn.textContent='VIEW SESSION'; doneBtn.textContent='DONE SESSION'; doneBtn.onclick=finishSession;
+  clearTargetBtn.textContent='VIEW SESSION'; clearTargetBtn.dataset.action='view'; doneBtn.textContent='DONE SESSION'; doneBtn.onclick=finishSession;
   document.querySelectorAll('.pitch-dot,.click-ring').forEach(d=>d.remove()); updateTargetBadges();
+  syncPitchTypeAvailability();
   setActivePitchType(state.currentPitchType || '4S');
   applySmartSuggestion();
 }
@@ -2516,13 +3156,13 @@ function pitchTargetZones(p){
 function zoneRC(z){ return {r:Math.floor((Number(z)-1)/3), c:(Number(z)-1)%3}; }
 function lateralMissBias(pitches, throws=null){
   let left=0,right=0,center=0,total=0,sumDx=0;
-  const zoneW=.70/3;
+  const zoneW=.60/3;
   (pitches||[]).forEach(p=>{
     const targets=pitchTargetZones(p);
     if(!targets.length || p.isOnTarget) return;
     const pt=commandMapPoint(p);
     if(!pt || !Number.isFinite(Number(pt.x))) return;
-    const tx=targets.reduce((n,z)=>{const t=zoneRC(z); return n+(.15+((t.c+.5)/3)*.70);},0)/targets.length;
+    const tx=targets.reduce((n,z)=>{const t=zoneRC(z); return n+(.20+((t.c+.5)/3)*.60);},0)/targets.length;
     const dx=Number(pt.x)-tx;
     sumDx+=dx; total++;
     if(dx < -.035) left++;
@@ -2571,7 +3211,7 @@ function pitchLocationQuality(p){
   if(Number.isFinite(x)&&Number.isFinite(y)){
     let best=10;
     targets.forEach(z=>{
-      const t=zoneRC(z); const tx=.15+((t.c+.5)/3)*.70, ty=.15+((t.r+.5)/3)*.70;
+      const t=zoneRC(z); const tx=.20+((t.c+.5)/3)*.60, ty=.20+((t.r+.5)/3)*.60;
       const d=Math.hypot(x-tx,y-ty);
       const sameH=(t.c===1)||((tx<.5)===(x<.5));
       const sameV=(t.r===1)||((ty<.5)===(y<.5));
@@ -2626,6 +3266,7 @@ function saveCurrentSession(notes='') {
 
 let currentHistoryPlayerId = null;
 let historySelectedSessionIds = new Set();
+let activeHistoryPitchTypeFilter = null;
 
 function escAttr(s){ return esc(s ?? ''); }
 
@@ -2704,7 +3345,8 @@ function buildHistoryMetricCards(allSessions,player){
   const latestStrikeLabel=usingSelection?(sessionCount===1?'Strike %':'Combined Strike %'):'Latest Strike %';
   const avgStrikeValue=agg.strikePct;
   const avgStrikeLabel=usingSelection?(sessionCount===1?'Session Strike %':'Selected Strike %'):'Avg Strike %';
-  const commandValue=usingSelection?agg.commandScore:sessionCommandScore(latest);
+  const showCommandGrade=player?.showCommandGrade!==false;
+  const commandValue=showCommandGrade?(usingSelection?agg.commandScore:sessionCommandScore(latest)):'N/A';
   const commandLabel=usingSelection?(sessionCount===1?'PB Command Score':'Combined PB Score'):'PB Command Score';
 
   const miss=agg.missBias;
@@ -2715,7 +3357,7 @@ function buildHistoryMetricCards(allSessions,player){
   cards+=`<div class="trend-card"><div class="trend-value">${agg.totalPitches}</div><div class="trend-label">Total Pitches</div></div>`;
   cards+=`<div class="trend-card"><div class="trend-value strike-pct ${strikeClass(latestStrikeValue)}">${latestStrikeValue}%${latestArrow}</div><div class="trend-label">${latestStrikeLabel}</div></div>`;
   cards+=`<div class="trend-card"><div class="trend-value strike-pct ${strikeClass(avgStrikeValue)}">${avgStrikeValue}%${avgArrow}</div><div class="trend-label">${avgStrikeLabel}</div></div>`;
-  cards+=`<div class="trend-card"><div class="trend-value">${commandValue}${commandArrow}</div><div class="trend-label">${commandLabel}</div></div>`;
+  cards+=`<div class="trend-card"><div class="trend-value">${commandValue}${showCommandGrade?commandArrow:''}</div><div class="trend-label">${commandLabel}</div></div>`;
   cards+=`<div class="trend-card"><div class="trend-value">${agg.avgFb}${agg.fbVelos.length?' MPH':''}</div><div class="trend-label">Avg. FB Velo</div></div>`;
   cards+=`<div class="trend-card"><div class="trend-value">${agg.bestFb}${agg.fbVelos.length?' MPH':''}</div><div class="trend-label">Personal Best FB Velo</div></div>`;
   cards+=`<div class="trend-card"><div class="trend-value">${biasValue}</div><div class="trend-label">Miss-Side Bias · ${biasSub}</div></div>`;
@@ -2724,9 +3366,13 @@ function buildHistoryMetricCards(allSessions,player){
 
 window.showHistory = function(playerId) {
   const p=appData.players.find(x=>x.id===playerId); if(!p) return;
+  if(managerScreen.style.display!=='none' && (managerView==='roster'||managerView==='teamStats')) historyReturnView=managerView;
 
   // A different player starts with no selected bullpen sessions.
-  if(currentHistoryPlayerId!==playerId) historySelectedSessionIds.clear();
+  if(currentHistoryPlayerId!==playerId) {
+    historySelectedSessionIds.clear();
+    activeHistoryPitchTypeFilter=null;
+  }
   currentHistoryPlayerId=playerId;
 
   const t=appData.teams.find(x=>x.id===p.teamId);
@@ -2740,6 +3386,7 @@ window.showHistory = function(playerId) {
   document.getElementById('historyTeamName').textContent=`${t?.name||''}${p.throws ? ' · Throws '+(p.throws==='R'?'Right':'Left') : ' · Throwing hand not set'}`;
 
   document.getElementById('trendCards').innerHTML=buildHistoryMetricCards(sessions,p);
+  renderHistoryProfileCharts(sessions,p);
   const exportSessionDataBtn=document.getElementById('exportSessionDataBtn');
   if(exportSessionDataBtn) exportSessionDataBtn.disabled=!sessions.length;
 
@@ -2767,7 +3414,7 @@ window.showHistory = function(playerId) {
                 <div>${s.totalPitches}</div>
                 <div class="strike-pct ${strikeClass(s.strikePct)}">${s.strikePct}%</div>
                 <div>${s.locationPct}%</div>
-                <div style="font-weight:800">${sessionCommandScore(s)}</div>
+                <div style="font-weight:800">${p.showCommandGrade!==false?sessionCommandScore(s):'N/A'}</div>
               </div>
             </div>
           </div>`;
@@ -2888,7 +3535,8 @@ function openHistoricalSession(sessionId){
     savedSessionId:s.id,
     reportMode:'historical',
     sessionSetup:{...DEFAULT_SESSION_SETUP,...(s.sessionSetup||{})},
-    pitchCountAlertShown:true
+    pitchCountAlertShown:true,
+    smartSuggestionLabel:''
   };
   const t=appData.teams.find(x=>x.id===p?.teamId);
   document.getElementById('statsSubtitle').textContent='';
@@ -2932,6 +3580,7 @@ function historyStrikeSeries(sessions){
 
 function buildHistoryStrikeSvg(sessions){
   const {types,rows}=historyStrikeSeries(sessions);
+  if(!rows.length) return '<div class="empty-state">No saved session trend yet.</div>';
   const colors=['#ffffff',...hexSeriesColors()];
   const names=['Overall',...types];
   const W=760,H=300,L=46,R=20,T=22,B=42,iw=W-L-R,ih=H-T-B;
@@ -2952,6 +3601,103 @@ function buildHistoryStrikeSvg(sessions){
   const labels=rows.map((r,i)=>`<text x="${x(i)}" y="${H-17}" fill="#6f879f" font-size="9" text-anchor="middle">${printSafe(r.date)}</text>`).join('');
   const legend=names.map((n,i)=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px"><i style="width:10px;height:3px;background:${colors[i%colors.length]};display:inline-block;border-radius:3px"></i>${printSafe(n)}</span>`).join('');
   return `<div class="chartlegend">${legend}</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Strike percentage by session and pitch type">${grid}${paths}${labels}</svg>`;
+}
+
+function renderHistoryCommandHeatmap(sessions,player){
+  const map=document.getElementById('historyHeatmapGrid');
+  const note=document.getElementById('historyHeatmapNote');
+  if(!map) return;
+  const allPitches=sessions.flatMap(s=>historySessionPitches(s));
+  const pitches=activeHistoryPitchTypeFilter ? allPitches.filter(p=>p.type===activeHistoryPitchTypeFilter) : allPitches;
+  const points=pitches.map((p,i)=>({p,pt:commandMapPoint(p),num:i+1}));
+  const gradients=points.map(({p,pt})=>{
+    const x=(pt.x*100).toFixed(1), y=(pt.y*100).toFixed(1);
+    const c=p.isOnTarget ? '34,197,94' : (p.isStrike ? '47,128,237' : '239,68,68');
+    return `radial-gradient(circle at ${x}% ${y}%, rgba(${c},.58) 0%, rgba(${c},.32) 6%, rgba(${c},.11) 13%, rgba(${c},0) 21%)`;
+  });
+  map.style.backgroundImage=gradients.length ? gradients.join(',') : 'none';
+  map.innerHTML=`
+    <div class="command-strike-zone">
+      ${ZONES.map(z=>`<div class="command-target-cell" data-history-zone="${z}"></div>`).join('')}
+    </div>
+  `;
+  points.forEach(({p,pt,num})=>{
+    const dot=document.createElement('button');
+    dot.type='button';
+    dot.className='command-pitch-dot '+(p.isOnTarget?'hit':(p.isStrike?'strike-miss':'miss'));
+    dot.style.left=(pt.x*100)+'%';
+    dot.style.top=(pt.y*100)+'%';
+    dot.textContent='';
+    dot.setAttribute('aria-label',`Historical pitch ${num}: ${p.type}`);
+    map.appendChild(dot);
+  });
+  const agg=aggregateHistorySessions(sessions,player);
+  const miss=agg.missBias;
+  const bias=!player?.throws?'Set throwing hand for miss-side bias.':(miss.sided?`Miss-side bias: ${miss.pct}% ${miss.direction} (${miss.glove} GS / ${miss.throwing} TS).`:'No lateral miss-side bias yet.');
+  const filterNote=activeHistoryPitchTypeFilter ? ` Filter: ${activeHistoryPitchTypeFilter}.` : '';
+  if(note) note.textContent=allPitches.length ? `Showing ${pitches.length} of ${allPitches.length} pitches across ${sessions.length} session${sessions.length===1?'':'s'}.${filterNote} Avg Location %: ${agg.locationPct}%. ${bias}` : 'No saved pitches to map yet.';
+}
+
+function renderHistoryPitchBreakdown(sessions,player){
+  const el=document.getElementById('historyPitchBreakdown');
+  if(!el) return;
+  const pitches=sessions.flatMap(s=>historySessionPitches(s));
+  const types={};
+  pitches.forEach(p=>{
+    if(!types[p.type]) types[p.type]={total:0,strikes:0,targeted:0,onTarget:0,velocities:[]};
+    const d=types[p.type];
+    d.total++;
+    if(p.isStrike) d.strikes++;
+    if(pitchTargetZones(p).length){
+      d.targeted++;
+      if(p.isOnTarget) d.onTarget++;
+    }
+    const v=Number(p.velocity);
+    if(Number.isFinite(v)&&v>0) d.velocities.push(v);
+  });
+  el.innerHTML=Object.entries(types).map(([type,d])=>{
+    const sPct=Math.round(d.strikes/d.total*100);
+    const lPct=d.targeted?Math.round(d.onTarget/d.targeted*100):0;
+    const avgVelo=d.velocities.length?(d.velocities.reduce((a,b)=>a+b,0)/d.velocities.length).toFixed(1):null;
+    const highVelo=d.velocities.length?Math.max(...d.velocities).toFixed(1):null;
+    return `
+      <div class="breakdown-row ${activeHistoryPitchTypeFilter===type?'pitch-filter-active':''}" data-history-filter-type="${type}">
+        <div class="breakdown-type">${esc(type)}</div>
+        <div class="breakdown-bars">
+          <div class="mini-bar-wrap">
+            <span class="mini-bar-label">STR</span>
+            <div class="mini-bar-track"><div class="mini-bar-fill strike-fill" style="width:${sPct}%"></div></div>
+            <span class="mini-bar-pct" style="color:var(--green)">${sPct}%</span>
+          </div>
+          ${d.targeted > 0 ? `<div class="mini-bar-wrap">
+            <span class="mini-bar-label">LOC</span>
+            <div class="mini-bar-track"><div class="mini-bar-fill loc-fill" style="width:${lPct}%"></div></div>
+            <span class="mini-bar-pct" style="color:var(--accent)">${lPct}%</span>
+          </div>` : ''}
+          ${avgVelo !== null ? `<div style="display:flex;gap:12px;margin-top:4px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:var(--text);"><span>AVG <strong style="color:var(--accent)">${avgVelo}</strong> MPH</span><span>HIGH <strong style="color:var(--green)">${highVelo}</strong> MPH</span></div>` : ''}
+        </div>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;color:var(--muted);">${d.total}p</span>
+      </div>`;
+  }).join('') || '<div style="text-align:center;color:var(--muted);font-size:13px;padding:12px">No pitches recorded</div>';
+  if(activeHistoryPitchTypeFilter){
+    el.insertAdjacentHTML('afterbegin',`<div class="pitch-filter-note">HEAT MAP FILTER: ${esc(activeHistoryPitchTypeFilter)} - TAP AGAIN TO SHOW ALL</div>`);
+  } else if(Object.keys(types).length){
+    el.insertAdjacentHTML('afterbegin','<div class="pitch-filter-note" style="color:var(--muted)">TAP A PITCH TYPE TO FILTER THE HEAT MAP</div>');
+  }
+  el.querySelectorAll('.breakdown-row[data-history-filter-type]').forEach(row=>{
+    row.addEventListener('click',()=>{
+      const type=row.dataset.historyFilterType;
+      activeHistoryPitchTypeFilter=activeHistoryPitchTypeFilter===type ? null : type;
+      renderHistoryProfileCharts(sessions,player);
+    });
+  });
+}
+
+function renderHistoryProfileCharts(sessions,player){
+  const trend=document.getElementById('historyStrikeTrend');
+  if(trend) trend.innerHTML=buildHistoryStrikeSvg(sessions);
+  renderHistoryCommandHeatmap(sessions,player);
+  renderHistoryPitchBreakdown(sessions,player);
 }
 
 
@@ -2992,15 +3738,17 @@ function exportHistoryPdf(playerId){
   const avgStrike=Math.round(sessions.reduce((n,s)=>n+(Number(s.strikePct)||0),0)/sessions.length);
   const avgLoc=Math.round(sessions.reduce((n,s)=>n+(Number(s.locationPct)||0),0)/sessions.length);
   const latest=sessions[sessions.length-1];
-  const latestPb=sessionCommandScore(latest);
+  const showCommandGrade=player.showCommandGrade!==false;
+  const latestPb=showCommandGrade?sessionCommandScore(latest):'N/A';
   const heat=historicalHeatBackground(sessions);
   const trendSvg=buildHistoryStrikeSvg(sessions);
   const velocitySvg=buildFbVelocitySvg(sessions);
   const allHistoryPitches=sessions.flatMap(s=>(s.pitches||[]).map((p,i)=>({...p,num:Number(p.num)||i+1,targetZones:new Set(Array.isArray(p.targetZones)?p.targetZones:[])})));
+  const historyPitchDots=printablePitchDots(allHistoryPitches,{numbered:false});
   const bias=lateralMissBias(allHistoryPitches,player.throws||null);
   const allFbVelos=sessions.flatMap(s=>(s.pitches||[]).filter(p=>isFastballType(p.type) && Number.isFinite(Number(p.velocity)) && Number(p.velocity)>0).map(p=>Number(p.velocity)));
   const personalBestFb=allFbVelos.length?Math.max(...allFbVelos).toFixed(1):'—';
-  const sessionRows=sessions.slice().reverse().map(s=>`<tr><td>${new Date(s.createdAt).toLocaleDateString()}</td><td>${s.totalPitches}</td><td>${s.strikePct}%</td><td>${s.locationPct}%</td><td>${sessionCommandScore(s)}</td></tr>`).join('');
+  const sessionRows=sessions.slice().reverse().map(s=>`<tr><td>${new Date(s.createdAt).toLocaleDateString()}</td><td>${s.totalPitches}</td><td>${s.strikePct}%</td><td>${s.locationPct}%</td><td>${showCommandGrade?sessionCommandScore(s):'N/A'}</td></tr>`).join('');
   const notes=sessions.slice().reverse().filter(s=>(s.notes||'').trim()).map(s=>`<div class="note"><strong>${new Date(s.createdAt).toLocaleDateString()}</strong><div>${printSafe((s.notes||'').trim())}</div></div>`).join('') || '<div class="note">No session notes.</div>';
   const win=window.open('','_blank');
   if(!win){alert('Allow pop-ups for Pocket Bullpen to create the PDF report.');return;}
@@ -3012,7 +3760,7 @@ function exportHistoryPdf(playerId){
     *{box-sizing:border-box}body{margin:0;background:#080d14;color:#edf5ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .page{padding:12px}.brand{border:1px solid #20344a;background:#0e1722;border-radius:18px;padding:18px 20px}.logo{font-size:25px;font-weight:900}.logo .p{color:#00d4ff}.logo .b{color:#ff5c35}.name{font-size:21px;font-weight:850;margin-top:8px}.sub{color:#6686a4;font-size:11px;margin-top:3px}
     .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:13px 0}.card{background:#0f1924;border:1px solid #20344a;border-radius:14px;padding:12px}.card label{display:block;color:#6686a4;font-size:9px;letter-spacing:1px;text-transform:uppercase}.card strong{display:block;font-size:25px;margin-top:5px}.cyan{color:#00d4ff}.green{color:#22c55e}.orange{color:#ff5c35}.yellow{color:#facc15}
-    .section{background:#0f1924;border:1px solid #20344a;border-radius:15px;padding:13px;margin-top:12px}.section h2{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6686a4;margin:0 0 10px}.heatgrid{display:grid;grid-template-columns:.9fr 1.1fr;gap:14px;align-items:start}.heat{position:relative;aspect-ratio:1;background-color:#0b121b;background-image:${heat||'none'};border:1px solid #294057;border-radius:13px;overflow:hidden}.zone{position:absolute;inset:15%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);border:2px solid rgba(255,255,255,.8)}.zone i{border:1px solid rgba(255,255,255,.22)}
+    .section{background:#0f1924;border:1px solid #20344a;border-radius:15px;padding:13px;margin-top:12px}.section h2{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6686a4;margin:0 0 10px}.heatgrid{display:grid;grid-template-columns:.9fr 1.1fr;gap:14px;align-items:start}.heat{position:relative;aspect-ratio:1;background-color:#0b121b;background-image:${heat||'none'};border:1px solid #294057;border-radius:13px;overflow:hidden}.zone{position:absolute;inset:20%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);border:2px solid rgba(255,255,255,.8)}.zone i{border:1px solid rgba(255,255,255,.22)}.pitchdot{position:absolute;z-index:3;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border:1px solid white;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.75)}.pitchdot.hit{background:#22c55e}.pitchdot.strike-miss{background:#2f80ed}.pitchdot.miss{background:#ef4444}
     svg{width:100%;height:auto;background:#0b121b;border-radius:10px}.chartlegend{font-size:9px;color:#8aa0b7;margin-bottom:6px;display:flex;flex-wrap:wrap;gap:4px}
     table{width:100%;border-collapse:collapse;font-size:10px}th{color:#6686a4;text-transform:uppercase;font-size:9px;letter-spacing:.7px}th,td{padding:7px;border-bottom:1px solid #20344a;text-align:right}th:first-child,td:first-child{text-align:left}.notes{display:grid;gap:8px}.note{background:#0b121b;border:1px solid #20344a;border-radius:10px;padding:9px;font-size:10px;color:#cbd8e5}.note strong{color:#00d4ff;display:block;margin-bottom:4px}.footer{text-align:right;color:#6686a4;font-size:8px;margin-top:12px}
     @media print{.preview-nav{display:none!important}body{background:#080d14}.page{padding:0}.section,.brand,.card{break-inside:avoid}}
@@ -3020,9 +3768,9 @@ function exportHistoryPdf(playerId){
     <div class="brand"><div class="logo"><span class="p">POCKET</span><span class="b">BULLPEN</span></div><div class="name">${printSafe(player.name)}</div><div class="sub">${printSafe(team?.name||'')} · ${player.throws ? 'Throws '+(player.throws==='R'?'Right':'Left')+' · ' : ''}Complete Bullpen History · ${sessions.length} sessions</div></div>
     <div class="cards"><div class="card"><label>Sessions</label><strong class="cyan">${sessions.length}</strong></div><div class="card"><label>Total Pitches</label><strong class="yellow">${totalPitches}</strong></div><div class="card"><label>Avg Strike %</label><strong class="green">${avgStrike}%</strong></div><div class="card"><label>Latest PB Score</label><strong class="orange">${latestPb}</strong></div></div>
     <div class="cards" style="grid-template-columns:1fr 1fr"><div class="card"><label>Personal Best FB Velo</label><strong class="cyan">${personalBestFb}${personalBestFb!=='—'?' MPH':''}</strong></div><div class="card"><label>Miss-Side Bias</label><strong class="orange">${!player.throws?'HAND NOT SET':(bias.sided?`${bias.pct}% ${bias.direction}`:'—')}</strong><small>${!player.throws?'Set throwing hand in player profile':(bias.sided?`${bias.glove} GS · ${bias.throwing} TS · throws ${player.throws==='R'?'right':'left'}`:'Not enough lateral misses')}</small></div></div>
-    <div class="section"><h2>Strike % trend by pitch</h2>${trendSvg}</div>
+    <div class="section"><h2>Strike % trend by session</h2>${trendSvg}</div>
     <div class="section"><h2>Fastball velocity progression</h2>${velocitySvg}</div>
-    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div></div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Pitch dots are intentionally omitted for a cleaner historical view.</div><div style="color:#6686a4;font-size:10px;line-height:1.5;margin-top:8px"><strong style="color:#edf5ff">Miss-Side Bias:</strong> compares each missed pitch to its intended target. For right-handed pitchers, misses left on the on-screen zone are GS and misses right are TS; the mapping reverses for left-handed pitchers.</div></div></div></div>
+    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div>${historyPitchDots}</div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Dots show individual pitch locations.</div><div style="color:#6686a4;font-size:10px;line-height:1.5;margin-top:8px"><strong style="color:#edf5ff">Miss-Side Bias:</strong> compares each missed pitch to its intended target. For right-handed pitchers, misses left on the on-screen zone are GS and misses right are TS; the mapping reverses for left-handed pitchers.</div></div></div></div>
     <div class="section"><h2>Bullpen sessions</h2><table><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th><th>PB Score</th></tr></thead><tbody>${sessionRows}</tbody></table></div>
     <div class="section"><h2>Session notes</h2><div class="notes">${notes}</div></div><div class="footer">Pocket Bullpen · Player History Report</div>
     <script>
@@ -3046,8 +3794,36 @@ function heatmapBackgroundCss(pitches){
     const pt=commandMapPoint(p);
     const x=(pt.x*100).toFixed(1), y=(pt.y*100).toFixed(1);
     const c=p.isOnTarget ? '34,197,94' : (p.isStrike ? '47,128,237' : '239,68,68');
-    return `radial-gradient(circle at ${x}% ${y}%, rgba(${c},.58) 0%, rgba(${c},.32) 9%, rgba(${c},.12) 19%, rgba(${c},0) 30%)`;
+    return `radial-gradient(circle at ${x}% ${y}%, rgba(${c},.62) 0%, rgba(${c},.34) 6%, rgba(${c},.12) 13%, rgba(${c},0) 21%)`;
   }).join(',');
+}
+
+function printablePitchDots(pitches,{numbered=true}={}){
+  return pitches.map((p,i)=>{
+    const pt=commandMapPoint(p);
+    const cls=p.isOnTarget?'hit':(p.isStrike?'strike-miss':'miss');
+    const label=numbered ? printSafe(Number(p.num)||i+1) : '';
+    return `<span class="pitchdot ${cls}" style="left:${(pt.x*100).toFixed(1)}%;top:${(pt.y*100).toFixed(1)}%">${label}</span>`;
+  }).join('');
+}
+
+function buildSessionStrikeProgressSvg(pitches){
+  const W=760,H=240,L=44,R=18,T=18,B=36,iw=W-L-R,ih=H-T-B;
+  const x=i=>pitches.length<=1?L+iw/2:L+(i/(pitches.length-1))*iw;
+  const y=v=>T+ih-(v/100)*ih;
+  let strikes=0;
+  const rows=pitches.map((p,i)=>{
+    if(p.isStrike) strikes++;
+    return {p,pct:Math.round(strikes/(i+1)*100),i};
+  });
+  const grid=[0,25,50,75,100].map(v=>`<line x1="${L}" y1="${y(v)}" x2="${W-R}" y2="${y(v)}" stroke="#294057" stroke-width="1"/><text x="${L-8}" y="${y(v)+4}" fill="#7890a8" font-size="10" text-anchor="end">${v}%</text>`).join('');
+  const path=rows.map((r,i)=>`${i?'L':'M'} ${x(i).toFixed(1)} ${y(r.pct).toFixed(1)}`).join(' ');
+  const dots=rows.map(r=>{
+    const color=r.p.isWildPitch?'#ff8a3d':(r.p.isOnTarget?'#22c55e':(r.p.isStrike?'#2f80ed':'#ef4444'));
+    return `<circle cx="${x(r.i).toFixed(1)}" cy="${y(r.pct).toFixed(1)}" r="5" fill="${color}" stroke="#edf5ff" stroke-width="1.5"/>`;
+  }).join('');
+  const labels=rows.filter(r=>r.i===0 || (r.i+1)%5===0 || r.i===rows.length-1).map(r=>`<text x="${x(r.i).toFixed(1)}" y="${H-14}" fill="#7890a8" font-size="9" text-anchor="middle">${r.i+1}</text>`).join('');
+  return `<svg class="strike-progress" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative strike percentage after each pitch">${grid}<path d="${path}" fill="none" stroke="#00d4ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${dots}${labels}</svg>`;
 }
 
 function sessionPitchTypeStats(pitches){
@@ -3067,6 +3843,7 @@ function exportSessionPdf(){
   const pitches=state.pitches;
   const rec=currentSessionRecord();
   const player=appData.players.find(p=>p.id===state.activePlayerId);
+  const showCommandGrade=player?.showCommandGrade!==false;
   const team=appData.teams.find(t=>t.id===player?.teamId);
   const reportDate=new Date(rec?.createdAt || Date.now());
   const strikes=pitches.filter(p=>p.isStrike).length;
@@ -3075,10 +3852,14 @@ function exportSessionPdf(){
   const strikePct=Math.round(strikes/pitches.length*100);
   const locPct=targeted.length?Math.round(onTarget/targeted.length*100):0;
   const cmd=pocketCommandMetrics(pitches);
-  const wild=pitches.filter(p=>p.isWildPitch).length;
+  const missBias=lateralMissBias(pitches,player?.throws||null);
+  const missBiasValue=!player?.throws?'HAND NOT SET':(missBias.sided?`${missBias.pct}% ${missBias.direction}`:'—');
+  const missBiasSub=!player?.throws?'Set throwing hand in player profile':(missBias.sided?`${missBias.glove} GS · ${missBias.throwing} TS`:'No lateral misses');
   const types=sessionPitchTypeStats(pitches);
   const notes=(rec?.notes||'').trim();
   const heat=heatmapBackgroundCss(pitches);
+  const pitchDots=printablePitchDots(pitches);
+  const strikeProgressSvg=buildSessionStrikeProgressSvg(pitches);
 
   // Chart 1: pitch mix distribution
   const mixRows=Object.entries(types).map(([type,d])=>{
@@ -3113,28 +3894,29 @@ function exportSessionPdf(){
     .preview-nav button{appearance:none;border:1px solid #2b4259;border-radius:10px;padding:9px 12px;background:#0f1924;color:#edf5ff;font-weight:800;font-size:12px}
     .preview-nav .printbtn{background:#00d4ff;color:#071018;border-color:#00d4ff}
 
-    @page{size:letter;margin:.45in}
-    *{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#152132;margin:0;background:white}
-    .brand{background:#0a0f17;color:white;padding:18px 22px;border-radius:14px;margin-bottom:14px}
+    @page{size:letter;margin:.45in;background:#080d14}
+    *{box-sizing:border-box}html,body{background:#080d14!important}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#edf5ff;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .report{background:#080d14;min-height:100vh;padding:12px}.brand{background:#0e1722;color:white;padding:18px 22px;border:1px solid #20344a;border-radius:14px;margin-bottom:14px}
     .brandtop{font-size:24px;font-weight:900;letter-spacing:.5px}.pocket{color:#00bfe8}.bullpen{color:#ff5c35}
     .player{font-size:18px;font-weight:800;margin-top:6px}.sub{color:#9bacbf;font-size:11px;margin-top:3px}
-    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}.card{border:1px solid #dbe3ec;border-radius:10px;padding:10px}
-    .card label{display:block;color:#718197;font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase}.card strong{display:block;font-size:22px;margin-top:4px}.card small{color:#718197}
+    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}.card{background:#0f1924;border:1px solid #20344a;border-radius:10px;padding:10px}
+    .card label{display:block;color:#7890a8;font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase}.card strong{display:block;font-size:22px;margin-top:4px}.card small{color:#7890a8}
     h2{font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:16px 0 7px}
-    .heatwrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
-    .heat{position:relative;aspect-ratio:1;border:1px solid #ccd6e2;border-radius:12px;background-color:#0d1520;background-image:${heat||'none'};overflow:hidden}
-    .zone{position:absolute;inset:15%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);border:2px solid rgba(255,255,255,.9)}
+    .heatwrap{display:grid;grid-template-columns:1fr;gap:10px;align-items:start}.heatpanel{width:min(100%,360px)}
+    .heat{position:relative;aspect-ratio:1;border:1px solid #294057;border-radius:12px;background-color:#0d1520;background-image:${heat||'none'};overflow:hidden}
+    .zone{position:absolute;inset:20%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);border:2px solid rgba(255,255,255,.9)}
     .zone i{border:1px solid rgba(255,255,255,.28)}
-    .legend{font-size:10px;color:#617187;margin-top:5px}.good{color:#22c55e}.blueheat{color:#2f80ed}.bad{color:#ef4444}
-    .bars{border:1px solid #dbe3ec;border-radius:12px;padding:10px}.barrow{margin:8px 0}.barlabel,.typehead{display:flex;justify-content:space-between;font-size:10px;font-weight:800}.barlabel span,.typehead span{color:#718197;font-weight:600}
-    .track{height:8px;background:#e9eef4;border-radius:99px;overflow:hidden;flex:1}.fill{height:100%;border-radius:99px}.blue,.cyan{background:#00a9d6}.green{background:#22c55e}
+    .pitchdot{position:absolute;z-index:3;width:14px;height:14px;margin:-7px 0 0 -7px;border:1.5px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#071018;font-size:6px;font-weight:900;box-shadow:0 1px 3px rgba(0,0,0,.7)}.pitchdot.hit{background:#22c55e}.pitchdot.strike-miss{background:#2f80ed;color:white}.pitchdot.miss{background:#ef4444;color:white}
+    .legend{font-size:10px;color:#7890a8;margin-top:5px}.good{color:#22c55e}.blueheat{color:#2f80ed}.bad{color:#ef4444}.wild{color:#ff8a3d}
+    .bars{background:#0f1924;border:1px solid #20344a;border-radius:12px;padding:10px}.barrow{margin:8px 0}.barlabel,.typehead{display:flex;justify-content:space-between;font-size:10px;font-weight:800}.barlabel span,.typehead span{color:#7890a8;font-weight:600}
+    .track{height:8px;background:#26374a;border-radius:99px;overflow:hidden;flex:1}.fill{height:100%;border-radius:99px}.blue,.cyan{background:#00a9d6}.green{background:#22c55e}
     .typecmd{margin:9px 0 12px}.metric{display:grid;grid-template-columns:48px 1fr 32px;gap:7px;align-items:center;font-size:9px;margin-top:5px}.metric b{text-align:right}
-    table{width:100%;border-collapse:collapse;font-size:9px}th,td{padding:6px;border-bottom:1px solid #e2e8f0;text-align:right}th:first-child,td:first-child{text-align:left}th{color:#718197;text-transform:uppercase;font-size:8px}
-    .notes{border:1px solid #dbe3ec;border-radius:10px;padding:10px;white-space:pre-wrap;font-size:10px;min-height:38px}
-    .command{border:1px solid #dbe3ec;border-radius:10px;padding:10px;font-size:10px}.command strong{font-size:18px}.footer{font-size:8px;color:#8a98aa;margin-top:14px;text-align:right}
-    @media print{.printtip,.preview-nav{display:none!important}}
+    table{width:100%;border-collapse:collapse;font-size:9px}th,td{padding:6px;border-bottom:1px solid #20344a;text-align:right}th:first-child,td:first-child{text-align:left}th{color:#7890a8;text-transform:uppercase;font-size:8px}
+    .notes,.command{background:#0f1924;border:1px solid #20344a;border-radius:10px;padding:10px;font-size:10px}.notes{white-space:pre-wrap;min-height:38px}.command strong{font-size:18px}.footer{font-size:8px;color:#7890a8;margin-top:14px;text-align:right}.strike-progress{display:block;width:100%;height:auto;background:#0b121b;border:1px solid #20344a;border-radius:10px}
+    @media print{.printtip,.preview-nav{display:none!important}html,body,.report{background:#080d14!important}.report{padding:0}}
   </style></head><body>
     <div class="preview-nav"><button id="backToAppBtn">← Back to Pocket Bullpen</button><button class="printbtn" id="printPdfBtn">Print / Save PDF</button></div>
+    <div class="report">
     <div class="brand"><div class="brandtop"><span class="pocket">POCKET</span><span class="bullpen">BULLPEN</span></div>
       <div class="player">${printSafe(player?.name||'Player')}</div>
       <div class="sub">${printSafe(team?.name||'')} · ${reportDate.toLocaleDateString()} · ${pitches.length} pitches</div>
@@ -3142,22 +3924,24 @@ function exportSessionPdf(){
     <div class="cards">
       <div class="card"><label>Strike %</label><strong>${strikePct}%</strong><small>${strikes}/${pitches.length} strikes</small></div>
       <div class="card"><label>Location %</label><strong>${locPct}%</strong><small>${onTarget}/${targeted.length} on target</small></div>
-      <div class="card"><label>PB Command</label><strong>${cmd.score}</strong><small>${cmd.grade}</small></div>
-      <div class="card"><label>Wild Pitches</label><strong>${wild}</strong><small>${pitches.length-wild} non-WP</small></div>
+      <div class="card"><label>PB Command</label><strong>${showCommandGrade?cmd.score:'N/A'}</strong>${showCommandGrade?`<small>${cmd.grade}</small>`:''}</div>
+      <div class="card"><label>Miss-Side Bias</label><strong>${missBiasValue}</strong><small>${missBiasSub}</small></div>
     </div>
+    <h2>Strike % by pitch</h2>
+    ${strikeProgressSvg}
+    <div class="legend"><span class="good">● Location strike</span> &nbsp; <span style="color:#2f80ed">● Strike</span> &nbsp; <span class="bad">● Ball</span> &nbsp; <span class="wild">● Wild pitch</span></div>
     <h2>Command heat map</h2>
     <div class="heatwrap">
-      <div><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div></div><div class="legend"><span class="good">● On-target strike</span> &nbsp; <span style="color:#2f80ed">● Strike, missed location</span> &nbsp; <span class="bad">● Ball / WP</span> · Heat only, pitch dots omitted</div></div>
-      <div class="bars"><strong style="font-size:11px">Pitch mix</strong>${mixRows||'<p>No pitch mix data.</p>'}</div>
+      <div class="heatpanel"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div>${pitchDots}</div><div class="legend"><span class="good">● On-target strike</span> &nbsp; <span style="color:#2f80ed">● Strike, missed location</span> &nbsp; <span class="bad">● Ball / WP</span> · Dots show each pitch location</div><div class="bars" style="margin-top:10px"><strong style="font-size:11px">Pitch mix</strong>${mixRows||'<p>No pitch mix data.</p>'}</div></div>
     </div>
     <h2>Command by pitch type</h2>
     <div class="bars">${commandRows}</div>
     <h2>By pitch type</h2>
     <table><thead><tr><th>Pitch</th><th>Count</th><th>Strike</th><th>Location</th><th>Avg MPH</th><th>High MPH</th></tr></thead><tbody>${pitchRows}</tbody></table>
     <h2>PB Command metrics</h2>
-    <div class="command"><strong>${cmd.score} — ${cmd.grade}</strong><br>On-location strikes: ${cmd.onTargetStrikePct}% · Overall strikes: ${cmd.strikePct}% · Location quality: ${cmd.locationQuality}</div>
+    <div class="command"><strong>${showCommandGrade?`${cmd.score} — ${cmd.grade}`:'N/A'}</strong><br>On-location strikes: ${cmd.onTargetStrikePct}% · Overall strikes: ${cmd.strikePct}% · Location quality: ${cmd.locationQuality}</div>
     <h2>Session notes</h2><div class="notes">${notes?printSafe(notes):'No session notes.'}</div>
-    <div class="footer">Pocket Bullpen Session Report</div>
+    <div class="footer">Pocket Bullpen Session Report</div></div>
     <script>
       document.getElementById('backToAppBtn').addEventListener('click',()=>window.close());
       document.getElementById('printPdfBtn').addEventListener('click',()=>window.print());
@@ -3176,6 +3960,7 @@ function openPlayerProfile(){
   if(!p) return;
   profileEditingPlayerId=p.id;
   document.getElementById('profilePlayerName').value=p.name||'';
+  document.getElementById('profileShowCommandGrade').checked=p.showCommandGrade!==false;
   document.querySelectorAll('.throw-hand-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.hand===p.throws));
   document.getElementById('playerProfileModal').classList.add('visible');
 }
@@ -3200,13 +3985,29 @@ document.getElementById('savePlayerProfileBtn').addEventListener('click',()=>{
   if(!hand){ alert('Select whether the player throws right or left.'); return; }
   p.name=name;
   p.throws=hand;
+  p.showCommandGrade=document.getElementById('profileShowCommandGrade').checked;
   saveAppData();
   closePlayerProfile();
   window.showHistory(p.id);
 });
 
-document.getElementById('historyBackBtn').addEventListener('click',()=>{historyScreen.style.display='none';managerScreen.style.display='flex';managerView='roster';renderManager();});
-homeBtn.addEventListener('click',()=>{ statsScreen.style.display='none'; trackingScreen.style.display='none'; historyScreen.style.display='none'; managerScreen.style.display='flex'; managerView='roster'; renderManager(); });
+document.getElementById('historyBackBtn').addEventListener('click',()=>{historyScreen.style.display='none';managerScreen.style.display='flex';managerView=historyReturnView;renderManager();});
+document.getElementById('historyNewSessionBtn').addEventListener('click',()=>{
+  if(currentHistoryPlayerId) startBullpen(currentHistoryPlayerId);
+});
+homeBtn.addEventListener('click',()=>{
+  statsScreen.style.display='none';
+  trackingScreen.style.display='none';
+  const playerId=state.activePlayerId || currentHistoryPlayerId;
+  if(playerId){
+    window.showHistory(playerId);
+    return;
+  }
+  historyScreen.style.display='none';
+  managerScreen.style.display='flex';
+  managerView='roster';
+  renderManager();
+});
 
 async function exportSelectedTeamBackup(){
   const team=selectedTeam();
@@ -3341,37 +4142,146 @@ document.getElementById('importSessionFile').addEventListener('change',async e=>
 // ============================================================
 // PITCH TYPE SELECTOR
 // ============================================================
+function availablePitchTypesForSession(){
+  const setup=state.sessionSetup || DEFAULT_SESSION_SETUP;
+  const selected=(setup.smartPitchTypes||[]).filter(code=>PITCH_TYPES.some(p=>p.code===code));
+  return selected.length ? selected : [PITCH_TYPES[0].code];
+}
+
+function syncPitchTypeAvailability(){
+  const available=availablePitchTypesForSession();
+  document.querySelectorAll('.pitch-btn').forEach(btn=>{
+    const visible=available.includes(btn.dataset.type);
+    btn.style.display=visible ? '' : 'none';
+  });
+  if(!available.includes(state.currentPitchType)) state.currentPitchType=available[0];
+}
+
 function setActivePitchType(type){
-  const fallback=PITCH_TYPES[0].code;
-  const next=PITCH_TYPES.some(p=>p.code===type) ? type : fallback;
+  const available=availablePitchTypesForSession();
+  const fallback=available[0] || PITCH_TYPES[0].code;
+  const next=available.includes(type) ? type : fallback;
   state.currentPitchType=next;
   document.querySelectorAll('.pitch-btn').forEach(b=>b.classList.toggle('active',b.dataset.type===next));
 }
 
 function smartPitchSuggestion(index){
   const setup=state.sessionSetup || DEFAULT_SESSION_SETUP;
+  const planId=setup.smartPlanId || 'easy';
+  if(String(planId).startsWith('custom:')){
+    const customId=String(planId).slice(7);
+    const customPlan=(appData.customSmartSequences||[]).find(plan=>plan.id===customId);
+    if(customPlan?.steps?.length){
+      const step=customPlan.steps[index % customPlan.steps.length];
+      const zones=(step.zones||[]).map(Number).filter(z=>z>=1&&z<=9);
+      return {
+        pitchType:step.pitchType,
+        zones:zones.length?zones:[5],
+        label:`${customPlan.name} - Pitch ${(index % customPlan.steps.length)+1}`
+      };
+    }
+  }
   const types=(setup.smartPitchTypes||[]).filter(code=>PITCH_TYPES.some(p=>p.code===code));
   const selected=types.length?types:['4S'];
-  const pitchType=selected[index % selected.length];
-  const zonePlan=[2,5,8,1,3,7,9,4,6];
-  return { pitchType, zones:[zonePlan[index % zonePlan.length]] };
+  const has=code=>selected.includes(code);
+  const firstAvailable=codes=>codes.find(has) || selected[0];
+  const fastball=firstAvailable(['4S','2S']);
+  const secondary=firstAvailable(['SL','SW','CB','CT','CH','SP']);
+  const soft=firstAvailable(['CH','SP','CB','SL','SW','CT']);
+  const cutter=firstAvailable(['CT','2S','4S']);
+  const breaking=firstAvailable(['SL','SW','CB','CT']);
+  const sequences=[
+    [
+      {pitchType:fastball,zones:[4],label:'SEQUENCE 1 - FB arm side'},
+      {pitchType:secondary,zones:[6],label:'SEQUENCE 1 - secondary away'},
+      {pitchType:fastball,zones:[2],label:'SEQUENCE 1 - FB up'},
+      {pitchType:soft,zones:[9],label:'SEQUENCE 1 - chase down/away'}
+    ],
+    [
+      {pitchType:fastball,zones:[6],label:'SEQUENCE 2 - FB away'},
+      {pitchType:cutter,zones:[4],label:'SEQUENCE 2 - hard in'},
+      {pitchType:breaking,zones:[8],label:'SEQUENCE 2 - spin down'},
+      {pitchType:fastball,zones:[2],label:'SEQUENCE 2 - chase FB up'}
+    ],
+    [
+      {pitchType:fastball,zones:[5],label:'SEQUENCE 3 - establish strike'},
+      {pitchType:soft,zones:[7],label:'SEQUENCE 3 - off-speed down/in'},
+      {pitchType:fastball,zones:[3],label:'SEQUENCE 3 - FB up/away'},
+      {pitchType:breaking,zones:[9],label:'SEQUENCE 3 - chase off plate/down'},
+      {pitchType:fastball,zones:[1],label:'SEQUENCE 3 - finish up/in'}
+    ],
+    [
+      {pitchType:secondary,zones:[6],label:'SEQUENCE 4 - secondary strike away'},
+      {pitchType:fastball,zones:[4],label:'SEQUENCE 4 - FB in'},
+      {pitchType:soft,zones:[8],label:'SEQUENCE 4 - change eye level'},
+      {pitchType:fastball,zones:[2],label:'SEQUENCE 4 - elevated chase'}
+    ]
+  ];
+  const plan=sequences.flat();
+  const step=plan[index % plan.length];
+  return {...step,zones:smartZonesForDifficulty(step.zones?.[0]||5,planId)};
+}
+
+function smartZonesForDifficulty(baseZone,difficulty='easy'){
+  const z=Number(baseZone)||5;
+  const row=Math.floor((z-1)/3), col=(z-1)%3;
+  if(difficulty==='advanced') return [z];
+  if(difficulty==='medium'){
+    const rows=[row,Math.min(2,row+1)];
+    if(row===2) rows[0]=1;
+    const cols=[col,Math.min(2,col+1)];
+    if(col===2) cols[0]=1;
+    return [...new Set(rows.flatMap(r=>cols.map(c=>r*3+c+1)))].slice(0,4);
+  }
+  if(col===1) return [2,5,8];
+  if(col===0) return [row*3+1,row*3+2];
+  return [row*3+2,row*3+3];
 }
 
 function applySmartSuggestion(){
   if(state.phase!=='target' || state.sessionSetup?.mode!=='smart') return;
   const suggestion=smartPitchSuggestion(Math.max(0,state.pitchNum-1));
+  state.smartSuggestionLabel=suggestion.label || '';
   setActivePitchType(suggestion.pitchType);
   state.targetZones=new Set(suggestion.zones);
   strikeZoneTarget.querySelectorAll('.zone-cell').forEach(cell=>{
     cell.classList.toggle('target',state.targetZones.has(Number(cell.dataset.zone)));
   });
   updateTargetBadges();
-  showAdvancePrompt(true);
+  phaseInstEl.textContent = state.smartSuggestionLabel || 'SMART SEQUENCE - SUGGESTED PITCH SET';
+  phaseInstEl.className = 'phase-instruction phase-target';
+  setSmartActionBarReady();
 }
+
+function setSmartActionBarReady(){
+  clearTargetBtn.textContent = 'DONE SESSION';
+  clearTargetBtn.dataset.action = 'finish';
+  doneBtn.textContent = 'RECORD PITCH';
+  doneBtn.onclick = toResultPhase;
+  doneBtn.disabled = state.targetZones.size === 0;
+}
+
+function finishSmartSessionFromTarget(){
+  if(state.phase==='target' && state.targetZones.size>0){
+    stagedPitchModal?.classList.add('visible');
+    return;
+  }
+  finishSession();
+}
+
+document.getElementById('stagedPitchYesBtn').addEventListener('click',()=>{
+  stagedPitchModal?.classList.remove('visible');
+  toResultPhase();
+});
+document.getElementById('stagedPitchNoBtn').addEventListener('click',()=>{
+  stagedPitchModal?.classList.remove('visible');
+  finishSession();
+});
 
 document.querySelectorAll('.pitch-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     setActivePitchType(btn.dataset.type);
+    if(state.sessionSetup?.mode==='custom-builder') setCustomSequenceActionBar();
   });
 });
 
@@ -3399,7 +4309,8 @@ function updateTargetBadges() {
   } else {
     const zoneNames = {1:'UP-IN',2:'UP',3:'UP-OUT',4:'MID-IN',5:'MID',6:'MID-OUT',7:'DOWN-IN',8:'DOWN',9:'DOWN-OUT'};
     const pills = [...state.targetZones].map(z => `<span class="target-zone-pill">Z${z} ${zoneNames[z]}</span>`).join('');
-    targetBadgeRow.innerHTML = pills + `<button class="select-all-btn" id="selectAllBtn">ALL</button>`;
+    const smartLabel=state.sessionSetup?.mode==='smart' && state.smartSuggestionLabel ? `<span class="target-zone-pill session-plan-pill">${esc(state.smartSuggestionLabel)}</span>` : '';
+    targetBadgeRow.innerHTML = smartLabel + pills + `<button class="select-all-btn" id="selectAllBtn">ALL</button>`;
     document.getElementById('selectAllBtn')?.addEventListener('click', selectAllZones);
   }
 }
@@ -3410,12 +4321,21 @@ function selectAllZones() {
     strikeZoneTarget.querySelector(`[data-zone="${z}"]`).classList.add('target');
   });
   updateTargetBadges();
+  if(state.sessionSetup?.mode==='custom-builder') setCustomSequenceActionBar();
 }
 
 clearTargetBtn.addEventListener('click', () => {
+  if(state.sessionSetup?.mode==='custom-builder'){
+    cancelCustomSequenceBuilder();
+    return;
+  }
   if (pendingVelocityPitch) {
     alert('Finish entering velocity for the current pitch before viewing the session.');
     veloInput?.focus();
+    return;
+  }
+  if(state.sessionSetup?.mode==='smart' && clearTargetBtn.dataset.action==='finish'){
+    finishSmartSessionFromTarget();
     return;
   }
   if (!state.pitches.length) {
@@ -3501,9 +4421,21 @@ strikeZoneTarget.addEventListener('click', () => {
   setTimeout(() => {
     if (state.phase === 'target' && state.targetZones.size > 0) {
       // Show prompt to move to result phase
-      showAdvancePrompt(true);
+      if(state.sessionSetup?.mode==='smart'){
+        advancePromptShown=false;
+        phaseInstEl.textContent='LOCATION SET - TAP RECORD PITCH OR DONE SESSION';
+        phaseInstEl.className='phase-instruction phase-target';
+        setSmartActionBarReady();
+        updateTargetBadges();
+      }else if(state.sessionSetup?.mode==='custom-builder'){
+        advancePromptShown=false;
+        setCustomSequenceActionBar();
+      }else{
+        showAdvancePrompt(true);
+      }
     } else {
-      showAdvancePrompt(false);
+      if(state.sessionSetup?.mode==='custom-builder') setCustomSequenceActionBar();
+      else showAdvancePrompt(false);
     }
   }, 50);
 });
@@ -3543,6 +4475,9 @@ function toResultPhase() {
   doneBtn.textContent = 'DONE SESSION';
   doneBtn.onclick = finishSession;
   doneBtn.disabled = true;
+  clearTargetBtn.textContent = 'VIEW SESSION';
+  clearTargetBtn.dataset.action = 'view';
+  clearTargetBtn.disabled = false;
 
   // Mark target zones on the inner zone grid
   outerZone.querySelectorAll('.zone-cell').forEach(cell => {
@@ -3583,6 +4518,8 @@ function toTargetPhase() {
   doneBtn.textContent = 'DONE SESSION';
   doneBtn.onclick = finishSession;
   doneBtn.disabled = false;
+  syncPitchTypeAvailability();
+  if(state.sessionSetup?.mode==='custom-builder') setCustomSequenceActionBar();
 
   // Remove result listeners
   outerZone.removeEventListener('click', handleOuterZoneClick);
@@ -3608,8 +4545,35 @@ function handleResultCellClick(e) {
   recordPitch(zone, relX, relY, true, cell, e.clientX, e.clientY);
 }
 
+function resultGridStrikeHit(clientX, clientY){
+  const grid=outerZone.querySelector('.result-zone-grid');
+  if(!grid) return null;
+  const rect=grid.getBoundingClientRect();
+  if(!rect.width || !rect.height) return null;
+  const x=(clientX-rect.left)/rect.width;
+  const y=(clientY-rect.top)/rect.height;
+  if(x<0 || x>1 || y<0 || y>1) return null;
+  const col=Math.min(4,Math.max(0,Math.floor(x*5)));
+  const row=Math.min(4,Math.max(0,Math.floor(y*5)));
+  if(col<1 || col>3 || row<1 || row>3) return null;
+  const zone=(row-1)*3+col;
+  const cell=outerZone.querySelector(`.zone-cell[data-zone="${zone}"]`);
+  if(!cell) return null;
+  return {
+    zone,
+    cell,
+    relX:Math.max(0,Math.min(1,x*5-col)),
+    relY:Math.max(0,Math.min(1,y*5-row))
+  };
+}
+
 function handleOuterZoneClick(e) {
   if (e.target.classList.contains('zone-cell')) return;
+  const strikeHit=resultGridStrikeHit(e.clientX,e.clientY);
+  if(strikeHit){
+    recordPitch(strikeHit.zone, strikeHit.relX, strikeHit.relY, true, strikeHit.cell, e.clientX, e.clientY);
+    return;
+  }
   const rect=e.currentTarget.getBoundingClientRect();
   const edge=Math.min(e.clientX-rect.left, rect.right-e.clientX, e.clientY-rect.top, rect.bottom-e.clientY);
   const isWild=outerZone.classList.contains('wild-mode') && edge<=38;
@@ -3617,7 +4581,8 @@ function handleOuterZoneClick(e) {
 }
 
 function capturePitchPoint(clickX, clickY) {
-  const rect=outerZone.getBoundingClientRect();
+  const grid=outerZone.querySelector('.result-zone-grid');
+  const rect=(grid||outerZone).getBoundingClientRect();
   if(clickX==null || clickY==null || !rect.width || !rect.height) return {resultX:null,resultY:null};
   return {
     resultX:Math.max(0,Math.min(1,(clickX-rect.left)/rect.width)),
@@ -3796,7 +4761,40 @@ function pitchLogHTML(pitch) {
     </div>`;
 }
 
+function customSequenceLogHTML(step,index) {
+  const targets = (step.zones||[]).map(z => `Z${z}`).join(',') || '-';
+  return `
+    <span class="log-num">#${index+1}</span>
+    <span class="log-type">${esc(step.pitchType)}</span>
+    <span class="log-result">Target: ${esc(targets)}</span>
+    <div class="log-badges">
+      <span class="badge on-target">PLAN</span>
+    </div>`;
+}
+
+function renderCustomSequenceLog(){
+  const draft=state.customSequenceDraft;
+  pitchLogEl.innerHTML='';
+  (draft?.steps||[]).slice().reverse().forEach((step,reverseIndex)=>{
+    const index=draft.steps.length-1-reverseIndex;
+    const wrap=document.createElement('div');
+    wrap.className='pitch-log-swipe';
+    wrap.dataset.sequenceIndex=String(index);
+    wrap.innerHTML=`<div class="pitch-log-actions"><button class="pitch-log-action update" type="button">UPDATE</button><button class="pitch-log-action delete" type="button">DELETE</button></div><div class="pitch-log-item strike-log">${customSequenceLogHTML(step,index)}</div>`;
+    pitchLogEl.appendChild(wrap);
+    bindPitchSwipe(wrap);
+    wrap.querySelector('.pitch-log-action.update').addEventListener('click',()=>openCustomSequenceEditor(index));
+    wrap.querySelector('.pitch-log-action.delete').addEventListener('click',()=>deleteCustomSequenceStep(index));
+  });
+  logLabel.textContent='CUSTOM SEQUENCE - SWIPE LEFT TO EDIT';
+  logLabel.style.display=draft?.steps?.length?'block':'none';
+}
+
 function renderPitchLog() {
+  if(state.sessionSetup?.mode==='custom-builder') {
+    renderCustomSequenceLog();
+    return;
+  }
   pitchLogEl.innerHTML='';
   [...state.pitches].reverse().forEach(pitch => {
     const wrap=document.createElement('div');
@@ -3807,6 +4805,7 @@ function renderPitchLog() {
     wrap.querySelector('.pitch-log-action.update').addEventListener('click',()=>openPitchEditor(pitch.num));
     wrap.querySelector('.pitch-log-action.delete').addEventListener('click',()=>deletePitch(pitch.num));
   });
+  logLabel.textContent='PITCH LOG - SWIPE LEFT TO EDIT';
   logLabel.style.display=state.pitches.length?'block':'none';
 }
 
@@ -3827,12 +4826,64 @@ function deletePitch(num) {
   renderPitchLog();
 }
 
+function deleteCustomSequenceStep(index) {
+  const draft=state.customSequenceDraft;
+  if(!draft?.steps?.[index]) return;
+  draft.steps.splice(index,1);
+  state.pitchNum=Math.min(draft.steps.length+1,draft.pitchCount);
+  pitchNumEl.textContent=state.pitchNum;
+  renderCustomSequenceLog();
+  setCustomSequenceActionBar();
+}
+
 let editingPitchNum=null;
+let editingCustomSequenceIndex=null;
 let editingResultPitchNum=null;
 const pitchEditModal=document.getElementById('pitchEditModal');
 const editTargetZones=document.getElementById('editTargetZones');
+const editVelocityField=document.getElementById('editVelocityField');
+const editResultField=document.getElementById('editResultField');
+const selectResultOnZoneBtn=document.getElementById('selectResultOnZoneBtn');
+
+function syncEditPitchTypeOptions(allowed=null){
+  const select=document.getElementById('editPitchType');
+  [...select.options].forEach(option=>{
+    const visible=!allowed || allowed.includes(option.value);
+    option.disabled=!visible;
+    option.hidden=!visible;
+  });
+}
+
+function setPitchEditorMode(mode){
+  const isSequence=mode==='sequence';
+  document.getElementById('editPitchNum').parentElement.firstChild.textContent=isSequence?'Update Sequence Pitch ':'Update Pitch ';
+  if(editVelocityField) editVelocityField.style.display=isSequence?'none':'';
+  if(editResultField) editResultField.style.display=isSequence?'none':'';
+  document.getElementById('savePitchEditBtn').textContent=isSequence?'UPDATE SEQUENCE':'UPDATE PITCH';
+}
+
+function openCustomSequenceEditor(index){
+  const draft=state.customSequenceDraft;
+  const step=draft?.steps?.[index];
+  if(!step) return;
+  editingCustomSequenceIndex=index;
+  editingPitchNum=null;
+  setPitchEditorMode('sequence');
+  syncEditPitchTypeOptions(draft.smartPitchTypes);
+  document.getElementById('editPitchNum').textContent=`#${index+1}`;
+  document.getElementById('editPitchType').value=draft.smartPitchTypes.includes(step.pitchType)?step.pitchType:draft.smartPitchTypes[0];
+  document.getElementById('editPitchVelocity').value='';
+  document.getElementById('editResultZone').value='OOZ';
+  editTargetZones.innerHTML=ZONES.map(z=>`<button type="button" class="edit-target-btn ${(step.zones||[]).includes(z)?'active':''}" data-zone="${z}">Z${z}</button>`).join('');
+  editTargetZones.querySelectorAll('.edit-target-btn').forEach(b=>b.addEventListener('click',()=>b.classList.toggle('active')));
+  pitchEditModal.classList.add('visible');
+}
+
 function openPitchEditor(num) {
   const p=state.pitches.find(x=>x.num===num); if(!p)return; editingPitchNum=num;
+  editingCustomSequenceIndex=null;
+  setPitchEditorMode('pitch');
+  syncEditPitchTypeOptions();
   document.getElementById('editPitchNum').textContent=`#${num}`;
   document.getElementById('editPitchType').value=p.type;
   document.getElementById('editPitchVelocity').value=p.velocity ?? '';
@@ -3848,9 +4899,9 @@ function applyPitchEditorBase(p){
   p.velocity=raw!=='' && Number.isFinite(v) && v>0 && v<150 ? Math.round(v*10)/10 : null;
   p.targetZones=new Set([...editTargetZones.querySelectorAll('.edit-target-btn.active')].map(b=>Number(b.dataset.zone)));
 }
-function closePitchEditor(){ pitchEditModal.classList.remove('visible'); editingPitchNum=null; }
+function closePitchEditor(){ pitchEditModal.classList.remove('visible'); editingPitchNum=null; editingCustomSequenceIndex=null; setPitchEditorMode('pitch'); syncEditPitchTypeOptions(); }
 
-document.getElementById('selectResultOnZoneBtn').addEventListener('click',()=>{
+selectResultOnZoneBtn.addEventListener('click',()=>{
   const p=state.pitches.find(x=>x.num===editingPitchNum);
   if(!p) return closePitchEditor();
   applyPitchEditorBase(p);
@@ -3868,6 +4919,19 @@ document.getElementById('selectResultOnZoneBtn').addEventListener('click',()=>{
 document.getElementById('cancelPitchEditBtn').addEventListener('click',closePitchEditor);
 pitchEditModal.addEventListener('click',e=>{ if(e.target===pitchEditModal)closePitchEditor(); });
 document.getElementById('savePitchEditBtn').addEventListener('click',()=>{
+  if(editingCustomSequenceIndex!==null){
+    const draft=state.customSequenceDraft;
+    const step=draft?.steps?.[editingCustomSequenceIndex];
+    if(!step) return closePitchEditor();
+    step.pitchType=document.getElementById('editPitchType').value;
+    step.zones=[...editTargetZones.querySelectorAll('.edit-target-btn.active')].map(b=>Number(b.dataset.zone)).sort((a,b)=>a-b);
+    if(!step.zones.length) return;
+    step.label=`${draft.name} - Pitch ${editingCustomSequenceIndex+1}`;
+    closePitchEditor();
+    renderCustomSequenceLog();
+    setCustomSequenceActionBar();
+    return;
+  }
   const p=state.pitches.find(x=>x.num===editingPitchNum); if(!p)return closePitchEditor();
   p.type=document.getElementById('editPitchType').value;
   const raw=document.getElementById('editPitchVelocity').value.trim(), v=Number(raw);
@@ -3879,7 +4943,7 @@ document.getElementById('savePitchEditBtn').addEventListener('click',()=>{
   if(p.resultZone!==null){
     p.relX=.5; p.relY=.5;
     if(oldResultZone!==p.resultZone || !Number.isFinite(Number(p.resultX)) || !Number.isFinite(Number(p.resultY))){
-      const c=(p.resultZone-1)%3, r=Math.floor((p.resultZone-1)/3), inset=.15, span=.70;
+      const c=(p.resultZone-1)%3, r=Math.floor((p.resultZone-1)/3), inset=.20, span=.60;
       p.resultX=inset+((c+.5)/3)*span; p.resultY=inset+((r+.5)/3)*span;
     }
   } else {
@@ -3895,7 +4959,22 @@ document.getElementById('savePitchEditBtn').addEventListener('click',()=>{
 // ============================================================
 const sessionNotesModal=document.getElementById('sessionNotesModal');
 const sessionNotesInput=document.getElementById('sessionNotesInput');
+const sessionNotesTitle=document.getElementById('sessionNotesTitle');
+const sessionNotesSub=document.getElementById('sessionNotesSub');
+const skipNotesBtn=document.getElementById('skipNotesBtn');
+const saveNotesBtn=document.getElementById('saveNotesBtn');
+let editingReportNotes=false;
+function setNotesModalMode(editing){
+  sessionNotesTitle.textContent=editing?'Edit Session Notes':'Session Notes';
+  sessionNotesSub.textContent=editing?'Update the notes saved with this session.':'Optional — add anything you want to remember about this bullpen.';
+  skipNotesBtn.textContent=editing?'CANCEL':'BACK TO SESSION';
+  saveNotesBtn.textContent=editing?'SAVE NOTES':'SAVE SESSION';
+}
 function finishSession() {
+  if(state.sessionSetup?.mode==='custom-builder'){
+    cancelCustomSequenceBuilder();
+    return;
+  }
   if(state.phase==='result' || pendingVelocityPitch){ return; }
   if (state.pitches.length === 0) {
     if(!confirm('Exit this session without saving?')) return;
@@ -3913,13 +4992,27 @@ function finishSession() {
   }
   if(state.sessionSaved){ state.reportMode='finished'; buildStats(); trackingScreen.style.display='none'; statsScreen.style.display='flex'; return; }
   const existingSession=state.savedSessionId?appData.sessions.find(s=>s.id===state.savedSessionId):null;
-  sessionNotesInput.value=existingSession?.notes||''; sessionNotesModal.classList.add('visible'); setTimeout(()=>sessionNotesInput.focus(),100);
+  setNotesModalMode(false); sessionNotesInput.value=existingSession?.notes||''; sessionNotesModal.classList.add('visible'); setTimeout(()=>sessionNotesInput.focus(),100);
 }
 function finalizeFinishedSession(notes=''){
+  editingReportNotes=false;
   sessionNotesModal.classList.remove('visible'); saveCurrentSession(notes); state.reportMode='finished'; buildStats(); trackingScreen.style.display='none'; statsScreen.style.display='flex';
 }
-document.getElementById('saveNotesBtn').addEventListener('click',()=>finalizeFinishedSession(sessionNotesInput.value));
-document.getElementById('skipNotesBtn').addEventListener('click',()=>finalizeFinishedSession(''));
+saveNotesBtn.addEventListener('click',()=>{
+  if(!editingReportNotes) return finalizeFinishedSession(sessionNotesInput.value);
+  const rec=currentSessionRecord();
+  if(rec){ rec.notes=sessionNotesInput.value.trim(); saveAppData(); }
+  editingReportNotes=false; sessionNotesModal.classList.remove('visible'); buildStats();
+});
+skipNotesBtn.addEventListener('click',()=>{
+  if(!editingReportNotes){
+    sessionNotesModal.classList.remove('visible');
+    trackingScreen.style.display='flex';
+    statsScreen.style.display='none';
+    return;
+  }
+  editingReportNotes=false; sessionNotesModal.classList.remove('visible');
+});
 
 
 const ZONE_NAMES = {1:'UP-IN',2:'UP',3:'UP-OUT',4:'MID-IN',5:'MID',6:'MID-OUT',7:'DOWN-IN',8:'DOWN',9:'DOWN-OUT'};
@@ -3934,7 +5027,7 @@ function commandMapPoint(p) {
     const z=Number(p.resultZone), col=(z-1)%3, row=Math.floor((z-1)/3);
     const rx=Number.isFinite(Number(p.relX)) ? Number(p.relX) : .5;
     const ry=Number.isFinite(Number(p.relY)) ? Number(p.relY) : .5;
-    const inset=.15, span=.70;
+    const inset=.20, span=.60;
     return {x:inset+((col+rx)/3)*span, y:inset+((row+ry)/3)*span, exact:false};
   }
   // Old outside-zone pitches did not save an exact click coordinate.
@@ -3962,12 +5055,11 @@ function renderCommandHeatmap(pitches){
 
   const points=pitches.map(p=>({p,pt:commandMapPoint(p)}));
 
-  // Layer multiple soft radial gradients to create a real continuous heat field.
-  // Each on-target pitch adds green energy; each miss adds red energy.
+  // Smaller gradients preserve individual location clusters instead of merging nearby pitches.
   const gradients=points.map(({p,pt})=>{
     const x=(pt.x*100).toFixed(1), y=(pt.y*100).toFixed(1);
     const c=p.isOnTarget ? '34,197,94' : (p.isStrike ? '47,128,237' : '239,68,68');
-    return `radial-gradient(circle at ${x}% ${y}%, rgba(${c},.54) 0%, rgba(${c},.30) 9%, rgba(${c},.11) 18%, rgba(${c},0) 29%)`;
+    return `radial-gradient(circle at ${x}% ${y}%, rgba(${c},.58) 0%, rgba(${c},.32) 6%, rgba(${c},.11) 13%, rgba(${c},0) 21%)`;
   });
   map.style.backgroundImage=gradients.length ? gradients.join(',') : 'none';
 
@@ -4010,6 +5102,8 @@ function buildStats() {
   const onTarget = pitches.filter(p => p.isOnTarget).length;
   const strikePct = Math.round((strikes / total) * 100);
   const locPct = withTarget.length > 0 ? Math.round((onTarget / withTarget.length) * 100) : 0;
+  const reportPlayer=appData.players.find(p=>p.id===state.activePlayerId);
+  const showCommandGrade=reportPlayer?.showCommandGrade!==false;
 
   // Subtitle
   {
@@ -4023,7 +5117,7 @@ function buildStats() {
     { label:'STRIKE %', value: strikePct + '%', sub: `${strikes}/${total} strikes`, cls:'green' },
     { label:'LOCATION %', value: locPct + '%', sub: `${onTarget}/${withTarget.length} on target`, cls:'blue' },
     { label:'TOTAL PITCHES', value: total, sub: strikes + ' strikes · ' + (total-strikes) + ' balls' + (pitches.filter(p=>p.isWildPitch).length ? ' · '+pitches.filter(p=>p.isWildPitch).length+' wild' : ''), cls:'yellow' },
-    { label:'PB COMMAND', value: pocketCommandMetrics(pitches).score, sub: pocketCommandMetrics(pitches).grade, cls:'orange' },
+    { label:'PB COMMAND', value: showCommandGrade?pocketCommandMetrics(pitches).score:'N/A', sub: showCommandGrade?pocketCommandMetrics(pitches).grade:'Command grade is off', cls:'orange' },
   ];
 
   document.getElementById('statCards').innerHTML = cards.map(c => `
@@ -4033,6 +5127,8 @@ function buildStats() {
       <div class="stat-card-sub">${c.sub}</div>
     </div>
   `).join('');
+  const strikePitchChart=document.getElementById('sessionStrikePitchChart');
+  if(strikePitchChart) strikePitchChart.innerHTML=total ? buildSessionStrikeProgressSvg(pitches) : '<div class="empty-state">No pitches recorded.</div>';
 
   // Command heat map: green = on target, red = off target.
   // A selected pitch type filters only the plotted pitches/heat.
@@ -4103,8 +5199,8 @@ function buildStats() {
   document.getElementById('spreadCard').innerHTML=`
     <div class="spread-title">POCKET BULLPEN COMMAND</div>
     <div class="spread-grid">
-      <div class="spread-stat"><div class="spread-val" style="color:${gradeColor}">${cmd.score}</div><div class="spread-lbl">PB COMMAND SCORE</div></div>
-      <div class="spread-stat"><div class="spread-val" style="color:${gradeColor};font-size:18px">${cmd.grade}</div><div class="spread-lbl">COMMAND GRADE</div></div>
+      <div class="spread-stat"><div class="spread-val" style="color:${gradeColor}">${showCommandGrade?cmd.score:'N/A'}</div><div class="spread-lbl">PB COMMAND SCORE</div></div>
+      ${showCommandGrade?`<div class="spread-stat"><div class="spread-val" style="color:${gradeColor};font-size:18px">${cmd.grade}</div><div class="spread-lbl">COMMAND GRADE</div></div>`:''}
       <div class="spread-stat"><div class="spread-val">${cmd.onTargetStrikePct}%</div><div class="spread-lbl">ON-LOCATION STRIKES</div></div>
       <div class="spread-stat"><div class="spread-val">${cmd.locationQuality}</div><div class="spread-lbl">LOCATION QUALITY</div></div>
     </div>`;
@@ -4114,6 +5210,15 @@ function buildStats() {
 }
 
 document.getElementById('sessionPdfBtn').addEventListener('click',exportSessionPdf);
+document.getElementById('editSessionNotesBtn').addEventListener('click',()=>{
+  const rec=currentSessionRecord();
+  if(!rec){ alert('Save this session before editing its notes.'); return; }
+  editingReportNotes=true;
+  setNotesModalMode(true);
+  sessionNotesInput.value=rec.notes||'';
+  sessionNotesModal.classList.add('visible');
+  setTimeout(()=>sessionNotesInput.focus(),100);
+});
 
 const continueSessionBtn=document.getElementById('continueSessionBtn');
 continueSessionBtn.addEventListener('click',()=>{
@@ -4130,10 +5235,15 @@ continueSessionBtn.addEventListener('click',()=>{
   strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('target'));
   updateTargetBadges();
   toTargetPhase();
-  doneBtn.textContent='DONE SESSION';
-  doneBtn.onclick=finishSession;
-  doneBtn.disabled=false;
-  clearTargetBtn.textContent='VIEW SESSION';
+  if(state.sessionSetup?.mode==='smart'){
+    setSmartActionBarReady();
+  }else{
+    doneBtn.textContent='DONE SESSION';
+    doneBtn.onclick=finishSession;
+    doneBtn.disabled=false;
+    clearTargetBtn.textContent='VIEW SESSION';
+    clearTargetBtn.dataset.action='view';
+  }
   renderPitchLog();
   pitchNumEl.textContent=state.pitchNum;
 });
