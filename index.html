@@ -1010,6 +1010,7 @@
   .utility-row { display:flex; gap:8px; margin-top:12px; }
   .utility-row .card-btn { flex:1; min-height:42px; }
   .history-session-tools { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+  .history-new-session-btn { width:100%; margin-top:12px; border-color:var(--green); background:var(--green); color:#071018; }
   .session-context { font-family:'Barlow Condensed',sans-serif; font-size:12px; color:var(--muted); margin-top:4px; }
   .history-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
   .history-profile-header { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
@@ -1853,6 +1854,7 @@
       <div class="panel">
         <div class="panel-title">Bullpen Sessions</div>
         <div id="historyList"></div>
+        <button id="historyNewSessionBtn" class="card-btn history-new-session-btn" type="button">+ NEW SESSION</button>
         <div class="utility-row history-session-tools">
           <button id="importSessionBtn" class="card-btn" type="button">IMPORT SESSION</button>
           <button id="exportSessionDataBtn" class="card-btn" type="button">EXPORT SESSION</button>
@@ -2025,7 +2027,7 @@
     <div class="session-report-notes" id="sessionReportNotes">No session notes.</div>
 
     <div class="session-report-actions"><button class="new-session-btn" id="continueSessionBtn" style="background:var(--accent);color:#071018">← CONTINUE SESSION</button>
-    <button class="new-session-btn" id="newSessionBtn" style="margin-top:6px">+ NEW SESSION</button>
+    <button class="new-session-btn" id="newSessionBtn" style="margin-top:6px;background:var(--green);color:#071018">+ NEW SESSION</button>
     </div>
   </div>
 </div>
@@ -2102,7 +2104,7 @@
       <div class="notes-sub" id="sessionNotesSub">Optional — add anything you want to remember about this bullpen.</div>
       <textarea id="sessionNotesInput" class="notes-textarea" maxlength="1200" placeholder="Examples: Fastball command improved after 15 pitches. Curveball was sharp. Worked mostly glove side..."></textarea>
       <div class="notes-actions">
-        <button id="skipNotesBtn" class="btn btn-secondary">SKIP</button>
+        <button id="skipNotesBtn" class="btn btn-secondary">BACK TO SESSION</button>
         <button id="saveNotesBtn" class="btn btn-primary">SAVE SESSION</button>
       </div>
     </div>
@@ -3808,6 +3810,9 @@ document.getElementById('savePlayerProfileBtn').addEventListener('click',()=>{
 });
 
 document.getElementById('historyBackBtn').addEventListener('click',()=>{historyScreen.style.display='none';managerScreen.style.display='flex';managerView=historyReturnView;renderManager();});
+document.getElementById('historyNewSessionBtn').addEventListener('click',()=>{
+  if(currentHistoryPlayerId) startBullpen(currentHistoryPlayerId);
+});
 homeBtn.addEventListener('click',()=>{
   statsScreen.style.display='none';
   trackingScreen.style.display='none';
@@ -4772,7 +4777,7 @@ let editingReportNotes=false;
 function setNotesModalMode(editing){
   sessionNotesTitle.textContent=editing?'Edit Session Notes':'Session Notes';
   sessionNotesSub.textContent=editing?'Update the notes saved with this session.':'Optional — add anything you want to remember about this bullpen.';
-  skipNotesBtn.textContent=editing?'CANCEL':'SKIP';
+  skipNotesBtn.textContent=editing?'CANCEL':'BACK TO SESSION';
   saveNotesBtn.textContent=editing?'SAVE NOTES':'SAVE SESSION';
 }
 function finishSession() {
@@ -4810,7 +4815,12 @@ saveNotesBtn.addEventListener('click',()=>{
   editingReportNotes=false; sessionNotesModal.classList.remove('visible'); buildStats();
 });
 skipNotesBtn.addEventListener('click',()=>{
-  if(!editingReportNotes) return finalizeFinishedSession('');
+  if(!editingReportNotes){
+    sessionNotesModal.classList.remove('visible');
+    trackingScreen.style.display='flex';
+    statsScreen.style.display='none';
+    return;
+  }
   editingReportNotes=false; sessionNotesModal.classList.remove('visible');
 });
 
