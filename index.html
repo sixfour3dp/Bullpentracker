@@ -329,7 +329,7 @@
     display:grid;
     grid-template-columns:repeat(5,1fr);
     grid-template-rows:repeat(5,1fr);
-    gap:3px;
+    gap:0;
     width:100%;
     aspect-ratio:1;
     position:relative;
@@ -344,7 +344,7 @@
   .ball-zone {
     border:1px solid rgba(255,92,53,.18);
     background:rgba(255,92,53,.055);
-    border-radius:4px;
+    border-radius:0;
     min-width:0;
     min-height:0;
     position:relative;
@@ -932,6 +932,7 @@
   .result-zone-grid .ball-zone {
     min-width:0;
     min-height:0;
+    border-radius:0;
   }
   .result-zone-grid .strike-zone {
     display:contents;
@@ -1397,7 +1398,6 @@
     color:#071018; background:var(--accent); border-color:var(--accent);
   }
   .setup-mode-options { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  #smartDifficultyOptions { grid-template-columns:repeat(3,1fr); }
   .setup-option-btn {
     padding:12px; border-radius:10px; border:1px solid var(--border);
     background:var(--surface2); color:var(--muted);
@@ -1988,11 +1988,10 @@
           </div>
         </div>
         <div class="edit-field full smart-pitch-field disabled" id="smartPitchField">
-          <label>Smart Difficulty</label>
-          <div class="setup-mode-options" id="smartDifficultyOptions">
-            <button type="button" class="setup-option-btn active" data-smart-difficulty="easy">EASY</button>
-            <button type="button" class="setup-option-btn" data-smart-difficulty="medium">MEDIUM</button>
-            <button type="button" class="setup-option-btn" data-smart-difficulty="advanced">ADVANCED</button>
+          <label>Smart Bullpen Plan</label>
+          <div class="input-row">
+            <select id="smartPlanSelect" class="edit-control"></select>
+            <button id="createSmartPlanBtn" class="mini-btn" type="button">CREATE CUSTOM</button>
           </div>
           <label style="margin-top:10px">Smart Bullpen Pitches</label>
           <div class="smart-pitch-grid" id="smartPitchOptions"></div>
@@ -2001,6 +2000,31 @@
       <div class="edit-actions">
         <button id="cancelSessionSetupBtn" class="btn btn-secondary" type="button">CANCEL</button>
         <button id="beginSessionSetupBtn" class="btn btn-primary" type="button">START SESSION</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CUSTOM SESSION SETTINGS MODAL -->
+  <div class="edit-modal" id="customSessionModal">
+    <div class="edit-sheet">
+      <div class="edit-title">Custom Session Settings</div>
+      <div class="edit-grid">
+        <div class="edit-field full">
+          <label>Session Name</label>
+          <input id="customSessionName" class="edit-control" type="text" maxlength="40" placeholder="Example: Game Sequence Work">
+        </div>
+        <div class="edit-field full">
+          <label>Number of Pitches in Sequence</label>
+          <select id="customPitchCount" class="edit-control"></select>
+        </div>
+        <div class="edit-field full">
+          <label>Pitches to Include</label>
+          <div class="smart-pitch-grid" id="customPitchOptions"></div>
+        </div>
+      </div>
+      <div class="edit-actions">
+        <button id="cancelCustomSessionBtn" class="btn btn-secondary" type="button">BACK</button>
+        <button id="startCustomSessionBtn" class="btn btn-primary" type="button">BUILD SEQUENCE</button>
       </div>
     </div>
   </div>
@@ -2082,10 +2106,11 @@ const PITCH_TYPES = [
   {code:'SP',label:'Splitter'}
 ];
 const DEFAULT_SESSION_SETUP = {
+  sessionName:'',
   bullpenType:'Mound',
   pitchCount:25,
   mode:'manual',
-  smartDifficulty:'easy',
+  smartPlanId:'easy',
   smartPitchTypes:['4S','2S','CH','CB','SL']
 };
 
@@ -2106,6 +2131,7 @@ let state = {
   sessionSetup: {...DEFAULT_SESSION_SETUP},
   pitchCountAlertShown: false,
   smartSuggestionLabel: '',
+  customSequenceDraft: null,
 };
 
 // pitch object: { num, type, targetZones, resultZone, resultX, resultY, isStrike, isOnTarget }
@@ -2133,6 +2159,11 @@ const sessionSetupModal = document.getElementById('sessionSetupModal');
 const setupPitchCount   = document.getElementById('setupPitchCount');
 const smartPitchField   = document.getElementById('smartPitchField');
 const smartPitchOptions = document.getElementById('smartPitchOptions');
+const smartPlanSelect   = document.getElementById('smartPlanSelect');
+const customSessionModal = document.getElementById('customSessionModal');
+const customSessionName  = document.getElementById('customSessionName');
+const customPitchCount   = document.getElementById('customPitchCount');
+const customPitchOptions = document.getElementById('customPitchOptions');
 let setupPlayerId = null;
 let requireVelocity = false;
 let pendingVelocityPitch = null;
@@ -2186,9 +2217,13 @@ function uid(prefix='id') { return prefix + '_' + Date.now().toString(36) + Math
 function loadAppData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const data=JSON.parse(raw);
+      if(!Array.isArray(data.customSmartSequences)) data.customSmartSequences=[];
+      return data;
+    }
   } catch(e) { console.warn('Could not load saved data', e); }
-  return { teams: [], players: [], sessions: [], selectedTeamId: null };
+  return { teams: [], players: [], sessions: [], selectedTeamId: null, customSmartSequences: [] };
 }
 function saveAppData() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); }
@@ -2537,6 +2572,10 @@ function buildSessionSetupControls(){
   if(setupPitchCount && !setupPitchCount.options.length){
     setupPitchCount.innerHTML=Array.from({length:18},(_,i)=>15+i*5).map(n=>`<option value="${n}">${n} pitches</option>`).join('');
   }
+  if(customPitchCount && !customPitchCount.options.length){
+    customPitchCount.innerHTML=Array.from({length:18},(_,i)=>15+i*5).map(n=>`<option value="${n}">${n} pitches</option>`).join('');
+  }
+  refreshSmartPlanOptions();
   if(smartPitchOptions && !smartPitchOptions.children.length){
     smartPitchOptions.innerHTML=PITCH_TYPES.map(p=>`
       <label class="smart-pitch-toggle">
@@ -2547,6 +2586,28 @@ function buildSessionSetupControls(){
         </span>
       </label>`).join('');
   }
+  if(customPitchOptions && !customPitchOptions.children.length){
+    customPitchOptions.innerHTML=PITCH_TYPES.map(p=>`
+      <label class="smart-pitch-toggle">
+        <span>${p.label}</span>
+        <span class="velo-switch">
+          <input type="checkbox" value="${p.code}" ${DEFAULT_SESSION_SETUP.smartPitchTypes.includes(p.code)?'checked':''}>
+          <span class="velo-slider"></span>
+        </span>
+      </label>`).join('');
+  }
+}
+
+function refreshSmartPlanOptions(selected='easy'){
+  if(!smartPlanSelect) return;
+  const custom=Array.isArray(appData.customSmartSequences)?appData.customSmartSequences:[];
+  smartPlanSelect.innerHTML=[
+    `<option value="easy">Easy</option>`,
+    `<option value="medium">Medium</option>`,
+    `<option value="advanced">Advanced</option>`,
+    custom.length?`<optgroup label="Custom">${custom.map(plan=>`<option value="custom:${escAttr(plan.id)}">${esc(plan.name)}</option>`).join('')}</optgroup>`:''
+  ].join('');
+  smartPlanSelect.value=[...smartPlanSelect.options].some(o=>o.value===selected)?selected:'easy';
 }
 
 function selectedSetupValue(groupId, attr){
@@ -2568,7 +2629,7 @@ function openSessionSetup(){
   buildSessionSetupControls();
   setSetupGroupValue('bullpenTypeOptions','bullpenType',DEFAULT_SESSION_SETUP.bullpenType);
   setSetupGroupValue('bullpenModeOptions','bullpenMode',DEFAULT_SESSION_SETUP.mode);
-  setSetupGroupValue('smartDifficultyOptions','smartDifficulty',DEFAULT_SESSION_SETUP.smartDifficulty);
+  refreshSmartPlanOptions(DEFAULT_SESSION_SETUP.smartPlanId);
   if(setupPitchCount) setupPitchCount.value=String(DEFAULT_SESSION_SETUP.pitchCount);
   smartPitchOptions?.querySelectorAll('input[type="checkbox"]').forEach(input=>{
     input.checked=DEFAULT_SESSION_SETUP.smartPitchTypes.includes(input.value);
@@ -2582,6 +2643,145 @@ function closeSessionSetup(){
   setupPlayerId=null;
 }
 
+function openCustomSessionSettings(){
+  buildSessionSetupControls();
+  if(customSessionName) customSessionName.value='';
+  if(customPitchCount) customPitchCount.value=setupPitchCount?.value || String(DEFAULT_SESSION_SETUP.pitchCount);
+  customPitchOptions?.querySelectorAll('input[type="checkbox"]').forEach(input=>{
+    input.checked=DEFAULT_SESSION_SETUP.smartPitchTypes.includes(input.value);
+  });
+  sessionSetupModal?.classList.remove('visible');
+  customSessionModal?.classList.add('visible');
+  setTimeout(()=>customSessionName?.focus(),0);
+}
+
+function closeCustomSessionSettings(returnToSetup=true){
+  customSessionModal?.classList.remove('visible');
+  if(returnToSetup) sessionSetupModal?.classList.add('visible');
+}
+
+function readCustomSessionSetup(){
+  const selectedTypes=[...customPitchOptions.querySelectorAll('input[type="checkbox"]:checked')].map(input=>input.value);
+  if(!selectedTypes.length) throw new Error('custom-pitches');
+  const name=(customSessionName?.value || '').trim();
+  return {
+    sessionName:name || 'Custom Session',
+    bullpenType:selectedSetupValue('bullpenTypeOptions','bullpenType') || 'Mound',
+    pitchCount:Number(customPitchCount?.value)||25,
+    mode:'custom',
+    smartPlanId:'custom-session',
+    smartPitchTypes:selectedTypes
+  };
+}
+
+function beginCustomSequenceBuilder(setup){
+  const selectedTypes=(setup.smartPitchTypes||[]).filter(code=>PITCH_TYPES.some(p=>p.code===code));
+  const p=appData.players.find(player=>player.id===setupPlayerId);
+  const t=appData.teams.find(team=>team.id===p?.teamId);
+  state = {
+    phase:'target',
+    targetZones:new Set(),
+    currentPitchType:selectedTypes[0] || '4S',
+    pitches:[],
+    pitchNum:1,
+    activePlayerId:setupPlayerId,
+    sessionSaved:false,
+    savedSessionId:null,
+    reportMode:null,
+    sessionSetup:{
+      sessionName:setup.sessionName,
+      bullpenType:setup.bullpenType || 'Mound',
+      pitchCount:Number(setup.pitchCount)||25,
+      mode:'custom-builder',
+      smartPlanId:'custom-builder',
+      smartPitchTypes:selectedTypes.length?selectedTypes:['4S']
+    },
+    pitchCountAlertShown:false,
+    smartSuggestionLabel:'',
+    customSequenceDraft:{
+      name:setup.sessionName || 'Custom Session',
+      pitchCount:Number(setup.pitchCount)||25,
+      smartPitchTypes:selectedTypes.length?selectedTypes:['4S'],
+      steps:[]
+    }
+  };
+  closeCustomSessionSettings(false);
+  managerScreen.style.display='none';
+  historyScreen.style.display='none';
+  statsScreen.style.display='none';
+  trackingScreen.style.display='flex';
+  resetTrackingUI();
+  sessionContext.textContent = `${p?.name || 'Custom Sequence'}${t ? ' - '+t.name : ''} - Build ${state.customSequenceDraft.name}`;
+  setCustomSequenceActionBar();
+}
+
+function setCustomSequenceActionBar(){
+  const draft=state.customSequenceDraft;
+  const stepNum=(draft?.steps?.length || 0)+1;
+  const total=draft?.pitchCount || 1;
+  phaseInstEl.textContent = `CHOOSE PITCH TYPE AND TARGET LOCATION ${stepNum} OF ${total}`;
+  phaseInstEl.className='phase-instruction phase-target';
+  clearTargetBtn.textContent='CANCEL';
+  clearTargetBtn.dataset.action='cancel-custom-builder';
+  doneBtn.textContent=stepNum>=total ? 'SAVE SEQUENCE' : 'CHOOSE NEXT';
+  doneBtn.onclick=saveCustomSequenceStep;
+  doneBtn.disabled=state.targetZones.size===0;
+}
+
+function cancelCustomSequenceBuilder(){
+  state.targetZones.clear();
+  state.customSequenceDraft=null;
+  trackingScreen.style.display='none';
+  statsScreen.style.display='none';
+  historyScreen.style.display='none';
+  managerScreen.style.display='flex';
+  managerView='roster';
+  renderManager();
+  customSessionModal?.classList.add('visible');
+}
+
+function saveCustomSequenceStep(){
+  const draft=state.customSequenceDraft;
+  if(!draft || state.phase!=='target') return;
+  if(!state.targetZones.size){
+    doneBtn.disabled=true;
+    return;
+  }
+  const stepNum=draft.steps.length+1;
+  draft.steps.push({
+    pitchType:state.currentPitchType,
+    zones:[...state.targetZones].sort((a,b)=>a-b),
+    label:`${draft.name} - Pitch ${stepNum}`
+  });
+  if(draft.steps.length>=draft.pitchCount){
+    const plan={id:uid('smart'),name:draft.name,steps:draft.steps};
+    if(!Array.isArray(appData.customSmartSequences)) appData.customSmartSequences=[];
+    appData.customSmartSequences.push(plan);
+    saveAppData();
+    state.customSequenceDraft=null;
+    state.targetZones.clear();
+    trackingScreen.style.display='none';
+    managerScreen.style.display='flex';
+    managerView='roster';
+    renderManager();
+    setSetupGroupValue('bullpenModeOptions','bullpenMode','smart');
+    syncSmartPitchField();
+    refreshSmartPlanOptions(`custom:${plan.id}`);
+    if(setupPitchCount) setupPitchCount.value=String(draft.pitchCount);
+    smartPitchOptions?.querySelectorAll('input[type="checkbox"]').forEach(input=>{
+      input.checked=draft.smartPitchTypes.includes(input.value);
+    });
+    sessionSetupModal?.classList.add('visible');
+    return;
+  }
+  state.pitchNum=draft.steps.length+1;
+  pitchNumEl.textContent=state.pitchNum;
+  state.targetZones.clear();
+  strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('target'));
+  updateTargetBadges();
+  setCustomSequenceActionBar();
+}
+
 function readSessionSetup(){
   const mode=selectedSetupValue('bullpenModeOptions','bullpenMode') || 'manual';
   const smartPitchTypes=[...smartPitchOptions.querySelectorAll('input[type="checkbox"]:checked')].map(input=>input.value);
@@ -2590,7 +2790,7 @@ function readSessionSetup(){
     bullpenType:selectedSetupValue('bullpenTypeOptions','bullpenType') || 'Mound',
     pitchCount:Number(setupPitchCount?.value)||25,
     mode,
-    smartDifficulty:selectedSetupValue('smartDifficultyOptions','smartDifficulty') || 'easy',
+    smartPlanId:smartPlanSelect?.value || 'easy',
     smartPitchTypes:smartPitchTypes.length?smartPitchTypes:['4S']
   };
 }
@@ -2601,8 +2801,16 @@ document.querySelectorAll('#bullpenTypeOptions .setup-option-btn').forEach(btn=>
 document.querySelectorAll('#bullpenModeOptions .setup-option-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{ setSetupGroupValue('bullpenModeOptions','bullpenMode',btn.dataset.bullpenMode); syncSmartPitchField(); });
 });
-document.querySelectorAll('#smartDifficultyOptions .setup-option-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>setSetupGroupValue('smartDifficultyOptions','smartDifficulty',btn.dataset.smartDifficulty));
+document.getElementById('createSmartPlanBtn').addEventListener('click',openCustomSessionSettings);
+document.getElementById('cancelCustomSessionBtn').addEventListener('click',()=>closeCustomSessionSettings(true));
+document.getElementById('startCustomSessionBtn').addEventListener('click',()=>{
+  if(!setupPlayerId) return closeCustomSessionSettings(false);
+  try{
+    const setup=readCustomSessionSetup();
+    beginCustomSequenceBuilder(setup);
+  }catch(err){
+    alert('Choose at least one pitch for the custom sequence.');
+  }
 });
 document.getElementById('cancelSessionSetupBtn').addEventListener('click',closeSessionSetup);
 document.getElementById('beginSessionSetupBtn').addEventListener('click',()=>{
@@ -2628,6 +2836,7 @@ function beginBullpenSession(playerId, setup=DEFAULT_SESSION_SETUP) {
   editingResultPitchNum=null;
   activePitchTypeFilter=null;
   const selectedTypes=(setup.smartPitchTypes||[]).filter(code=>PITCH_TYPES.some(p=>p.code===code));
+  const mode=setup.mode==='smart' ? 'smart' : (setup.mode==='custom' ? 'custom' : 'manual');
   state = {
     phase:'target',
     targetZones:new Set(),
@@ -2639,10 +2848,11 @@ function beginBullpenSession(playerId, setup=DEFAULT_SESSION_SETUP) {
     savedSessionId:null,
     reportMode:null,
     sessionSetup:{
+      sessionName:(setup.sessionName || '').trim(),
       bullpenType:setup.bullpenType || 'Mound',
       pitchCount:Number(setup.pitchCount)||25,
-      mode:setup.mode==='smart'?'smart':'manual',
-      smartDifficulty:['easy','medium','advanced'].includes(setup.smartDifficulty)?setup.smartDifficulty:'easy',
+      mode,
+      smartPlanId:setup.smartPlanId || 'easy',
       smartPitchTypes:selectedTypes.length?selectedTypes:['4S']
     },
     pitchCountAlertShown:false,
@@ -2650,9 +2860,10 @@ function beginBullpenSession(playerId, setup=DEFAULT_SESSION_SETUP) {
   };
   resetTrackingUI();
   const p=activePlayer(); const t=appData.teams.find(x=>x.id===p?.teamId);
-  if(p) sessionContext.textContent = `${p.name}${t ? ' - '+t.name : ''} - ${state.sessionSetup.bullpenType} - ${state.sessionSetup.pitchCount} pitches`;
-  sessionContext.textContent = p ? `${p.name}${t?' · '+t.name:''}` : '';
-  if(p) sessionContext.textContent = `${p.name}${t ? ' - '+t.name : ''} - ${state.sessionSetup.bullpenType} - ${state.sessionSetup.pitchCount} pitches`;
+  if(p) {
+    const customName=state.sessionSetup.sessionName ? ` - ${state.sessionSetup.sessionName}` : '';
+    sessionContext.textContent = `${p.name}${t ? ' - '+t.name : ''}${customName} - ${state.sessionSetup.bullpenType} - ${state.sessionSetup.pitchCount} pitches`;
+  }
   managerScreen.style.display='none'; historyScreen.style.display='none'; statsScreen.style.display='none'; trackingScreen.style.display='flex';
 }
 
@@ -2665,6 +2876,7 @@ function resetTrackingUI() {
   phaseInstEl.textContent='TAP ZONE(S) TO SET TARGET LOCATION'; phaseInstEl.className='phase-instruction phase-target';
   clearTargetBtn.textContent='VIEW SESSION'; clearTargetBtn.dataset.action='view'; doneBtn.textContent='DONE SESSION'; doneBtn.onclick=finishSession;
   document.querySelectorAll('.pitch-dot,.click-ring').forEach(d=>d.remove()); updateTargetBadges();
+  syncPitchTypeAvailability();
   setActivePitchType(state.currentPitchType || '4S');
   applySmartSuggestion();
 }
@@ -3546,15 +3758,46 @@ document.getElementById('importSessionFile').addEventListener('change',async e=>
 // ============================================================
 // PITCH TYPE SELECTOR
 // ============================================================
+function availablePitchTypesForSession(){
+  const setup=state.sessionSetup || DEFAULT_SESSION_SETUP;
+  if(setup.mode!=='custom' && setup.mode!=='custom-builder') return PITCH_TYPES.map(p=>p.code);
+  const selected=(setup.smartPitchTypes||[]).filter(code=>PITCH_TYPES.some(p=>p.code===code));
+  return selected.length ? selected : [PITCH_TYPES[0].code];
+}
+
+function syncPitchTypeAvailability(){
+  const available=availablePitchTypesForSession();
+  document.querySelectorAll('.pitch-btn').forEach(btn=>{
+    const visible=available.includes(btn.dataset.type);
+    btn.style.display=visible ? '' : 'none';
+  });
+  if(!available.includes(state.currentPitchType)) state.currentPitchType=available[0];
+}
+
 function setActivePitchType(type){
-  const fallback=PITCH_TYPES[0].code;
-  const next=PITCH_TYPES.some(p=>p.code===type) ? type : fallback;
+  const available=availablePitchTypesForSession();
+  const fallback=available[0] || PITCH_TYPES[0].code;
+  const next=available.includes(type) ? type : fallback;
   state.currentPitchType=next;
   document.querySelectorAll('.pitch-btn').forEach(b=>b.classList.toggle('active',b.dataset.type===next));
 }
 
 function smartPitchSuggestion(index){
   const setup=state.sessionSetup || DEFAULT_SESSION_SETUP;
+  const planId=setup.smartPlanId || 'easy';
+  if(String(planId).startsWith('custom:')){
+    const customId=String(planId).slice(7);
+    const customPlan=(appData.customSmartSequences||[]).find(plan=>plan.id===customId);
+    if(customPlan?.steps?.length){
+      const step=customPlan.steps[index % customPlan.steps.length];
+      const zones=(step.zones||[]).map(Number).filter(z=>z>=1&&z<=9);
+      return {
+        pitchType:step.pitchType,
+        zones:zones.length?zones:[5],
+        label:`${customPlan.name} - Pitch ${(index % customPlan.steps.length)+1}`
+      };
+    }
+  }
   const types=(setup.smartPitchTypes||[]).filter(code=>PITCH_TYPES.some(p=>p.code===code));
   const selected=types.length?types:['4S'];
   const has=code=>selected.includes(code);
@@ -3593,7 +3836,7 @@ function smartPitchSuggestion(index){
   ];
   const plan=sequences.flat();
   const step=plan[index % plan.length];
-  return {...step,zones:smartZonesForDifficulty(step.zones?.[0]||5,setup.smartDifficulty)};
+  return {...step,zones:smartZonesForDifficulty(step.zones?.[0]||5,planId)};
 }
 
 function smartZonesForDifficulty(baseZone,difficulty='easy'){
@@ -3649,6 +3892,7 @@ function finishSmartSessionFromTarget(){
 document.querySelectorAll('.pitch-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     setActivePitchType(btn.dataset.type);
+    if(state.sessionSetup?.mode==='custom-builder') setCustomSequenceActionBar();
   });
 });
 
@@ -3691,6 +3935,10 @@ function selectAllZones() {
 }
 
 clearTargetBtn.addEventListener('click', () => {
+  if(state.sessionSetup?.mode==='custom-builder'){
+    cancelCustomSequenceBuilder();
+    return;
+  }
   if (pendingVelocityPitch) {
     alert('Finish entering velocity for the current pitch before viewing the session.');
     veloInput?.focus();
@@ -3789,11 +4037,15 @@ strikeZoneTarget.addEventListener('click', () => {
         phaseInstEl.className='phase-instruction phase-target';
         setSmartActionBarReady();
         updateTargetBadges();
+      }else if(state.sessionSetup?.mode==='custom-builder'){
+        advancePromptShown=false;
+        setCustomSequenceActionBar();
       }else{
         showAdvancePrompt(true);
       }
     } else {
-      showAdvancePrompt(false);
+      if(state.sessionSetup?.mode==='custom-builder') setCustomSequenceActionBar();
+      else showAdvancePrompt(false);
     }
   }, 50);
 });
@@ -3873,6 +4125,8 @@ function toTargetPhase() {
   doneBtn.textContent = 'DONE SESSION';
   doneBtn.onclick = finishSession;
   doneBtn.disabled = false;
+  syncPitchTypeAvailability();
+  if(state.sessionSetup?.mode==='custom-builder') setCustomSequenceActionBar();
 
   // Remove result listeners
   outerZone.removeEventListener('click', handleOuterZoneClick);
@@ -4225,6 +4479,10 @@ function setNotesModalMode(editing){
   saveNotesBtn.textContent=editing?'SAVE NOTES':'SAVE SESSION';
 }
 function finishSession() {
+  if(state.sessionSetup?.mode==='custom-builder'){
+    cancelCustomSequenceBuilder();
+    return;
+  }
   if(state.phase==='result' || pendingVelocityPitch){ return; }
   if (state.pitches.length === 0) {
     if(!confirm('Exit this session without saving?')) return;
