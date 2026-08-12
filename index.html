@@ -1032,6 +1032,55 @@
   .trend-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px; }
   .trend-value { font-family:'Barlow Condensed',sans-serif; font-size:26px; font-weight:900; color:var(--text); }
   .trend-label { color:var(--muted); font-size:10px; letter-spacing:1px; text-transform:uppercase; }
+  .history-chart-panel, .stats-chart-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .history-chart-title, .stats-chart-title {
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:900;
+    font-size:13px;
+    letter-spacing:1px;
+    color:var(--muted);
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  .history-chart-panel svg, .stats-chart-panel svg, .strike-progress {
+    display:block;
+    width:100%;
+    height:auto;
+    background:#0b121b;
+    border:1px solid var(--border);
+    border-radius:10px;
+  }
+  .chartlegend {
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px 12px;
+    color:var(--muted);
+    font-size:10px;
+    margin-bottom:8px;
+  }
+  .history-chart-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+  .history-heatmap-note { color:var(--muted); font-size:11px; line-height:1.45; margin-top:8px; }
+  .session-report-top-actions {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:0 16px 12px;
+  }
+  .session-report-top-actions .new-session-btn {
+    width:auto;
+    margin:0;
+    flex:0 0 auto;
+    padding:10px 14px;
+    font-size:13px;
+    letter-spacing:1px;
+  }
 
 
   /* ===== SESSION NOTES / PDF REPORT ===== */
@@ -1791,6 +1840,22 @@
         </div>
       </div>
       <div class="trend-cards" id="trendCards"></div>
+      <div class="history-chart-grid">
+        <div class="history-chart-panel">
+          <div class="history-chart-title">Strike % Trend By Session</div>
+          <div id="historyStrikeTrend"></div>
+        </div>
+        <div class="history-chart-panel">
+          <div class="history-chart-title">Historical Command Heatmap</div>
+          <div class="command-map" id="historyHeatmapGrid" aria-label="Historical command heatmap"></div>
+          <div class="command-map-legend">
+            <span><i class="heat-key good"></i> ON TARGET STRIKE</span>
+            <span><i class="heat-key blue"></i> STRIKE - MISSED LOCATION</span>
+            <span><i class="heat-key bad"></i> BALL / WP</span>
+          </div>
+          <div class="history-heatmap-note" id="historyHeatmapNote"></div>
+        </div>
+      </div>
       <div class="panel">
         <div class="panel-title">Bullpen Sessions</div>
         <div id="historyList"></div>
@@ -1933,7 +1998,15 @@
       <div class="stats-subtitle" id="statsSubtitle"></div>
     </div>
 
+    <div class="session-report-top-actions">
+      <button class="new-session-btn" id="homeBtn" style="background:var(--surface2);color:var(--text);margin-top:0;min-height:42px">← PLAYERS</button>
+      <button class="pdf-btn" id="sessionPdfBtn">PDF REPORT</button>
+    </div>
+
     <div class="stat-cards" id="statCards"></div>
+
+    <div class="section-label">STRIKE % BY PITCH</div>
+    <div class="stats-chart-panel" id="sessionStrikePitchChart"></div>
 
     <div class="section-label">COMMAND HEAT MAP — TAP A PITCH</div>
     <div class="stats-zone-section">
@@ -1957,10 +2030,9 @@
     <div class="section-label session-notes-heading"><span>SESSION NOTES</span><button type="button" class="edit-notes-btn" id="editSessionNotesBtn">EDIT NOTES</button></div>
     <div class="session-report-notes" id="sessionReportNotes">No session notes.</div>
 
-    <div style="display:flex;justify-content:flex-end;padding:0 16px 10px"><button class="pdf-btn" id="sessionPdfBtn">PDF REPORT</button></div>
     <div class="session-report-actions"><button class="new-session-btn" id="continueSessionBtn" style="background:var(--accent);color:#071018">← CONTINUE SESSION</button>
     <button class="new-session-btn" id="newSessionBtn" style="margin-top:6px">+ NEW SESSION</button>
-    <button class="new-session-btn" id="homeBtn" style="background:var(--surface2);color:var(--text);margin-top:6px">← PLAYERS</button></div>
+    </div>
   </div>
 </div>
 
@@ -2082,9 +2154,9 @@
       <div class="edit-title">Update Pitch <span id="editPitchNum"></span></div>
       <div class="edit-grid">
         <div class="edit-field"><label>Pitch Type</label><select id="editPitchType" class="edit-control"><option value="4S">4-Seam</option><option value="2S">2-Seam</option><option value="CH">Change-up</option><option value="CB">Curveball</option><option value="SW">Sweeper</option><option value="SL">Slider</option><option value="CT">Cutter</option><option value="SP">Splitter</option></select></div>
-        <div class="edit-field"><label>Velocity (MPH)</label><input id="editPitchVelocity" class="edit-control" type="number" inputmode="decimal" step="0.1" placeholder="Not tracked"></div>
+        <div class="edit-field" id="editVelocityField"><label>Velocity (MPH)</label><input id="editPitchVelocity" class="edit-control" type="number" inputmode="decimal" step="0.1" placeholder="Not tracked"></div>
         <div class="edit-field full"><label>Target Zone(s)</label><div class="edit-targets" id="editTargetZones"></div></div>
-        <div class="edit-field full"><label>Actual Result</label><select id="editResultZone" class="edit-control"><option value="1">Zone 1</option><option value="2">Zone 2</option><option value="3">Zone 3</option><option value="4">Zone 4</option><option value="5">Zone 5</option><option value="6">Zone 6</option><option value="7">Zone 7</option><option value="8">Zone 8</option><option value="9">Zone 9</option><option value="OOZ">Outside Zone (Ball)</option></select><button id="selectResultOnZoneBtn" type="button" class="edit-control result-zone-btn">SELECT ON ZONE</button></div>
+        <div class="edit-field full" id="editResultField"><label>Actual Result</label><select id="editResultZone" class="edit-control"><option value="1">Zone 1</option><option value="2">Zone 2</option><option value="3">Zone 3</option><option value="4">Zone 4</option><option value="5">Zone 5</option><option value="6">Zone 6</option><option value="7">Zone 7</option><option value="8">Zone 8</option><option value="9">Zone 9</option><option value="OOZ">Outside Zone (Ball)</option></select><button id="selectResultOnZoneBtn" type="button" class="edit-control result-zone-btn">SELECT ON ZONE</button></div>
       </div>
       <div class="edit-actions"><button id="cancelPitchEditBtn" class="btn btn-secondary">CANCEL</button><button id="savePitchEditBtn" class="btn btn-primary">UPDATE PITCH</button></div>
     </div>
@@ -2719,11 +2791,21 @@ function setCustomSequenceActionBar(){
   const draft=state.customSequenceDraft;
   const stepNum=(draft?.steps?.length || 0)+1;
   const total=draft?.pitchCount || 1;
+  if(draft?.steps?.length>=total){
+    phaseInstEl.textContent = 'REVIEW SEQUENCE OR SAVE';
+    phaseInstEl.className='phase-instruction phase-target';
+    clearTargetBtn.textContent='CANCEL';
+    clearTargetBtn.dataset.action='cancel-custom-builder';
+    doneBtn.textContent='SAVE SEQUENCE';
+    doneBtn.onclick=finalizeCustomSequence;
+    doneBtn.disabled=false;
+    return;
+  }
   phaseInstEl.textContent = `CHOOSE PITCH TYPE AND TARGET LOCATION ${stepNum} OF ${total}`;
   phaseInstEl.className='phase-instruction phase-target';
   clearTargetBtn.textContent='CANCEL';
   clearTargetBtn.dataset.action='cancel-custom-builder';
-  doneBtn.textContent=stepNum>=total ? 'SAVE SEQUENCE' : 'CHOOSE NEXT';
+  doneBtn.textContent='CHOOSE NEXT';
   doneBtn.onclick=saveCustomSequenceStep;
   doneBtn.disabled=state.targetZones.size===0;
 }
@@ -2743,6 +2825,7 @@ function cancelCustomSequenceBuilder(){
 function saveCustomSequenceStep(){
   const draft=state.customSequenceDraft;
   if(!draft || state.phase!=='target') return;
+  if(draft.steps.length>=draft.pitchCount) return finalizeCustomSequence();
   if(!state.targetZones.size){
     doneBtn.disabled=true;
     return;
@@ -2753,33 +2836,38 @@ function saveCustomSequenceStep(){
     zones:[...state.targetZones].sort((a,b)=>a-b),
     label:`${draft.name} - Pitch ${stepNum}`
   });
-  if(draft.steps.length>=draft.pitchCount){
-    const plan={id:uid('smart'),name:draft.name,steps:draft.steps};
-    if(!Array.isArray(appData.customSmartSequences)) appData.customSmartSequences=[];
-    appData.customSmartSequences.push(plan);
-    saveAppData();
-    state.customSequenceDraft=null;
-    state.targetZones.clear();
-    trackingScreen.style.display='none';
-    managerScreen.style.display='flex';
-    managerView='roster';
-    renderManager();
-    setSetupGroupValue('bullpenModeOptions','bullpenMode','smart');
-    syncSmartPitchField();
-    refreshSmartPlanOptions(`custom:${plan.id}`);
-    if(setupPitchCount) setupPitchCount.value=String(draft.pitchCount);
-    smartPitchOptions?.querySelectorAll('input[type="checkbox"]').forEach(input=>{
-      input.checked=draft.smartPitchTypes.includes(input.value);
-    });
-    sessionSetupModal?.classList.add('visible');
-    return;
-  }
-  state.pitchNum=draft.steps.length+1;
+  renderCustomSequenceLog();
+  state.pitchNum=Math.min(draft.steps.length+1,draft.pitchCount);
   pitchNumEl.textContent=state.pitchNum;
   state.targetZones.clear();
   strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('target'));
   updateTargetBadges();
   setCustomSequenceActionBar();
+}
+
+function finalizeCustomSequence(){
+  const draft=state.customSequenceDraft;
+  if(!draft || draft.steps.length<draft.pitchCount) return;
+  const plan={id:uid('smart'),name:draft.name,steps:draft.steps};
+  if(!Array.isArray(appData.customSmartSequences)) appData.customSmartSequences=[];
+  appData.customSmartSequences.push(plan);
+  saveAppData();
+  state.customSequenceDraft=null;
+  state.targetZones.clear();
+  pitchLogEl.innerHTML='';
+  logLabel.style.display='none';
+  trackingScreen.style.display='none';
+  managerScreen.style.display='flex';
+  managerView='roster';
+  renderManager();
+  setSetupGroupValue('bullpenModeOptions','bullpenMode','smart');
+  syncSmartPitchField();
+  refreshSmartPlanOptions(`custom:${plan.id}`);
+  if(setupPitchCount) setupPitchCount.value=String(draft.pitchCount);
+  smartPitchOptions?.querySelectorAll('input[type="checkbox"]').forEach(input=>{
+    input.checked=draft.smartPitchTypes.includes(input.value);
+  });
+  sessionSetupModal?.classList.add('visible');
 }
 
 function readSessionSetup(){
@@ -3116,6 +3204,7 @@ window.showHistory = function(playerId) {
   document.getElementById('historyTeamName').textContent=`${t?.name||''}${p.throws ? ' · Throws '+(p.throws==='R'?'Right':'Left') : ' · Throwing hand not set'}`;
 
   document.getElementById('trendCards').innerHTML=buildHistoryMetricCards(sessions,p);
+  renderHistoryProfileCharts(sessions,p);
   const exportSessionDataBtn=document.getElementById('exportSessionDataBtn');
   if(exportSessionDataBtn) exportSessionDataBtn.disabled=!sessions.length;
 
@@ -3309,6 +3398,7 @@ function historyStrikeSeries(sessions){
 
 function buildHistoryStrikeSvg(sessions){
   const {types,rows}=historyStrikeSeries(sessions);
+  if(!rows.length) return '<div class="empty-state">No saved session trend yet.</div>';
   const colors=['#ffffff',...hexSeriesColors()];
   const names=['Overall',...types];
   const W=760,H=300,L=46,R=20,T=22,B=42,iw=W-L-R,ih=H-T-B;
@@ -3329,6 +3419,45 @@ function buildHistoryStrikeSvg(sessions){
   const labels=rows.map((r,i)=>`<text x="${x(i)}" y="${H-17}" fill="#6f879f" font-size="9" text-anchor="middle">${printSafe(r.date)}</text>`).join('');
   const legend=names.map((n,i)=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px"><i style="width:10px;height:3px;background:${colors[i%colors.length]};display:inline-block;border-radius:3px"></i>${printSafe(n)}</span>`).join('');
   return `<div class="chartlegend">${legend}</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Strike percentage by session and pitch type">${grid}${paths}${labels}</svg>`;
+}
+
+function renderHistoryCommandHeatmap(sessions,player){
+  const map=document.getElementById('historyHeatmapGrid');
+  const note=document.getElementById('historyHeatmapNote');
+  if(!map) return;
+  const pitches=sessions.flatMap(s=>historySessionPitches(s));
+  const points=pitches.map((p,i)=>({p,pt:commandMapPoint(p),num:i+1}));
+  const gradients=points.map(({p,pt})=>{
+    const x=(pt.x*100).toFixed(1), y=(pt.y*100).toFixed(1);
+    const c=p.isOnTarget ? '34,197,94' : (p.isStrike ? '47,128,237' : '239,68,68');
+    return `radial-gradient(circle at ${x}% ${y}%, rgba(${c},.58) 0%, rgba(${c},.32) 6%, rgba(${c},.11) 13%, rgba(${c},0) 21%)`;
+  });
+  map.style.backgroundImage=gradients.length ? gradients.join(',') : 'none';
+  map.innerHTML=`
+    <div class="command-strike-zone">
+      ${ZONES.map(z=>`<div class="command-target-cell" data-history-zone="${z}"></div>`).join('')}
+    </div>
+  `;
+  points.forEach(({p,pt,num})=>{
+    const dot=document.createElement('button');
+    dot.type='button';
+    dot.className='command-pitch-dot '+(p.isOnTarget?'hit':(p.isStrike?'strike-miss':'miss'));
+    dot.style.left=(pt.x*100)+'%';
+    dot.style.top=(pt.y*100)+'%';
+    dot.textContent='';
+    dot.setAttribute('aria-label',`Historical pitch ${num}: ${p.type}`);
+    map.appendChild(dot);
+  });
+  const agg=aggregateHistorySessions(sessions,player);
+  const miss=agg.missBias;
+  const bias=!player?.throws?'Set throwing hand for miss-side bias.':(miss.sided?`Miss-side bias: ${miss.pct}% ${miss.direction} (${miss.glove} GS / ${miss.throwing} TS).`:'No lateral miss-side bias yet.');
+  if(note) note.textContent=pitches.length ? `Showing ${pitches.length} pitches across ${sessions.length} session${sessions.length===1?'':'s'}. Avg Location %: ${agg.locationPct}%. ${bias}` : 'No saved pitches to map yet.';
+}
+
+function renderHistoryProfileCharts(sessions,player){
+  const trend=document.getElementById('historyStrikeTrend');
+  if(trend) trend.innerHTML=buildHistoryStrikeSvg(sessions);
+  renderHistoryCommandHeatmap(sessions,player);
 }
 
 
@@ -3932,6 +4061,7 @@ function selectAllZones() {
     strikeZoneTarget.querySelector(`[data-zone="${z}"]`).classList.add('target');
   });
   updateTargetBadges();
+  if(state.sessionSetup?.mode==='custom-builder') setCustomSequenceActionBar();
 }
 
 clearTargetBtn.addEventListener('click', () => {
@@ -4368,7 +4498,40 @@ function pitchLogHTML(pitch) {
     </div>`;
 }
 
+function customSequenceLogHTML(step,index) {
+  const targets = (step.zones||[]).map(z => `Z${z}`).join(',') || '-';
+  return `
+    <span class="log-num">#${index+1}</span>
+    <span class="log-type">${esc(step.pitchType)}</span>
+    <span class="log-result">Target: ${esc(targets)}</span>
+    <div class="log-badges">
+      <span class="badge on-target">PLAN</span>
+    </div>`;
+}
+
+function renderCustomSequenceLog(){
+  const draft=state.customSequenceDraft;
+  pitchLogEl.innerHTML='';
+  (draft?.steps||[]).slice().reverse().forEach((step,reverseIndex)=>{
+    const index=draft.steps.length-1-reverseIndex;
+    const wrap=document.createElement('div');
+    wrap.className='pitch-log-swipe';
+    wrap.dataset.sequenceIndex=String(index);
+    wrap.innerHTML=`<div class="pitch-log-actions"><button class="pitch-log-action update" type="button">UPDATE</button><button class="pitch-log-action delete" type="button">DELETE</button></div><div class="pitch-log-item strike-log">${customSequenceLogHTML(step,index)}</div>`;
+    pitchLogEl.appendChild(wrap);
+    bindPitchSwipe(wrap);
+    wrap.querySelector('.pitch-log-action.update').addEventListener('click',()=>openCustomSequenceEditor(index));
+    wrap.querySelector('.pitch-log-action.delete').addEventListener('click',()=>deleteCustomSequenceStep(index));
+  });
+  logLabel.textContent='CUSTOM SEQUENCE - SWIPE LEFT TO EDIT';
+  logLabel.style.display=draft?.steps?.length?'block':'none';
+}
+
 function renderPitchLog() {
+  if(state.sessionSetup?.mode==='custom-builder') {
+    renderCustomSequenceLog();
+    return;
+  }
   pitchLogEl.innerHTML='';
   [...state.pitches].reverse().forEach(pitch => {
     const wrap=document.createElement('div');
@@ -4379,6 +4542,7 @@ function renderPitchLog() {
     wrap.querySelector('.pitch-log-action.update').addEventListener('click',()=>openPitchEditor(pitch.num));
     wrap.querySelector('.pitch-log-action.delete').addEventListener('click',()=>deletePitch(pitch.num));
   });
+  logLabel.textContent='PITCH LOG - SWIPE LEFT TO EDIT';
   logLabel.style.display=state.pitches.length?'block':'none';
 }
 
@@ -4399,12 +4563,64 @@ function deletePitch(num) {
   renderPitchLog();
 }
 
+function deleteCustomSequenceStep(index) {
+  const draft=state.customSequenceDraft;
+  if(!draft?.steps?.[index]) return;
+  draft.steps.splice(index,1);
+  state.pitchNum=Math.min(draft.steps.length+1,draft.pitchCount);
+  pitchNumEl.textContent=state.pitchNum;
+  renderCustomSequenceLog();
+  setCustomSequenceActionBar();
+}
+
 let editingPitchNum=null;
+let editingCustomSequenceIndex=null;
 let editingResultPitchNum=null;
 const pitchEditModal=document.getElementById('pitchEditModal');
 const editTargetZones=document.getElementById('editTargetZones');
+const editVelocityField=document.getElementById('editVelocityField');
+const editResultField=document.getElementById('editResultField');
+const selectResultOnZoneBtn=document.getElementById('selectResultOnZoneBtn');
+
+function syncEditPitchTypeOptions(allowed=null){
+  const select=document.getElementById('editPitchType');
+  [...select.options].forEach(option=>{
+    const visible=!allowed || allowed.includes(option.value);
+    option.disabled=!visible;
+    option.hidden=!visible;
+  });
+}
+
+function setPitchEditorMode(mode){
+  const isSequence=mode==='sequence';
+  document.getElementById('editPitchNum').parentElement.firstChild.textContent=isSequence?'Update Sequence Pitch ':'Update Pitch ';
+  if(editVelocityField) editVelocityField.style.display=isSequence?'none':'';
+  if(editResultField) editResultField.style.display=isSequence?'none':'';
+  document.getElementById('savePitchEditBtn').textContent=isSequence?'UPDATE SEQUENCE':'UPDATE PITCH';
+}
+
+function openCustomSequenceEditor(index){
+  const draft=state.customSequenceDraft;
+  const step=draft?.steps?.[index];
+  if(!step) return;
+  editingCustomSequenceIndex=index;
+  editingPitchNum=null;
+  setPitchEditorMode('sequence');
+  syncEditPitchTypeOptions(draft.smartPitchTypes);
+  document.getElementById('editPitchNum').textContent=`#${index+1}`;
+  document.getElementById('editPitchType').value=draft.smartPitchTypes.includes(step.pitchType)?step.pitchType:draft.smartPitchTypes[0];
+  document.getElementById('editPitchVelocity').value='';
+  document.getElementById('editResultZone').value='OOZ';
+  editTargetZones.innerHTML=ZONES.map(z=>`<button type="button" class="edit-target-btn ${(step.zones||[]).includes(z)?'active':''}" data-zone="${z}">Z${z}</button>`).join('');
+  editTargetZones.querySelectorAll('.edit-target-btn').forEach(b=>b.addEventListener('click',()=>b.classList.toggle('active')));
+  pitchEditModal.classList.add('visible');
+}
+
 function openPitchEditor(num) {
   const p=state.pitches.find(x=>x.num===num); if(!p)return; editingPitchNum=num;
+  editingCustomSequenceIndex=null;
+  setPitchEditorMode('pitch');
+  syncEditPitchTypeOptions();
   document.getElementById('editPitchNum').textContent=`#${num}`;
   document.getElementById('editPitchType').value=p.type;
   document.getElementById('editPitchVelocity').value=p.velocity ?? '';
@@ -4420,9 +4636,9 @@ function applyPitchEditorBase(p){
   p.velocity=raw!=='' && Number.isFinite(v) && v>0 && v<150 ? Math.round(v*10)/10 : null;
   p.targetZones=new Set([...editTargetZones.querySelectorAll('.edit-target-btn.active')].map(b=>Number(b.dataset.zone)));
 }
-function closePitchEditor(){ pitchEditModal.classList.remove('visible'); editingPitchNum=null; }
+function closePitchEditor(){ pitchEditModal.classList.remove('visible'); editingPitchNum=null; editingCustomSequenceIndex=null; setPitchEditorMode('pitch'); syncEditPitchTypeOptions(); }
 
-document.getElementById('selectResultOnZoneBtn').addEventListener('click',()=>{
+selectResultOnZoneBtn.addEventListener('click',()=>{
   const p=state.pitches.find(x=>x.num===editingPitchNum);
   if(!p) return closePitchEditor();
   applyPitchEditorBase(p);
@@ -4440,6 +4656,19 @@ document.getElementById('selectResultOnZoneBtn').addEventListener('click',()=>{
 document.getElementById('cancelPitchEditBtn').addEventListener('click',closePitchEditor);
 pitchEditModal.addEventListener('click',e=>{ if(e.target===pitchEditModal)closePitchEditor(); });
 document.getElementById('savePitchEditBtn').addEventListener('click',()=>{
+  if(editingCustomSequenceIndex!==null){
+    const draft=state.customSequenceDraft;
+    const step=draft?.steps?.[editingCustomSequenceIndex];
+    if(!step) return closePitchEditor();
+    step.pitchType=document.getElementById('editPitchType').value;
+    step.zones=[...editTargetZones.querySelectorAll('.edit-target-btn.active')].map(b=>Number(b.dataset.zone)).sort((a,b)=>a-b);
+    if(!step.zones.length) return;
+    step.label=`${draft.name} - Pitch ${editingCustomSequenceIndex+1}`;
+    closePitchEditor();
+    renderCustomSequenceLog();
+    setCustomSequenceActionBar();
+    return;
+  }
   const p=state.pitches.find(x=>x.num===editingPitchNum); if(!p)return closePitchEditor();
   p.type=document.getElementById('editPitchType').value;
   const raw=document.getElementById('editPitchVelocity').value.trim(), v=Number(raw);
@@ -4630,6 +4859,8 @@ function buildStats() {
       <div class="stat-card-sub">${c.sub}</div>
     </div>
   `).join('');
+  const strikePitchChart=document.getElementById('sessionStrikePitchChart');
+  if(strikePitchChart) strikePitchChart.innerHTML=total ? buildSessionStrikeProgressSvg(pitches) : '<div class="empty-state">No pitches recorded.</div>';
 
   // Command heat map: green = on target, red = off target.
   // A selected pitch type filters only the plotted pitches/heat.
