@@ -1010,8 +1010,10 @@
   .empty-state { text-align:center; color:var(--muted); font-size:13px; padding:20px 8px; }
   .utility-row { display:flex; gap:8px; margin-top:12px; }
   .utility-row .card-btn { flex:1; min-height:42px; }
+  .add-team-import-btn { width:100%; margin-top:10px; }
   .history-session-tools { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
   .history-new-session-btn { width:100%; margin-top:12px; border-color:var(--green); background:var(--green); color:#071018; }
+  .home-section-divider { height:1px; background:linear-gradient(90deg,transparent,rgba(0,212,255,.55),rgba(34,197,94,.42),transparent); margin:14px 0 10px; }
   .custom-sessions-btn {
     width:100%;
     margin:12px 0 4px;
@@ -1022,10 +1024,11 @@
     gap:12px;
     padding:12px 14px;
     border-radius:10px;
-    border:1px solid rgba(0,212,255,.36);
-    background:linear-gradient(145deg,rgba(0,212,255,.16),rgba(34,197,94,.10));
+    border:1px solid rgba(0,212,255,.58);
+    background:linear-gradient(145deg,rgba(0,212,255,.28),rgba(34,197,94,.22));
     color:var(--text);
     text-align:left;
+    box-shadow:0 10px 24px rgba(0,212,255,.10);
   }
   .custom-sessions-btn strong { display:block; font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:900; letter-spacing:1px; color:var(--accent); }
   .custom-sessions-btn span:last-child { display:block; color:var(--muted); font-size:11px; line-height:1.25; }
@@ -1748,20 +1751,19 @@
           <input id="teamNameInput" class="app-input" placeholder="Team name" maxlength="40">
           <button id="addTeamBtn" class="mini-btn">ADD</button>
         </div>
+        <button id="importBtn" class="card-btn add-team-import-btn" type="button">IMPORT TEAM</button>
+        <input id="importFile" type="file" accept="application/json,.json" style="display:none">
       </div>
 
       <div class="panel-title" style="padding:2px 2px 8px">Teams</div>
       <div id="teamList"></div>
 
+      <div class="home-section-divider" aria-hidden="true"></div>
+
       <button id="customSessionsBtn" class="card-btn custom-sessions-btn" type="button">
         <span class="strike-zone-icon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
         <span><strong>CUSTOM SESSIONS</strong>Create reusable pitch/location sequences</span>
       </button>
-
-      <div class="utility-row">
-        <button id="importBtn" class="card-btn">IMPORT TEAM</button>
-        <input id="importFile" type="file" accept="application/json,.json" style="display:none">
-      </div>
     </div>
 
     <div class="manager-scroll" id="rosterView" style="display:none">
@@ -2916,7 +2918,6 @@ document.querySelectorAll('#bullpenModeOptions .setup-option-btn').forEach(btn=>
 });
 document.getElementById('cancelCustomSessionBtn').addEventListener('click',()=>closeCustomSessionSettings(true));
 document.getElementById('startCustomSessionBtn').addEventListener('click',()=>{
-  if(!setupPlayerId) return closeCustomSessionSettings(false);
   try{
     const setup=readCustomSessionSetup();
     beginCustomSequenceBuilder(setup);
