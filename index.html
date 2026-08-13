@@ -978,7 +978,9 @@
   .team-stats-row > div { padding:9px 8px; text-align:right; font-size:12px; }
   .team-stats-row > div:first-child { text-align:left; position:sticky; left:0; z-index:1; background:var(--surface); }
   .team-stats-head { min-height:40px; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; }
-  .team-stats-head .team-sort-head { border:0; background:none; color:inherit; font:inherit; text-transform:inherit; letter-spacing:inherit; cursor:pointer; padding:0; text-align:inherit; }
+  .team-stats-head .team-sort-head { border:0; background:none; color:inherit; font:inherit; text-transform:inherit; letter-spacing:inherit; cursor:pointer; padding:0; text-align:inherit; display:inline-flex; align-items:center; justify-content:flex-end; gap:3px; white-space:nowrap; }
+  .team-stats-head .team-sort-head .sort-arrow { width:9px; font-size:11px; line-height:1; text-align:center; }
+  .team-stats-head .team-sort-head .sort-arrow.inactive { visibility:hidden; }
   .team-stats-head .team-sort-head.active { color:var(--accent); }
   .team-stats-total { background:rgba(0,212,255,.08); border-top:2px solid rgba(0,212,255,.38); font-weight:800; }
   .team-stats-total > div:first-child { background:#102331; color:var(--accent); text-transform:uppercase; letter-spacing:.5px; }
@@ -2358,6 +2360,8 @@ const teamLogoFile     = document.getElementById('teamLogoFile');
 const playerList       = document.getElementById('playerList');
 let managerView='teams';
 let teamStatsSortKey='improvement';
+let teamStatsSortDir='desc';
+let teamStatsScrollLeft=0;
 let historyReturnView='roster';
 let logoEditingTeamId=null;
 const STORAGE_KEY      = 'bullpenTrackerDataV1';
@@ -2598,15 +2602,20 @@ function renderTeamStats(team,players){
   const teamAggregate=aggregateHistorySessions(teamSessions,null);
   playerStats.forEach(r=>{ r.strikeVsTeamAvg = r.sessions ? (Number(r.strikePct)||0) - (Number(teamAggregate.strikePct)||0) : 0; });
   const rows=playerStats.slice().sort((a,b)=>{
-    if(teamStatsSortKey==='name') return a.player.name.localeCompare(b.player.name);
-    if(teamStatsSortKey==='commandScore'){
+    let result=0;
+    if(teamStatsSortKey==='name') result=a.player.name.localeCompare(b.player.name);
+    else if(teamStatsSortKey==='commandScore'){
       const aHas=Boolean(a.commandEnabled&&a.sessions),bHas=Boolean(b.commandEnabled&&b.sessions);
       if(aHas!==bHas) return aHas?-1:1;
-      const av=aHas?a.commandScore:0,bv=bHas?b.commandScore:0;
-      return bv-av;
+      else {
+        const av=aHas?a.commandScore:0,bv=bHas?b.commandScore:0;
+        result=av-bv;
+      }
+    } else {
+      const av=Number(a[teamStatsSortKey])||0,bv=Number(b[teamStatsSortKey])||0;
+      result=av-bv;
     }
-    const av=Number(a[teamStatsSortKey])||0,bv=Number(b[teamStatsSortKey])||0;
-    return bv-av;
+    return teamStatsSortDir==='desc' ? -result : result;
   });
   const teamVelos=teamSessions.flatMap(s=>(s.pitches||[]).filter(p=>Number.isFinite(Number(p.velocity)) && Number(p.velocity)>0).map(p=>Number(p.velocity)));
   const teamTopVelo=teamVelos.length?Math.max(...teamVelos):null;
@@ -2615,15 +2624,24 @@ function renderTeamStats(team,players){
   const improvedPlayers=playerStats.filter(r=>r.sessions>1);
   const avgStrikeImprovement=improvedPlayers.length?improvedPlayers.reduce((n,r)=>n+r.strikeDelta,0)/improvedPlayers.length:null;
   const avgLocationImprovement=improvedPlayers.length?improvedPlayers.reduce((n,r)=>n+r.locationDelta,0)/improvedPlayers.length:null;
-  const sortLabel=key=>teamStatsSortKey===key?(key==='name'?' A-Z':' ↓'):'';
+  const sortLabel=key=>`<span class="sort-arrow ${teamStatsSortKey===key?'':'inactive'}" aria-hidden="true">${teamStatsSortKey===key?(teamStatsSortDir==='asc'?'&#8593;':'&#8595;'):'&#8595;'}</span>`;
   document.getElementById('teamStatsContent').innerHTML=rows.length?`<div class="team-stats-table"><div class="team-stats-grid">
     <div class="team-stats-row team-stats-head"><div><button class="team-sort-head ${teamStatsSortKey==='name'?'active':''}" data-sort-key="name" type="button">Player${sortLabel('name')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='sessions'?'active':''}" data-sort-key="sessions" type="button">Sessions${sortLabel('sessions')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='totalPitches'?'active':''}" data-sort-key="totalPitches" type="button">Pitches${sortLabel('totalPitches')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='topVelo'?'active':''}" data-sort-key="topVelo" type="button">Top Velo${sortLabel('topVelo')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='strikePct'?'active':''}" data-sort-key="strikePct" type="button">Strike %${sortLabel('strikePct')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='strikeVsTeamAvg'?'active':''}" data-sort-key="strikeVsTeamAvg" type="button">+/- Team Avg${sortLabel('strikeVsTeamAvg')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='locationPct'?'active':''}" data-sort-key="locationPct" type="button">Location %${sortLabel('locationPct')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='commandScore'?'active':''}" data-sort-key="commandScore" type="button">PB Command${sortLabel('commandScore')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='improvement'?'active':''}" data-sort-key="improvement" type="button">Improvement${sortLabel('improvement')}</button></div></div>
-    ${rows.map(r=>`<div class="team-stats-row"><div class="team-stats-player"><button type="button" onclick="showHistory('${r.player.id}')">${esc(r.player.name)}</button></div><div>${r.sessions}</div><div>${r.totalPitches}</div><div>${r.topVelo===null?'—':r.topVelo.toFixed(1)}</div><div class="${strikeClass(r.strikePct)}">${r.sessions?r.strikePct+'%':'—'}</div><div>${r.sessions?signedStat(r.strikeVsTeamAvg,' STR %'):'—'}</div><div>${r.sessions?r.locationPct+'%':'—'}</div><div>${r.sessions?(r.commandEnabled?r.commandScore:'N/A'):'—'}</div><div>${r.sessions>1?`${signedStat(r.strikeDelta,' STR %')}<br>${signedStat(r.locationDelta,' LOC %')}`:'<span class="stat-flat">NEEDS 2</span>'}</div></div>`).join('')}
-    <div class="team-stats-row team-stats-total"><div>Team Average</div><div>${teamSessions.length}</div><div>${teamAggregate.totalPitches}</div><div>${teamTopVelo===null?'—':teamTopVelo.toFixed(1)}</div><div class="${strikeClass(teamAggregate.strikePct)}">${teamSessions.length?teamAggregate.strikePct+'%':'—'}</div><div><span class="stat-flat">0 STR %</span></div><div>${teamSessions.length?teamAggregate.locationPct+'%':'—'}</div><div>${teamCommand===null?'N/A':teamCommand}</div><div>${avgStrikeImprovement===null?'<span class="stat-flat">NEEDS 2</span>':`${signedStat(avgStrikeImprovement,' STR %')}<br>${signedStat(avgLocationImprovement,' LOC %')}`}</div></div>
-  </div></div><div class="team-stats-note">Improvement compares each player’s latest session with their average before that session. Overall percentages combine all saved pitches. Tap a player’s name to open their history.</div>`:'<div class="empty-state">Add players and save bullpen sessions to compare team stats.</div>';
+    ${rows.map(r=>`<div class="team-stats-row"><div class="team-stats-player"><button type="button" onclick="showHistory('${r.player.id}')">${esc(r.player.name)}</button></div><div>${r.sessions}</div><div>${r.totalPitches}</div><div>${r.topVelo===null?'-':r.topVelo.toFixed(1)}</div><div class="${strikeClass(r.strikePct)}">${r.sessions?r.strikePct+'%':'-'}</div><div>${r.sessions?signedStat(r.strikeVsTeamAvg,' STR %'):'-'}</div><div>${r.sessions?r.locationPct+'%':'-'}</div><div>${r.sessions?(r.commandEnabled?r.commandScore:'N/A'):'-'}</div><div>${r.sessions>1?`${signedStat(r.strikeDelta,' STR %')}<br>${signedStat(r.locationDelta,' LOC %')}`:'<span class="stat-flat">NEEDS 2</span>'}</div></div>`).join('')}
+    <div class="team-stats-row team-stats-total"><div>Team Average</div><div>${teamSessions.length}</div><div>${teamAggregate.totalPitches}</div><div>${teamTopVelo===null?'-':teamTopVelo.toFixed(1)}</div><div class="${strikeClass(teamAggregate.strikePct)}">${teamSessions.length?teamAggregate.strikePct+'%':'-'}</div><div><span class="stat-flat">0 STR %</span></div><div>${teamSessions.length?teamAggregate.locationPct+'%':'-'}</div><div>${teamCommand===null?'N/A':teamCommand}</div><div>${avgStrikeImprovement===null?'<span class="stat-flat">NEEDS 2</span>':`${signedStat(avgStrikeImprovement,' STR %')}<br>${signedStat(avgLocationImprovement,' LOC %')}`}</div></div>
+  </div></div><div class="team-stats-note">Improvement compares each player's latest session with their average before that session. Overall percentages combine all saved pitches. Tap a player's name to open their history.</div>`:'<div class="empty-state">Add players and save bullpen sessions to compare team stats.</div>';
+  const table=document.querySelector('.team-stats-table');
+  if(table){
+    table.scrollLeft=teamStatsScrollLeft;
+    table.addEventListener('scroll',()=>{ teamStatsScrollLeft=table.scrollLeft; },{passive:true});
+  }
   document.querySelectorAll('.team-sort-head').forEach(btn=>{
     btn.addEventListener('click',()=>{
-      teamStatsSortKey=btn.dataset.sortKey || 'improvement';
+      const table=document.querySelector('.team-stats-table');
+      if(table) teamStatsScrollLeft=table.scrollLeft;
+      const nextKey=btn.dataset.sortKey || 'improvement';
+      if(teamStatsSortKey===nextKey) teamStatsSortDir=teamStatsSortDir==='asc'?'desc':'asc';
+      else { teamStatsSortKey=nextKey; teamStatsSortDir=nextKey==='name'?'asc':'desc'; }
       renderManager();
     });
   });
@@ -5157,6 +5175,15 @@ function renderCommandHeatmap(pitches){
   if(info) info.textContent=points.length ? 'Tap any pitch dot to see its intended location.' : 'No pitches recorded.';
 }
 
+function longestStrikeStreak(pitches){
+  let best=0,current=0;
+  (pitches||[]).forEach(p=>{
+    if(p.isStrike){ current++; best=Math.max(best,current); }
+    else current=0;
+  });
+  return best;
+}
+
 function buildStats() {
   const pitches = state.pitches;
   const total = pitches.length;
@@ -5167,6 +5194,10 @@ function buildStats() {
   const locPct = withTarget.length > 0 ? Math.round((onTarget / withTarget.length) * 100) : 0;
   const reportPlayer=appData.players.find(p=>p.id===state.activePlayerId);
   const showCommandGrade=reportPlayer?.showCommandGrade!==false;
+  const missBias=lateralMissBias(pitches,reportPlayer?.throws||null);
+  const missBiasValue=!reportPlayer?.throws?'HAND NOT SET':(missBias.sided?`${missBias.pct}% ${missBias.direction}`:'-');
+  const missBiasSub=!reportPlayer?.throws?'Set throwing hand in profile':(missBias.sided?`${missBias.glove} GS / ${missBias.throwing} TS`:'No lateral misses');
+  const kStreak=longestStrikeStreak(pitches);
 
   // Subtitle
   {
@@ -5181,6 +5212,8 @@ function buildStats() {
     { label:'LOCATION %', value: locPct + '%', sub: `${onTarget}/${withTarget.length} on target`, cls:'blue' },
     { label:'TOTAL PITCHES', value: total, sub: strikes + ' strikes · ' + (total-strikes) + ' balls' + (pitches.filter(p=>p.isWildPitch).length ? ' · '+pitches.filter(p=>p.isWildPitch).length+' wild' : ''), cls:'yellow' },
     { label:'PB COMMAND', value: showCommandGrade?pocketCommandMetrics(pitches).score:'N/A', sub: showCommandGrade?pocketCommandMetrics(pitches).grade:'Command grade is off', cls:'orange' },
+    { label:'MISS-SIDE BIAS', value: missBiasValue, sub: missBiasSub, cls:'blue' },
+    { label:'K-STREAK', value: kStreak, sub: 'Longest strike streak', cls:'green' },
   ];
 
   document.getElementById('statCards').innerHTML = cards.map(c => `
