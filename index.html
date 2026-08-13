@@ -1032,6 +1032,21 @@
   }
   .custom-sessions-btn strong { display:block; font-family:'Barlow Condensed',sans-serif; font-size:17px; font-weight:900; letter-spacing:1px; color:var(--accent); }
   .custom-sessions-btn span:last-child { display:block; color:var(--muted); font-size:11px; line-height:1.25; }
+  .custom-session-page-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .custom-session-page-header .manager-sub { line-height:1.35; }
+  .custom-session-create { width:100%; min-height:48px; margin-bottom:14px; }
+  .custom-session-list { display:grid; gap:10px; }
+  .custom-session-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:13px; }
+  .custom-session-card-head { display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap; }
+  .custom-session-card-main { flex:1; min-width:0; }
+  .custom-session-card-name { font-family:'Barlow Condensed',sans-serif; font-size:19px; font-weight:900; color:var(--text); }
+  .custom-session-card-meta { margin-top:2px; color:var(--muted); font-size:11px; }
+  .custom-session-card-actions { display:flex; gap:6px; flex-wrap:wrap; }
+  .custom-session-card-actions .delete { color:var(--red); border-color:rgba(239,68,68,.35); }
+  .custom-session-detail { display:none; margin-top:11px; padding-top:10px; border-top:1px solid var(--border); }
+  .custom-session-card.expanded .custom-session-detail { display:grid; gap:6px; }
+  .custom-session-step { display:grid; grid-template-columns:28px 44px 1fr; gap:7px; color:var(--muted); font-size:12px; }
+  .custom-session-step strong { color:var(--text); }
   .strike-zone-icon { width:30px; height:30px; flex:0 0 30px; border:2px solid currentColor; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); border-radius:3px; opacity:.95; color:var(--green); }
   .strike-zone-icon i { border-right:1px solid currentColor; border-bottom:1px solid currentColor; opacity:.45; }
   .strike-zone-icon i:nth-child(3n) { border-right:0; }
@@ -1788,10 +1803,6 @@
       <div class="panel-title" style="padding:2px 2px 8px">Players</div>
       <div id="playerList"></div>
 
-      <div class="utility-row">
-        <button id="exportBtn" class="card-btn">EXPORT TEAM</button>
-        <button id="deleteTeamBtn" class="card-btn team-remove-btn" type="button">REMOVE TEAM</button>
-      </div>
     </div>
 
     <div class="manager-scroll" id="teamStatsView" style="display:none">
@@ -1800,6 +1811,15 @@
         <div class="roster-team-copy"><div class="manager-title" id="statsTeamName">Team Stats</div><div class="manager-sub">Player comparison and improvement</div></div>
       </div>
       <div id="teamStatsContent"></div>
+    </div>
+
+    <div class="manager-scroll" id="customSessionsView" style="display:none">
+      <div class="custom-session-page-header">
+        <button id="customSessionsBackBtn" class="back-btn" type="button" aria-label="Back to teams" title="Back to teams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div><div class="manager-title">Custom Sessions</div><div class="manager-sub">Create and manage reusable pitch/location sequences</div></div>
+      </div>
+      <button id="newCustomSessionBtn" class="mini-btn custom-session-create" type="button">+ CREATE CUSTOM SESSION</button>
+      <div id="customSessionsList" class="custom-session-list"></div>
     </div>
 
     <nav class="team-bottom-nav" id="teamBottomNav" aria-label="Team pages">
@@ -1811,7 +1831,7 @@
 
     <div class="edit-modal" id="teamSettingsModal">
       <div class="edit-sheet">
-        <div class="edit-title">Team Appearance</div>
+        <div class="edit-title">Team Settings</div>
         <div class="edit-grid">
           <div class="edit-field full">
             <label id="teamSettingsName">Team</label>
@@ -1828,9 +1848,13 @@
           </div>
           <div class="team-gradient-preview" id="teamGradientPreview"></div>
         </div>
+        <div class="utility-row">
+          <button id="exportBtn" class="card-btn" type="button">EXPORT TEAM</button>
+          <button id="deleteTeamBtn" class="card-btn team-remove-btn" type="button">REMOVE TEAM</button>
+        </div>
         <div class="edit-actions">
           <button id="cancelTeamSettingsBtn" class="btn btn-secondary" type="button">CANCEL</button>
-          <button id="saveTeamSettingsBtn" class="btn btn-primary" type="button">SAVE COLORS</button>
+          <button id="saveTeamSettingsBtn" class="btn btn-primary" type="button">SAVE</button>
         </div>
       </div>
     </div>
@@ -2114,7 +2138,7 @@
         </div>
       </div>
       <div class="edit-actions">
-        <button id="cancelCustomSessionBtn" class="btn btn-secondary" type="button">BACK</button>
+        <button id="cancelCustomSessionBtn" class="btn btn-secondary" type="button">CANCEL</button>
         <button id="startCustomSessionBtn" class="btn btn-primary" type="button">BUILD SEQUENCE</button>
       </div>
     </div>
@@ -2271,6 +2295,7 @@ const customPitchCount   = document.getElementById('customPitchCount');
 const customPitchOptions = document.getElementById('customPitchOptions');
 let setupPlayerId = null;
 let customSessionReturnToSetup = false;
+let editingCustomPlanId = null;
 let requireVelocity = false;
 let pendingVelocityPitch = null;
 
@@ -2304,6 +2329,7 @@ const teamList         = document.getElementById('teamList');
 const teamsHomeView    = document.getElementById('teamsHomeView');
 const rosterView       = document.getElementById('rosterView');
 const teamStatsView    = document.getElementById('teamStatsView');
+const customSessionsView = document.getElementById('customSessionsView');
 const teamBottomNav    = document.getElementById('teamBottomNav');
 const rosterBackBtn    = document.getElementById('rosterBackBtn');
 const rosterTeamName   = document.getElementById('rosterTeamName');
@@ -2313,6 +2339,7 @@ const teamLogoFile     = document.getElementById('teamLogoFile');
 const playerList       = document.getElementById('playerList');
 let managerView='teams';
 let teamStatsSortKey='improvement';
+let teamStatsSortDescending=true;
 let teamStatsScrollLeft=0;
 let historyReturnView='roster';
 let logoEditingTeamId=null;
@@ -2403,7 +2430,15 @@ function renderManager() {
     });
   });
 
-  if((managerView==='roster' || managerView==='teamStats') && selectedTeam()){
+  if(managerView==='customSessions'){
+    if(brandHeader) brandHeader.style.display='none';
+    teamsHomeView.style.display='none';
+    rosterView.style.display='none';
+    teamStatsView.style.display='none';
+    customSessionsView.style.display='block';
+    teamBottomNav.classList.remove('visible');
+    renderCustomSessionsPage();
+  }else if((managerView==='roster' || managerView==='teamStats') && selectedTeam()){
     if(brandHeader) brandHeader.style.display='none';
     const team=selectedTeam();
     const players=appData.players.filter(p=>p.teamId===team.id);
@@ -2421,6 +2456,7 @@ function renderManager() {
     teamsHomeView.style.display='none';
     rosterView.style.display=managerView==='roster'?'block':'none';
     teamStatsView.style.display=managerView==='teamStats'?'block':'none';
+    customSessionsView.style.display='none';
     teamBottomNav.classList.add('visible');
     document.getElementById('teamRosterNavBtn').classList.toggle('active',managerView==='roster');
     document.getElementById('teamStatsNavBtn').classList.toggle('active',managerView==='teamStats');
@@ -2431,6 +2467,7 @@ function renderManager() {
     teamsHomeView.style.display='block';
     rosterView.style.display='none';
     teamStatsView.style.display='none';
+    customSessionsView.style.display='none';
     teamBottomNav.classList.remove('visible');
   }
 
@@ -2454,6 +2491,34 @@ function openRoster(teamId){
 function showTeamsHome(){
   managerView='teams';
   renderManager();
+}
+
+function renderCustomSessionsPage(){
+  const list=document.getElementById('customSessionsList');
+  const plans=Array.isArray(appData.customSmartSequences)?appData.customSmartSequences:[];
+  list.innerHTML=plans.length?plans.map(plan=>{
+    const steps=Array.isArray(plan.steps)?plan.steps:[];
+    const pitchTypes=[...new Set(steps.map(step=>step.pitchType).filter(Boolean))];
+    return `<div class="custom-session-card" data-custom-plan-id="${escAttr(plan.id)}">
+      <div class="custom-session-card-head"><div class="custom-session-card-main"><div class="custom-session-card-name">${esc(plan.name||'Custom Session')}</div><div class="custom-session-card-meta">${steps.length} pitch${steps.length===1?'':'es'}${pitchTypes.length?' · '+pitchTypes.map(esc).join(', '):''}</div></div>
+      <div class="custom-session-card-actions"><button class="card-btn custom-view-btn" type="button">VIEW</button><button class="card-btn primary custom-edit-btn" type="button">EDIT</button><button class="card-btn delete custom-delete-btn" type="button">DELETE</button></div></div>
+      <div class="custom-session-detail">${steps.map((step,i)=>`<div class="custom-session-step"><span>#${i+1}</span><strong>${esc(step.pitchType||'—')}</strong><span>Target: ${(step.zones||[]).map(z=>'Z'+z).join(', ')||'—'}</span></div>`).join('')||'<div class="empty-state">No pitches in this sequence.</div>'}</div>
+    </div>`;
+  }).join(''):'<div class="empty-state">No custom sessions yet. Create one to reuse a pitch and location sequence.</div>';
+  list.querySelectorAll('.custom-view-btn').forEach(btn=>btn.addEventListener('click',()=>{
+    const card=btn.closest('.custom-session-card');
+    card.classList.toggle('expanded');
+    btn.textContent=card.classList.contains('expanded')?'HIDE':'VIEW';
+  }));
+  list.querySelectorAll('.custom-edit-btn').forEach(btn=>btn.addEventListener('click',()=>editCustomSession(btn.closest('.custom-session-card').dataset.customPlanId)));
+  list.querySelectorAll('.custom-delete-btn').forEach(btn=>btn.addEventListener('click',()=>deleteCustomSession(btn.closest('.custom-session-card').dataset.customPlanId)));
+}
+
+function deleteCustomSession(planId){
+  const plan=(appData.customSmartSequences||[]).find(item=>item.id===planId); if(!plan)return;
+  if(!confirm(`Delete custom session "${plan.name||'Custom Session'}"? This cannot be undone.`)) return;
+  appData.customSmartSequences=appData.customSmartSequences.filter(item=>item.id!==planId);
+  saveAppData(); renderCustomSessionsPage(); refreshSmartPlanOptions();
 }
 
 function teamPlayerStats(player){
@@ -2486,15 +2551,18 @@ function renderTeamStats(team,players){
   const teamAggregate=aggregateHistorySessions(teamSessions,null);
   playerStats.forEach(r=>{ r.strikeVsTeamAvg = r.sessions ? (Number(r.strikePct)||0) - (Number(teamAggregate.strikePct)||0) : 0; });
   const rows=playerStats.slice().sort((a,b)=>{
-    if(teamStatsSortKey==='name') return a.player.name.localeCompare(b.player.name);
+    if(teamStatsSortKey==='name'){
+      const result=a.player.name.localeCompare(b.player.name);
+      return teamStatsSortDescending?-result:result;
+    }
     if(teamStatsSortKey==='commandScore'){
       const aHas=Boolean(a.commandEnabled&&a.sessions),bHas=Boolean(b.commandEnabled&&b.sessions);
       if(aHas!==bHas) return aHas?-1:1;
       const av=aHas?a.commandScore:0,bv=bHas?b.commandScore:0;
-      return bv-av;
+      return teamStatsSortDescending?bv-av:av-bv;
     }
     const av=Number(a[teamStatsSortKey])||0,bv=Number(b[teamStatsSortKey])||0;
-    return bv-av;
+    return teamStatsSortDescending?bv-av:av-bv;
   });
   const teamVelos=teamSessions.flatMap(s=>(s.pitches||[]).filter(p=>Number.isFinite(Number(p.velocity)) && Number(p.velocity)>0).map(p=>Number(p.velocity)));
   const teamTopVelo=teamVelos.length?Math.max(...teamVelos):null;
@@ -2503,7 +2571,7 @@ function renderTeamStats(team,players){
   const improvedPlayers=playerStats.filter(r=>r.sessions>1);
   const avgStrikeImprovement=improvedPlayers.length?improvedPlayers.reduce((n,r)=>n+r.strikeDelta,0)/improvedPlayers.length:null;
   const avgLocationImprovement=improvedPlayers.length?improvedPlayers.reduce((n,r)=>n+r.locationDelta,0)/improvedPlayers.length:null;
-  const sortLabel=key=>teamStatsSortKey===key?(key==='name'?' A-Z':' ↓'):'';
+  const sortLabel=key=>teamStatsSortKey===key?(teamStatsSortDescending?' ↓':' ↑'):'';
   document.getElementById('teamStatsContent').innerHTML=rows.length?`<div class="team-stats-table"><div class="team-stats-grid">
     <div class="team-stats-row team-stats-head"><div><button class="team-sort-head ${teamStatsSortKey==='name'?'active':''}" data-sort-key="name" type="button">Player${sortLabel('name')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='sessions'?'active':''}" data-sort-key="sessions" type="button">Sessions${sortLabel('sessions')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='totalPitches'?'active':''}" data-sort-key="totalPitches" type="button">Pitches${sortLabel('totalPitches')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='topVelo'?'active':''}" data-sort-key="topVelo" type="button">Top Velo${sortLabel('topVelo')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='strikePct'?'active':''}" data-sort-key="strikePct" type="button">Strike %${sortLabel('strikePct')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='strikeVsTeamAvg'?'active':''}" data-sort-key="strikeVsTeamAvg" type="button">+/- Team Avg${sortLabel('strikeVsTeamAvg')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='locationPct'?'active':''}" data-sort-key="locationPct" type="button">Location %${sortLabel('locationPct')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='commandScore'?'active':''}" data-sort-key="commandScore" type="button">PB Command${sortLabel('commandScore')}</button></div><div><button class="team-sort-head ${teamStatsSortKey==='improvement'?'active':''}" data-sort-key="improvement" type="button">Improvement${sortLabel('improvement')}</button></div></div>
     ${rows.map(r=>`<div class="team-stats-row"><div class="team-stats-player"><button type="button" onclick="showHistory('${r.player.id}')">${esc(r.player.name)}</button></div><div>${r.sessions}</div><div>${r.totalPitches}</div><div>${r.topVelo===null?'—':r.topVelo.toFixed(1)}</div><div class="${strikeClass(r.strikePct)}">${r.sessions?r.strikePct+'%':'—'}</div><div>${r.sessions?signedStat(r.strikeVsTeamAvg,' STR %'):'—'}</div><div>${r.sessions?r.locationPct+'%':'—'}</div><div>${r.sessions?(r.commandEnabled?r.commandScore:'N/A'):'—'}</div><div>${r.sessions>1?`${signedStat(r.strikeDelta,' STR %')}<br>${signedStat(r.locationDelta,' LOC %')}`:'<span class="stat-flat">NEEDS 2</span>'}</div></div>`).join('')}
@@ -2511,7 +2579,9 @@ function renderTeamStats(team,players){
   </div></div><div class="team-stats-note">Improvement compares each player’s latest session with their average before that session. Overall percentages combine all saved pitches. Tap a player’s name to open their history.</div>`:'<div class="empty-state">Add players and save bullpen sessions to compare team stats.</div>';
   document.querySelectorAll('.team-sort-head').forEach(btn=>{
     btn.addEventListener('click',()=>{
-      teamStatsSortKey=btn.dataset.sortKey || 'improvement';
+      const nextKey=btn.dataset.sortKey || 'improvement';
+      if(teamStatsSortKey===nextKey) teamStatsSortDescending=!teamStatsSortDescending;
+      else { teamStatsSortKey=nextKey; teamStatsSortDescending=true; }
       renderManager();
     });
   });
@@ -2577,6 +2647,13 @@ function deletePlayer(playerId) {
 rosterBackBtn.addEventListener('click',showTeamsHome);
 document.getElementById('customSessionsBtn').addEventListener('click',()=>{
   setupPlayerId=null;
+  managerView='customSessions';
+  renderManager();
+});
+document.getElementById('customSessionsBackBtn').addEventListener('click',showTeamsHome);
+document.getElementById('newCustomSessionBtn').addEventListener('click',()=>{
+  setupPlayerId=null;
+  editingCustomPlanId=null;
   openCustomSessionSettings({returnToSetup:false});
 });
 
@@ -2658,7 +2735,7 @@ document.getElementById('addTeamBtn').addEventListener('click', () => {
 });
 
 document.getElementById('deleteTeamBtn').addEventListener('click',()=>{
-  const team=selectedTeam();
+  const team=appData.teams.find(t=>t.id===settingsEditingTeamId) || selectedTeam();
   if(!team){ alert('Select a team first.'); return; }
   const players=appData.players.filter(p=>p.teamId===team.id);
   const playerIds=new Set(players.map(p=>p.id));
@@ -2671,6 +2748,7 @@ document.getElementById('deleteTeamBtn').addEventListener('click',()=>{
   appData.selectedTeamId=appData.teams[0]?.id||null;
   managerView='teams';
   saveAppData();
+  closeTeamSettings();
   renderManager();
 });
 
@@ -2782,17 +2860,31 @@ function closeSessionSetup(){
   setupPlayerId=null;
 }
 
-function openCustomSessionSettings({returnToSetup=false}={}){
+function openCustomSessionSettings({returnToSetup=false,plan=null}={}){
   buildSessionSetupControls();
   customSessionReturnToSetup=returnToSetup;
-  if(customSessionName) customSessionName.value='';
-  if(customPitchCount) customPitchCount.value=setupPitchCount?.value || String(DEFAULT_SESSION_SETUP.pitchCount);
+  editingCustomPlanId=plan?.id||null;
+  if(customSessionName) customSessionName.value=plan?.name||'';
+  const planTypes=[...new Set((plan?.steps||[]).map(step=>step.pitchType).filter(Boolean))];
+  if(customPitchCount){
+    const count=plan?.steps?.length || Number(setupPitchCount?.value) || DEFAULT_SESSION_SETUP.pitchCount;
+    if(![...customPitchCount.options].some(option=>Number(option.value)===count)) customPitchCount.add(new Option(`${count} pitches`,String(count)));
+    customPitchCount.value=String(count);
+  }
   customPitchOptions?.querySelectorAll('input[type="checkbox"]').forEach(input=>{
-    input.checked=DEFAULT_SESSION_SETUP.smartPitchTypes.includes(input.value);
+    input.checked=(planTypes.length?planTypes:DEFAULT_SESSION_SETUP.smartPitchTypes).includes(input.value);
   });
   sessionSetupModal?.classList.remove('visible');
   customSessionModal?.classList.add('visible');
   setTimeout(()=>customSessionName?.focus(),0);
+}
+
+function editCustomSession(planId){
+  const plan=(appData.customSmartSequences||[]).find(item=>item.id===planId); if(!plan)return;
+  setupPlayerId=null;
+  customSessionReturnToSetup=false;
+  const planTypes=[...new Set((plan.steps||[]).map(step=>step.pitchType).filter(Boolean))];
+  beginCustomSequenceBuilder({sessionName:plan.name||'Custom Session',bullpenType:'Mound',pitchCount:plan.steps?.length||1,smartPitchTypes:planTypes.length?planTypes:['4S'],existingSteps:(plan.steps||[]).map(step=>({...step,zones:[...(step.zones||[])]}))},plan.id);
 }
 
 function closeCustomSessionSettings(returnToSetup=true){
@@ -2805,7 +2897,7 @@ function returnFromCustomSequenceBuilder(){
   statsScreen.style.display='none';
   historyScreen.style.display='none';
   managerScreen.style.display='flex';
-  managerView=customSessionReturnToSetup ? 'roster' : 'teams';
+  managerView=customSessionReturnToSetup ? 'roster' : 'customSessions';
   renderManager();
 }
 
@@ -2823,7 +2915,7 @@ function readCustomSessionSetup(){
   };
 }
 
-function beginCustomSequenceBuilder(setup){
+function beginCustomSequenceBuilder(setup,editPlanId=null){
   const selectedTypes=(setup.smartPitchTypes||[]).filter(code=>PITCH_TYPES.some(p=>p.code===code));
   const p=appData.players.find(player=>player.id===setupPlayerId);
   const t=appData.teams.find(team=>team.id===p?.teamId);
@@ -2848,10 +2940,11 @@ function beginCustomSequenceBuilder(setup){
     pitchCountAlertShown:false,
     smartSuggestionLabel:'',
     customSequenceDraft:{
+      planId:editPlanId,
       name:setup.sessionName || 'Custom Session',
       pitchCount:Number(setup.pitchCount)||25,
       smartPitchTypes:selectedTypes.length?selectedTypes:['4S'],
-      steps:[]
+      steps:(setup.existingSteps||[]).map(step=>({...step,zones:[...(step.zones||[])]}))
     }
   };
   closeCustomSessionSettings(false);
@@ -2860,6 +2953,7 @@ function beginCustomSequenceBuilder(setup){
   statsScreen.style.display='none';
   trackingScreen.style.display='flex';
   resetTrackingUI();
+  renderCustomSequenceLog();
   sessionContext.textContent = `${p?.name || 'Custom Sequence'}${t ? ' - '+t.name : ''} - Build ${state.customSequenceDraft.name}`;
   setCustomSequenceActionBar();
 }
@@ -2891,7 +2985,6 @@ function cancelCustomSequenceBuilder(){
   state.targetZones.clear();
   state.customSequenceDraft=null;
   returnFromCustomSequenceBuilder();
-  customSessionModal?.classList.add('visible');
 }
 
 function saveCustomSequenceStep(){
@@ -2920,9 +3013,11 @@ function saveCustomSequenceStep(){
 function finalizeCustomSequence(){
   const draft=state.customSequenceDraft;
   if(!draft || draft.steps.length<draft.pitchCount) return;
-  const plan={id:uid('smart'),name:draft.name,steps:draft.steps};
+  const plan={id:draft.planId||uid('smart'),name:draft.name,steps:draft.steps};
   if(!Array.isArray(appData.customSmartSequences)) appData.customSmartSequences=[];
-  appData.customSmartSequences.push(plan);
+  const existingIndex=appData.customSmartSequences.findIndex(item=>item.id===plan.id);
+  if(existingIndex>=0) appData.customSmartSequences[existingIndex]=plan;
+  else appData.customSmartSequences.push(plan);
   saveAppData();
   state.customSequenceDraft=null;
   state.targetZones.clear();
@@ -3073,7 +3168,7 @@ function lateralMissBias(pitches, throws=null){
   let direction='BALANCED', pct=0;
   if(throws && gsSided){
     if(glove>throwing){direction='GS';pct=glovePct;}
-    else if(throwing>glove){direction='TS';pct=throwingPct;}
+    else if(throwing>glove){direction='AS';pct=throwingPct;}
     else {direction='BALANCED';pct=50;}
   }
   const avgZones=total ? Math.abs(sumDx/total)/zoneW : 0;
@@ -3243,7 +3338,7 @@ function buildHistoryMetricCards(allSessions,player){
 
   const miss=agg.missBias;
   const biasValue=!player.throws?'SET HAND':(miss.sided?`${miss.pct}% ${miss.direction}`:'—');
-  const biasSub=!player.throws?'Tap player icon to set throwing hand':(miss.sided?`${miss.glove} GS · ${miss.throwing} TS`:'No lateral misses');
+  const biasSub=!player.throws?'Tap player icon to set throwing hand':(miss.sided?`${miss.glove} GS · ${miss.throwing} AS`:'No lateral misses');
 
   let cards=`<div class="trend-card"><div class="trend-value">${sessionCount}</div><div class="trend-label">${firstLabel}</div></div>`;
   cards+=`<div class="trend-card"><div class="trend-value">${agg.totalPitches}</div><div class="trend-label">Total Pitches</div></div>`;
@@ -3525,7 +3620,7 @@ function renderHistoryCommandHeatmap(sessions,player){
   });
   const agg=aggregateHistorySessions(sessions,player);
   const miss=agg.missBias;
-  const bias=!player?.throws?'Set throwing hand for miss-side bias.':(miss.sided?`Miss-side bias: ${miss.pct}% ${miss.direction} (${miss.glove} GS / ${miss.throwing} TS).`:'No lateral miss-side bias yet.');
+  const bias=!player?.throws?'Set throwing hand for miss-side bias.':(miss.sided?`Miss-side bias: ${miss.pct}% ${miss.direction} (${miss.glove} GS / ${miss.throwing} AS).`:'No lateral miss-side bias yet.');
   const filterNote=activeHistoryPitchTypeFilter ? ` Filter: ${activeHistoryPitchTypeFilter}.` : '';
   if(note) note.textContent=allPitches.length ? `Showing ${pitches.length} of ${allPitches.length} pitches across ${sessions.length} session${sessions.length===1?'':'s'}.${filterNote} Avg Location %: ${agg.locationPct}%. ${bias}` : 'No saved pitches to map yet.';
 }
@@ -3659,10 +3754,10 @@ function exportHistoryPdf(playerId){
   </style></head><body><div class="preview-nav"><button id="backToAppBtn">← Back to Pocket Bullpen</button><button class="printbtn" id="printPdfBtn">Print / Save PDF</button></div><div class="page">
     <div class="brand"><div class="logo"><span class="p">POCKET</span><span class="b">BULLPEN</span></div><div class="name">${printSafe(player.name)}</div><div class="sub">${printSafe(team?.name||'')} · ${player.throws ? 'Throws '+(player.throws==='R'?'Right':'Left')+' · ' : ''}Complete Bullpen History · ${sessions.length} sessions</div></div>
     <div class="cards"><div class="card"><label>Sessions</label><strong class="cyan">${sessions.length}</strong></div><div class="card"><label>Total Pitches</label><strong class="yellow">${totalPitches}</strong></div><div class="card"><label>Avg Strike %</label><strong class="green">${avgStrike}%</strong></div><div class="card"><label>Latest PB Score</label><strong class="orange">${latestPb}</strong></div></div>
-    <div class="cards" style="grid-template-columns:1fr 1fr"><div class="card"><label>Personal Best FB Velo</label><strong class="cyan">${personalBestFb}${personalBestFb!=='—'?' MPH':''}</strong></div><div class="card"><label>Miss-Side Bias</label><strong class="orange">${!player.throws?'HAND NOT SET':(bias.sided?`${bias.pct}% ${bias.direction}`:'—')}</strong><small>${!player.throws?'Set throwing hand in player profile':(bias.sided?`${bias.glove} GS · ${bias.throwing} TS · throws ${player.throws==='R'?'right':'left'}`:'Not enough lateral misses')}</small></div></div>
+    <div class="cards" style="grid-template-columns:1fr 1fr"><div class="card"><label>Personal Best FB Velo</label><strong class="cyan">${personalBestFb}${personalBestFb!=='—'?' MPH':''}</strong></div><div class="card"><label>Miss-Side Bias</label><strong class="orange">${!player.throws?'HAND NOT SET':(bias.sided?`${bias.pct}% ${bias.direction}`:'—')}</strong><small>${!player.throws?'Set throwing hand in player profile':(bias.sided?`${bias.glove} GS · ${bias.throwing} AS · throws ${player.throws==='R'?'right':'left'}`:'Not enough lateral misses')}</small></div></div>
     <div class="section"><h2>Strike % trend by session</h2>${trendSvg}</div>
     <div class="section"><h2>Fastball velocity progression</h2>${velocitySvg}</div>
-    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div>${historyPitchDots}</div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Dots show individual pitch locations.</div><div style="color:#6686a4;font-size:10px;line-height:1.5;margin-top:8px"><strong style="color:#edf5ff">Miss-Side Bias:</strong> compares each missed pitch to its intended target. For right-handed pitchers, misses left on the on-screen zone are GS and misses right are TS; the mapping reverses for left-handed pitchers.</div></div></div></div>
+    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div>${historyPitchDots}</div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Dots show individual pitch locations.</div><div style="color:#6686a4;font-size:10px;line-height:1.5;margin-top:8px"><strong style="color:#edf5ff">Miss-Side Bias:</strong> compares each missed pitch to its intended target. For right-handed pitchers, misses left on the on-screen zone are GS and misses right are AS; the mapping reverses for left-handed pitchers.</div></div></div></div>
     <div class="section"><h2>Bullpen sessions</h2><table><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th><th>PB Score</th></tr></thead><tbody>${sessionRows}</tbody></table></div>
     <div class="section"><h2>Session notes</h2><div class="notes">${notes}</div></div><div class="footer">Pocket Bullpen · Player History Report</div>
     <script>
@@ -3746,7 +3841,7 @@ function exportSessionPdf(){
   const cmd=pocketCommandMetrics(pitches);
   const missBias=lateralMissBias(pitches,player?.throws||null);
   const missBiasValue=!player?.throws?'HAND NOT SET':(missBias.sided?`${missBias.pct}% ${missBias.direction}`:'—');
-  const missBiasSub=!player?.throws?'Set throwing hand in player profile':(missBias.sided?`${missBias.glove} GS · ${missBias.throwing} TS`:'No lateral misses');
+  const missBiasSub=!player?.throws?'Set throwing hand in player profile':(missBias.sided?`${missBias.glove} GS · ${missBias.throwing} AS`:'No lateral misses');
   const types=sessionPitchTypeStats(pitches);
   const notes=(rec?.notes||'').trim();
   const heat=heatmapBackgroundCss(pitches);
@@ -3902,7 +3997,7 @@ homeBtn.addEventListener('click',()=>{
 });
 
 async function exportSelectedTeamBackup(){
-  const team=selectedTeam();
+  const team=appData.teams.find(t=>t.id===settingsEditingTeamId) || selectedTeam();
   if(!team){ alert('Select a team first.'); return; }
   const players=appData.players.filter(p=>p.teamId===team.id);
   const ids=new Set(players.map(p=>p.id));
