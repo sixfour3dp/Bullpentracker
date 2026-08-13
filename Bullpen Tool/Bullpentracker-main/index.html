@@ -1619,6 +1619,15 @@
   }
   .roster-team-logo img { width:100%;height:100%;object-fit:cover; }
   .roster-team-copy { min-width:0; }
+  .custom-sessions-header {
+    grid-template-columns:38px minmax(0,1fr);
+  }
+  .custom-sessions-header .manager-title,
+  .custom-sessions-header .manager-sub {
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
   .roster-header.team-stats-header {
     grid-template-columns:44px minmax(0,1fr);
     gap:12px;
@@ -1812,7 +1821,7 @@
     </div>
 
     <div class="manager-scroll" id="customSessionsView" style="display:none">
-      <div class="roster-header">
+      <div class="roster-header custom-sessions-header">
         <button id="customSessionsBackBtn" class="back-btn" type="button" aria-label="Back to home" title="Back to home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
         <div class="roster-team-copy">
           <div class="manager-title">Custom Sessions</div>
@@ -3236,12 +3245,22 @@ function lateralMissBias(pitches, throws=null){
     if(!targets.length || p.isOnTarget) return;
     const pt=commandMapPoint(p);
     if(!pt || !Number.isFinite(Number(pt.x))) return;
-    const tx=targets.reduce((n,z)=>{const t=zoneRC(z); return n+(.20+((t.c+.5)/3)*.60);},0)/targets.length;
-    const dx=Number(pt.x)-tx;
-    sumDx+=dx; total++;
-    if(dx < -.035) left++;
-    else if(dx > .035) right++;
+    const x=Number(pt.x);
+    const targetCols=targets.map(z=>zoneRC(z).c);
+    const hasLeft=targetCols.includes(0), hasRight=targetCols.includes(2);
+    const intendedSide=hasLeft&&!hasRight?'left':(hasRight&&!hasLeft?'right':'center');
+    let missSide=null;
+    if(x<.20) missSide='left';
+    else if(x>.80) missSide='right';
+    else if(intendedSide==='left' && x>.60) missSide='right';
+    else if(intendedSide==='right' && x<.40) missSide='left';
     else center++;
+    if(!missSide) return;
+    const tx=targets.reduce((n,z)=>{const t=zoneRC(z); return n+(.20+((t.c+.5)/3)*.60);},0)/targets.length;
+    const dx=x-tx;
+    sumDx+=dx; total++;
+    if(missSide==='left') left++;
+    else right++;
   });
   const sided=left+right;
   const rightPct=sided?Math.round(right/sided*100):0;
@@ -3255,7 +3274,7 @@ function lateralMissBias(pitches, throws=null){
   let direction='BALANCED', pct=0;
   if(throws && gsSided){
     if(glove>throwing){direction='GS';pct=glovePct;}
-    else if(throwing>glove){direction='TS';pct=throwingPct;}
+    else if(throwing>glove){direction='AS';pct=throwingPct;}
     else {direction='BALANCED';pct=50;}
   }
   const avgZones=total ? Math.abs(sumDx/total)/zoneW : 0;
@@ -3265,6 +3284,14 @@ function lateralMissBias(pitches, throws=null){
     direction,pct,avgZones:Number(avgZones.toFixed(2)),
     throws:throws||null
   };
+}
+function missBiasDirectionLabel(direction){
+  if(direction==='AS') return 'Arm Side';
+  if(direction==='GS') return 'Glove Side';
+  return 'Balanced';
+}
+function missBiasCountLabel(miss){
+  return `${miss.glove} GS / ${miss.throwing} AS`;
 }
 function pitchLocationQuality(p){
   if(p.isWildPitch) return 5;
@@ -3427,7 +3454,7 @@ function buildHistoryMetricCards(allSessions,player){
 
   const miss=agg.missBias;
   const biasValue=!player.throws?'SET HAND':(miss.sided?`${miss.pct}% ${miss.direction}`:'—');
-  const biasSub=!player.throws?'Tap player icon to set throwing hand':(miss.sided?`${miss.glove} GS · ${miss.throwing} TS`:'No lateral misses');
+  const biasSub=!player.throws?'Tap player icon to set throwing hand':(miss.sided?`${miss.glove} GS · ${miss.throwing} AS`:'No lateral misses');
 
   let cards=`<div class="trend-card"><div class="trend-value">${sessionCount}</div><div class="trend-label">${firstLabel}</div></div>`;
   cards+=`<div class="trend-card"><div class="trend-value">${agg.totalPitches}</div><div class="trend-label">Total Pitches</div></div>`;
@@ -3709,7 +3736,7 @@ function renderHistoryCommandHeatmap(sessions,player){
   });
   const agg=aggregateHistorySessions(sessions,player);
   const miss=agg.missBias;
-  const bias=!player?.throws?'Set throwing hand for miss-side bias.':(miss.sided?`Miss-side bias: ${miss.pct}% ${miss.direction} (${miss.glove} GS / ${miss.throwing} TS).`:'No lateral miss-side bias yet.');
+  const bias=!player?.throws?'Set throwing hand for miss-side bias.':(miss.sided?`Miss-side bias: ${miss.pct}% ${miss.direction} (${missBiasCountLabel(miss)}).`:'No lateral miss-side bias yet.');
   const filterNote=activeHistoryPitchTypeFilter ? ` Filter: ${activeHistoryPitchTypeFilter}.` : '';
   if(note) note.textContent=allPitches.length ? `Showing ${pitches.length} of ${allPitches.length} pitches across ${sessions.length} session${sessions.length===1?'':'s'}.${filterNote} Avg Location %: ${agg.locationPct}%. ${bias}` : 'No saved pitches to map yet.';
 }
@@ -3843,10 +3870,10 @@ function exportHistoryPdf(playerId){
   </style></head><body><div class="preview-nav"><button id="backToAppBtn">← Back to Pocket Bullpen</button><button class="printbtn" id="printPdfBtn">Print / Save PDF</button></div><div class="page">
     <div class="brand"><div class="logo"><span class="p">POCKET</span><span class="b">BULLPEN</span></div><div class="name">${printSafe(player.name)}</div><div class="sub">${printSafe(team?.name||'')} · ${player.throws ? 'Throws '+(player.throws==='R'?'Right':'Left')+' · ' : ''}Complete Bullpen History · ${sessions.length} sessions</div></div>
     <div class="cards"><div class="card"><label>Sessions</label><strong class="cyan">${sessions.length}</strong></div><div class="card"><label>Total Pitches</label><strong class="yellow">${totalPitches}</strong></div><div class="card"><label>Avg Strike %</label><strong class="green">${avgStrike}%</strong></div><div class="card"><label>Latest PB Score</label><strong class="orange">${latestPb}</strong></div></div>
-    <div class="cards" style="grid-template-columns:1fr 1fr"><div class="card"><label>Personal Best FB Velo</label><strong class="cyan">${personalBestFb}${personalBestFb!=='—'?' MPH':''}</strong></div><div class="card"><label>Miss-Side Bias</label><strong class="orange">${!player.throws?'HAND NOT SET':(bias.sided?`${bias.pct}% ${bias.direction}`:'—')}</strong><small>${!player.throws?'Set throwing hand in player profile':(bias.sided?`${bias.glove} GS · ${bias.throwing} TS · throws ${player.throws==='R'?'right':'left'}`:'Not enough lateral misses')}</small></div></div>
+    <div class="cards" style="grid-template-columns:1fr 1fr"><div class="card"><label>Personal Best FB Velo</label><strong class="cyan">${personalBestFb}${personalBestFb!=='—'?' MPH':''}</strong></div><div class="card"><label>Miss-Side Bias</label><strong class="orange">${!player.throws?'HAND NOT SET':(bias.sided?`${bias.pct}% ${bias.direction}`:'—')}</strong><small>${!player.throws?'Set throwing hand in player profile':(bias.sided?`${bias.glove} GS · ${bias.throwing} AS · throws ${player.throws==='R'?'right':'left'}`:'Not enough lateral misses')}</small></div></div>
     <div class="section"><h2>Strike % trend by session</h2>${trendSvg}</div>
     <div class="section"><h2>Fastball velocity progression</h2>${velocitySvg}</div>
-    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div>${historyPitchDots}</div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Dots show individual pitch locations.</div><div style="color:#6686a4;font-size:10px;line-height:1.5;margin-top:8px"><strong style="color:#edf5ff">Miss-Side Bias:</strong> compares each missed pitch to its intended target. For right-handed pitchers, misses left on the on-screen zone are GS and misses right are TS; the mapping reverses for left-handed pitchers.</div></div></div></div>
+    <div class="section"><h2>Historical command heat map</h2><div class="heatgrid"><div class="heat"><div class="zone">${'<i></i>'.repeat(9)}</div>${historyPitchDots}</div><div><div class="card" style="margin:0 0 9px"><label>Avg Location %</label><strong class="cyan">${avgLoc}%</strong></div><div style="color:#6686a4;font-size:10px;line-height:1.5">Green heat represents on-target strikes. Blue heat represents strikes that missed the intended location. Red heat represents balls and wild pitches across all saved sessions. Dots show individual pitch locations.</div><div style="color:#6686a4;font-size:10px;line-height:1.5;margin-top:8px"><strong style="color:#edf5ff">Miss-Side Bias:</strong> counts lateral misses outside the strike zone or across the strike zone from the intended side. For right-handed pitchers, misses left on the on-screen zone are GS and misses right are AS; the mapping reverses for left-handed pitchers.</div></div></div></div>
     <div class="section"><h2>Bullpen sessions</h2><table><thead><tr><th>Date</th><th>Pitches</th><th>Strike</th><th>Location</th><th>PB Score</th></tr></thead><tbody>${sessionRows}</tbody></table></div>
     <div class="section"><h2>Session notes</h2><div class="notes">${notes}</div></div><div class="footer">Pocket Bullpen · Player History Report</div>
     <script>
@@ -3931,7 +3958,7 @@ function exportSessionPdf(){
   const cmd=pocketCommandMetrics(pitches);
   const missBias=lateralMissBias(pitches,player?.throws||null);
   const missBiasValue=!player?.throws?'HAND NOT SET':(missBias.sided?`${missBias.pct}% ${missBias.direction}`:'—');
-  const missBiasSub=!player?.throws?'Set throwing hand in player profile':(missBias.sided?`${missBias.glove} GS · ${missBias.throwing} TS`:'No lateral misses');
+  const missBiasSub=!player?.throws?'Set throwing hand in player profile':(missBias.sided?`${missBias.glove} GS · ${missBias.throwing} AS`:'No lateral misses');
   const types=sessionPitchTypeStats(pitches);
   const notes=(rec?.notes||'').trim();
   const heat=heatmapBackgroundCss(pitches);
@@ -5195,8 +5222,8 @@ function buildStats() {
   const reportPlayer=appData.players.find(p=>p.id===state.activePlayerId);
   const showCommandGrade=reportPlayer?.showCommandGrade!==false;
   const missBias=lateralMissBias(pitches,reportPlayer?.throws||null);
-  const missBiasValue=!reportPlayer?.throws?'HAND NOT SET':(missBias.sided?`${missBias.pct}% ${missBias.direction}`:'-');
-  const missBiasSub=!reportPlayer?.throws?'Set throwing hand in profile':(missBias.sided?`${missBias.glove} GS / ${missBias.throwing} TS`:'No lateral misses');
+  const missBiasValue=!reportPlayer?.throws?'HAND NOT SET':(missBias.sided?`${missBias.pct}%`:'-');
+  const missBiasSub=!reportPlayer?.throws?'Set throwing hand in profile':(missBias.sided?missBiasDirectionLabel(missBias.direction):'No lateral misses');
   const kStreak=longestStrikeStreak(pitches);
 
   // Subtitle
