@@ -976,7 +976,7 @@
   .team-stats-row > div { padding:9px 8px; text-align:right; font-size:12px; }
   .team-stats-row > div:first-child { text-align:left; position:sticky; left:0; z-index:1; background:var(--surface); }
   .team-stats-head { min-height:40px; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; }
-  .team-stats-head .team-sort-head { border:0; background:none; color:inherit; font:inherit; text-transform:inherit; letter-spacing:inherit; cursor:pointer; padding:0; text-align:inherit; }
+  .team-stats-head .team-sort-head { border:0; background:none; color:inherit; font:inherit; text-transform:inherit; letter-spacing:inherit; cursor:pointer; padding:0; text-align:inherit; white-space:nowrap; display:inline-flex; align-items:center; gap:3px; }
   .team-stats-head .team-sort-head.active { color:var(--accent); }
   .team-stats-total { background:rgba(0,212,255,.08); border-top:2px solid rgba(0,212,255,.38); font-weight:800; }
   .team-stats-total > div:first-child { background:#102331; color:var(--accent); text-transform:uppercase; letter-spacing:.5px; }
@@ -2313,6 +2313,7 @@ const teamLogoFile     = document.getElementById('teamLogoFile');
 const playerList       = document.getElementById('playerList');
 let managerView='teams';
 let teamStatsSortKey='improvement';
+let teamStatsScrollLeft=0;
 let historyReturnView='roster';
 let logoEditingTeamId=null;
 const STORAGE_KEY      = 'bullpenTrackerDataV1';
@@ -2476,6 +2477,8 @@ function signedStat(value,suffix=''){
 }
 
 function renderTeamStats(team,players){
+  const previousTable=document.querySelector('#teamStatsContent .team-stats-table');
+  if(previousTable) teamStatsScrollLeft=previousTable.scrollLeft;
   document.getElementById('statsTeamName').textContent=team.name;
   document.getElementById('statsTeamLogo').innerHTML=teamLogoMarkup(team,true);
   const playerStats=players.map(teamPlayerStats);
@@ -2512,6 +2515,8 @@ function renderTeamStats(team,players){
       renderManager();
     });
   });
+  const renderedTable=document.querySelector('#teamStatsContent .team-stats-table');
+  if(renderedTable) renderedTable.scrollLeft=teamStatsScrollLeft;
 }
 
 document.getElementById('teamRosterNavBtn').addEventListener('click',()=>{managerView='roster';renderManager();});
