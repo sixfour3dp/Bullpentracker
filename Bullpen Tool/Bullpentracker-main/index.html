@@ -3149,11 +3149,59 @@ function resetTrackingUI() {
 
 function serializePitch(p) { return {...p, targetZones:[...p.targetZones]}; }
 // Pocket Bullpen proprietary command scoring.
-// Overall: 50% called-location strike rate, 30% general strike rate, 20% pitch-by-pitch location quality.
+// Each pitch earns command credit from the intended target and actual finish:
+// on-location strikes, competitive strike misses, close ball misses, ordinary balls, then wild pitches.
 function pitchTargetZones(p){
   return p.targetZones instanceof Set ? [...p.targetZones].map(Number) : (Array.isArray(p.targetZones)?p.targetZones.map(Number):[]);
 }
 function zoneRC(z){ return {r:Math.floor((Number(z)-1)/3), c:(Number(z)-1)%3}; }
+function commandGrade(score){
+  return score>=90?'ELITE':score>=80?'EXCELLENT':score>=70?'GOOD':score>=60?'DEVELOPING':score>=50?'INCONSISTENT':'POOR';
+}
+function clampCommandScore(n){ return Math.max(0,Math.min(100,Math.round(Number(n)||0))); }
+function commandResultGridCell(p){
+  if(p.resultZone){
+    const z=zoneRC(p.resultZone);
+    return {r:z.r+1,c:z.c+1,inStrikeZone:true,exact:false};
+  }
+  const pt=commandMapPoint(p);
+  if(!pt || !Number.isFinite(Number(pt.x)) || !Number.isFinite(Number(pt.y))) return null;
+  const c=Math.max(0,Math.min(4,Math.floor(Number(pt.x)*5)));
+  const r=Math.max(0,Math.min(4,Math.floor(Number(pt.y)*5)));
+  return {r,c,inStrikeZone:r>=1&&r<=3&&c>=1&&c<=3,exact:Boolean(pt.exact),legacyOutside:Boolean(pt.legacyOutside)};
+}
+function bestCommandTargetDistance(p){
+  const targets=pitchTargetZones(p);
+  const actual=Number(p.resultZone);
+  if(!targets.length || !actual) return null;
+  const a=zoneRC(actual);
+  let best={manhattan:99,chebyshev:99,rowDelta:99,colDelta:99};
+  targets.forEach(z=>{
+    const t=zoneRC(z);
+    const rowDelta=Math.abs(a.r-t.r), colDelta=Math.abs(a.c-t.c);
+    const manhattan=rowDelta+colDelta, chebyshev=Math.max(rowDelta,colDelta);
+    if(chebyshev<best.chebyshev || (chebyshev===best.chebyshev && manhattan<best.manhattan)){
+      best={manhattan,chebyshev,rowDelta,colDelta};
+    }
+  });
+  return best;
+}
+function bestCloseBallMiss(p){
+  const targets=pitchTargetZones(p);
+  const actual=commandResultGridCell(p);
+  if(!targets.length || !actual || actual.inStrikeZone) return null;
+  let best={manhattan:99,chebyshev:99,orthogonal:false,diagonal:false};
+  targets.forEach(z=>{
+    const t=zoneRC(z);
+    const tr=t.r+1, tc=t.c+1;
+    const rowDelta=Math.abs(actual.r-tr), colDelta=Math.abs(actual.c-tc);
+    const manhattan=rowDelta+colDelta, chebyshev=Math.max(rowDelta,colDelta);
+    if(chebyshev<best.chebyshev || (chebyshev===best.chebyshev && manhattan<best.manhattan)){
+      best={manhattan,chebyshev,orthogonal:manhattan===1,diagonal:rowDelta===1&&colDelta===1};
+    }
+  });
+  return best;
+}
 function lateralMissBias(pitches, throws=null){
   let left=0,right=0,center=0,total=0,sumDx=0;
   const zoneW=.60/3;
@@ -3193,35 +3241,37 @@ function lateralMissBias(pitches, throws=null){
   };
 }
 function pitchLocationQuality(p){
-  if(p.isWildPitch) return 2;
-  const targets=pitchTargetZones(p); if(!targets.length) return p.isStrike?55:20;
+  if(p.isWildPitch) return 5;
+  const targets=pitchTargetZones(p); if(!targets.length) return p.isStrike?65:20;
   if(p.isOnTarget && p.isStrike) return 100;
-  const actual=Number(p.resultZone);
-  if(p.isStrike && actual){
-    const a=zoneRC(actual);
-    let best=99;
-    targets.forEach(z=>{const t=zoneRC(z); best=Math.min(best,Math.abs(a.r-t.r)+Math.abs(a.c-t.c));});
-    if(best===1) return 85;
-    if(best===2) return 70;
-    // Opposite-side / far strike still beats a ball, but receives little command credit.
-    return 50;
+  if(p.isStrike && p.resultZone){
+    const d=bestCommandTargetDistance(p);
+    if(!d) return 65;
+    if(d.chebyshev===0) return 100;
+    if(d.chebyshev===1 && d.manhattan===1) return 86;
+    if(d.chebyshev===1) return 80;
+    if(d.manhattan<=3) return 66;
+    return 52;
   }
-  // Balls: use exact saved coordinates when available to reward competitive same-side misses.
+  const close=bestCloseBallMiss(p);
+  if(close){
+    if(close.orthogonal) return 58;
+    if(close.diagonal) return 52;
+    if(close.chebyshev===1) return 48;
+  }
+  // Balls: use exact saved coordinates when available to separate competitive misses from noncompetitive balls.
   const x=Number(p.resultX), y=Number(p.resultY);
   if(Number.isFinite(x)&&Number.isFinite(y)){
-    let best=10;
+    let best=18;
     targets.forEach(z=>{
       const t=zoneRC(z); const tx=.20+((t.c+.5)/3)*.60, ty=.20+((t.r+.5)/3)*.60;
       const d=Math.hypot(x-tx,y-ty);
-      const sameH=(t.c===1)||((tx<.5)===(x<.5));
-      const sameV=(t.r===1)||((ty<.5)===(y<.5));
-      let q=d<.18?45:d<.30?38:d<.45?30:18;
-      if(sameH&&sameV) q+=3; else if(!sameH&&!sameV) q-=5;
-      best=Math.max(best,Math.max(5,Math.min(48,q)));
+      const q=d<.24?38:d<.34?30:d<.46?22:14;
+      best=Math.max(best,Math.max(10,Math.min(40,q)));
     });
     return best;
   }
-  return 20;
+  return 18;
 }
 function pocketCommandMetrics(pitches){
   const total=pitches.length||1, strikes=pitches.filter(p=>p.isStrike).length;
@@ -3230,13 +3280,13 @@ function pocketCommandMetrics(pitches){
   const onTargetStrikePct=targeted.length?calledStrikeHits/targeted.length*100:0;
   const strikePct=strikes/total*100;
   const locationQuality=pitches.length?pitches.reduce((n,p)=>n+pitchLocationQuality(p),0)/pitches.length:0;
-  const score=Math.round(onTargetStrikePct*.50+strikePct*.30+locationQuality*.20);
-  const grade=score>=90?'ELITE':score>=80?'EXCELLENT':score>=70?'GOOD':score>=60?'DEVELOPING':score>=50?'INCONSISTENT':'POOR';
+  const score=clampCommandScore(locationQuality);
+  const grade=commandGrade(score);
   return {score,grade,onTargetStrikePct:Math.round(onTargetStrikePct),strikePct:Math.round(strikePct),locationQuality:Math.round(locationQuality)};
 }
 function sessionCommandScore(s){
-  if(Number.isFinite(Number(s.commandScore))) return Number(s.commandScore);
   if(Array.isArray(s.pitches)&&s.pitches.length) return pocketCommandMetrics(s.pitches).score;
+  if(Number.isFinite(Number(s.commandScore))) return Number(s.commandScore);
   return Number(s.combinedScore)||0;
 }
 
@@ -3829,11 +3879,12 @@ function buildSessionStrikeProgressSvg(pitches){
 function sessionPitchTypeStats(pitches){
   const out={};
   pitches.forEach(p=>{
-    if(!out[p.type]) out[p.type]={total:0,strikes:0,targeted:0,onTarget:0,velocities:[]};
+    if(!out[p.type]) out[p.type]={total:0,strikes:0,targeted:0,onTarget:0,velocities:[],commandPoints:0};
     const d=out[p.type]; d.total++;
     if(p.isStrike)d.strikes++;
     if(pitchTargetZones(p).length){d.targeted++; if(p.isOnTarget)d.onTarget++;}
     const v=Number(p.velocity); if(Number.isFinite(v)&&v>0)d.velocities.push(v);
+    d.commandPoints+=pitchLocationQuality(p);
   });
   return out;
 }
@@ -3867,14 +3918,16 @@ function exportSessionPdf(){
     return `<div class="barrow"><div class="barlabel">${printSafe(type)} <span>${d.total} (${pct}%)</span></div><div class="track"><div class="fill blue" style="width:${pct}%"></div></div></div>`;
   }).join('');
 
-  // Chart 2: command by pitch type (on-location strike rate plus strike rate).
+  // Chart 2: command by pitch type.
   const commandRows=Object.entries(types).map(([type,d])=>{
     const sp=Math.round(d.strikes/d.total*100);
     const lp=d.targeted?Math.round(d.onTarget/d.targeted*100):0;
+    const cp=clampCommandScore(d.commandPoints/d.total);
     return `<div class="typecmd">
-      <div class="typehead"><strong>${printSafe(type)}</strong><span>${d.total} pitches</span></div>
+      <div class="typehead"><strong>${printSafe(type)}</strong><span>${cp} PB command · ${d.total} pitches</span></div>
       <div class="metric"><span>Strike</span><div class="track"><div class="fill green" style="width:${sp}%"></div></div><b>${sp}%</b></div>
       <div class="metric"><span>Location</span><div class="track"><div class="fill cyan" style="width:${lp}%"></div></div><b>${lp}%</b></div>
+      <div class="metric"><span>Command</span><div class="track"><div class="fill blue" style="width:${cp}%"></div></div><b>${cp}</b></div>
     </div>`;
   }).join('');
 
@@ -3939,7 +3992,7 @@ function exportSessionPdf(){
     <h2>By pitch type</h2>
     <table><thead><tr><th>Pitch</th><th>Count</th><th>Strike</th><th>Location</th><th>Avg MPH</th><th>High MPH</th></tr></thead><tbody>${pitchRows}</tbody></table>
     <h2>PB Command metrics</h2>
-    <div class="command"><strong>${showCommandGrade?`${cmd.score} — ${cmd.grade}`:'N/A'}</strong><br>On-location strikes: ${cmd.onTargetStrikePct}% · Overall strikes: ${cmd.strikePct}% · Location quality: ${cmd.locationQuality}</div>
+    <div class="command"><strong>${showCommandGrade?`${cmd.score} — ${cmd.grade}`:'N/A'}</strong><br>Score is the average pitch command value. On-location strikes: ${cmd.onTargetStrikePct}% · Overall strikes: ${cmd.strikePct}% · Pitch command average: ${cmd.locationQuality}</div>
     <h2>Session notes</h2><div class="notes">${notes?printSafe(notes):'No session notes.'}</div>
     <div class="footer">Pocket Bullpen Session Report</div></div>
     <script>
