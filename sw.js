@@ -1,4 +1,4 @@
-const CACHE='pocketbullpen-v58-arm-side-labels';
+const CACHE='pocketbullpen-v59-custom-sequence-rows';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./apple-touch-icon.png','./icon-192.png','./icon-512.png','./header-heatmap.png','./pocketbullpen-header.png'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));});
 self.addEventListener('activate',e=>e.waitUntil(Promise.all([

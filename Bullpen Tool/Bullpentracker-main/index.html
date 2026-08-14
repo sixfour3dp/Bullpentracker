@@ -495,6 +495,25 @@
   .pitch-log-item { position:relative; z-index:1; transition:transform .18s ease; width:100%; }
   .pitch-log-item.selected { border-color:rgba(0,212,255,.65); background:rgba(0,212,255,.13); box-shadow:inset 0 0 0 1px rgba(0,212,255,.25); }
   .pitch-log-swipe.open .pitch-log-item { transform:translateX(-144px); }
+  .custom-sequence-row {
+    display:flex; align-items:stretch; gap:6px; min-width:0;
+  }
+  .custom-sequence-select {
+    border:0; text-align:left; cursor:pointer; min-width:0;
+  }
+  .custom-sequence-select .log-result { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .custom-sequence-actions {
+    display:flex; gap:4px; flex:0 0 auto;
+  }
+  .custom-sequence-action {
+    width:42px; border:0; border-radius:8px; color:white;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Barlow Condensed',sans-serif; font-size:11px;
+    font-weight:800; letter-spacing:.5px;
+  }
+  .custom-sequence-action.update { background:#1677ff; }
+  .custom-sequence-action.delete { background:var(--red); }
+  .custom-sequence-action.delete svg { width:18px; height:18px; }
 
   .edit-modal {
     position:fixed; inset:0; z-index:1000; display:none; align-items:flex-end;
@@ -5003,11 +5022,8 @@ function showCustomSequenceStepOnZone(index, openEditor=true){
   pitchNumEl.textContent=String(index+1);
   setActivePitchType(state.currentPitchType);
   updateTargetBadges();
-  pitchLogEl.querySelectorAll('.pitch-log-swipe').forEach(row=>{
-    row.classList.remove('open');
-    const item=row.querySelector('.pitch-log-item');
-    if(item) item.style.transform='';
-    row.querySelector('.pitch-log-item')?.classList.toggle('selected',Number(row.dataset.sequenceIndex)===index);
+  pitchLogEl.querySelectorAll('.custom-sequence-row').forEach(row=>{
+    row.querySelector('.custom-sequence-select')?.classList.toggle('selected',Number(row.dataset.sequenceIndex)===index);
   });
   phaseInstEl.textContent=`PITCH #${index+1} TARGET LOCATION`;
   phaseInstEl.className='phase-instruction phase-target';
@@ -5021,15 +5037,15 @@ function renderCustomSequenceLog(){
   (draft?.steps||[]).slice().reverse().forEach((step,reverseIndex)=>{
     const index=draft.steps.length-1-reverseIndex;
     const wrap=document.createElement('div');
-    wrap.className='pitch-log-swipe';
+    wrap.className='custom-sequence-row';
     wrap.dataset.sequenceIndex=String(index);
-    wrap.innerHTML=`<div class="pitch-log-actions"><button class="pitch-log-action update" type="button">UPDATE</button><button class="pitch-log-action delete" type="button" aria-label="Delete sequence pitch" title="Delete sequence pitch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button></div><div class="pitch-log-item strike-log">${customSequenceLogHTML(step,index)}</div>`;
+    wrap.innerHTML=`<button class="custom-sequence-select pitch-log-item strike-log" type="button">${customSequenceLogHTML(step,index)}</button><div class="custom-sequence-actions"><button class="custom-sequence-action update" type="button" aria-label="Update sequence pitch">EDIT</button><button class="custom-sequence-action delete" type="button" aria-label="Delete sequence pitch" title="Delete sequence pitch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button></div>`;
     pitchLogEl.appendChild(wrap);
-    bindPitchSwipe(wrap,()=>showCustomSequenceStepOnZone(index,false));
-    wrap.querySelector('.pitch-log-action.update').addEventListener('click',()=>showCustomSequenceStepOnZone(index));
-    wrap.querySelector('.pitch-log-action.delete').addEventListener('click',()=>deleteCustomSequenceStep(index));
+    wrap.querySelector('.custom-sequence-select').addEventListener('click',()=>showCustomSequenceStepOnZone(index,false));
+    wrap.querySelector('.custom-sequence-action.update').addEventListener('click',()=>showCustomSequenceStepOnZone(index));
+    wrap.querySelector('.custom-sequence-action.delete').addEventListener('click',()=>deleteCustomSequenceStep(index));
   });
-  logLabel.textContent='CUSTOM SEQUENCE - SWIPE LEFT TO EDIT';
+  logLabel.textContent='CUSTOM SEQUENCE - TAP A PITCH TO SELECT';
   logLabel.style.display=draft?.steps?.length?'block':'none';
 }
 
