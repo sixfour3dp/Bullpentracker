@@ -4964,7 +4964,7 @@ function renderCustomSequenceLog(){
     bindPitchSwipe(wrap);
     wrap.querySelector('.pitch-log-action.update').addEventListener('click',()=>showCustomSequenceStepOnZone(index));
     wrap.querySelector('.pitch-log-action.delete').addEventListener('click',()=>deleteCustomSequenceStep(index));
-    wrap.querySelector('.pitch-log-item').addEventListener('click',()=>showCustomSequenceStepOnZone(index));
+    wrap.querySelector('.pitch-log-item').addEventListener('click',()=>showCustomSequenceStepOnZone(index,false));
   });
   logLabel.textContent='CUSTOM SEQUENCE - SWIPE LEFT TO EDIT';
   logLabel.style.display=draft?.steps?.length?'block':'none';
