@@ -4963,6 +4963,9 @@ function showCustomSequenceStepOnZone(index, openEditor=true){
   setActivePitchType(state.currentPitchType);
   updateTargetBadges();
   pitchLogEl.querySelectorAll('.pitch-log-swipe').forEach(row=>{
+    row.classList.remove('open');
+    const item=row.querySelector('.pitch-log-item');
+    if(item) item.style.transform='';
     row.querySelector('.pitch-log-item')?.classList.toggle('selected',Number(row.dataset.sequenceIndex)===index);
   });
   phaseInstEl.textContent=`PITCH #${index+1} TARGET LOCATION`;
