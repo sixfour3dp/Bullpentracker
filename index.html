@@ -3714,7 +3714,11 @@ function bindSessionHistorySwipe(){
       if(currentHistoryPlayerId) window.showHistory(currentHistoryPlayerId);
     });
 
-    viewBtn.addEventListener('click',e=>{e.stopPropagation();openHistoricalSession(wrap.dataset.sessionId);});
+    viewBtn.addEventListener('click',e=>{
+      e.stopPropagation();
+      if(historySelectedSessionIds.size && currentHistoryPlayerId) openSelectedHistoricalSessions();
+      else openHistoricalSession(wrap.dataset.sessionId);
+    });
     deleteBtn.addEventListener('click',e=>{
       e.stopPropagation();
       const sessionId=wrap.dataset.sessionId;
@@ -3730,6 +3734,15 @@ function bindSessionHistorySwipe(){
   });
 }
 
+function savedSessionPitchesForReport(session){
+  return historySessionPitches(session).map((pitch,i)=>({
+    ...pitch,
+    num:Number(pitch.num)||i+1,
+    sourceSessionId:session.id,
+    sourceSessionDate:session.createdAt
+  }));
+}
+
 function openHistoricalSession(sessionId){
   activePitchTypeFilter=null;
   const s=appData.sessions.find(x=>x.id===sessionId);
@@ -3739,11 +3752,7 @@ function openHistoricalSession(sessionId){
     phase:'target',
     targetZones:new Set(),
     currentPitchType:'4S',
-    pitches:s.pitches.map((pitch,i)=>({
-      ...pitch,
-      num:Number(pitch.num)||i+1,
-      targetZones:new Set(Array.isArray(pitch.targetZones)?pitch.targetZones:[])
-    })),
+    pitches:savedSessionPitchesForReport(s),
     pitchNum:(s.pitches?.length||0)+1,
     activePlayerId:s.playerId,
     sessionSaved:true,
@@ -3763,6 +3772,47 @@ function openHistoricalSession(sessionId){
   statsScreen.style.display='flex';
   const continueBtn=document.getElementById('continueSessionBtn');
   if(continueBtn) continueBtn.textContent='← CONTINUE SESSION';
+}
+
+function openSelectedHistoricalSessions(){
+  activePitchTypeFilter=null;
+  if(!currentHistoryPlayerId) return;
+  const p=appData.players.find(x=>x.id===currentHistoryPlayerId);
+  if(!p) return;
+  const sessions=appData.sessions
+    .filter(s=>s.playerId===p.id && historySelectedSessionIds.has(s.id) && Array.isArray(s.pitches))
+    .sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)));
+  if(!sessions.length) return;
+  const combinedPitches=sessions.flatMap(session=>savedSessionPitchesForReport(session)).map((pitch,i)=>({
+    ...pitch,
+    num:i+1
+  }));
+  state = {
+    phase:'target',
+    targetZones:new Set(),
+    currentPitchType:'4S',
+    pitches:combinedPitches,
+    pitchNum:combinedPitches.length+1,
+    activePlayerId:p.id,
+    sessionSaved:true,
+    savedSessionId:null,
+    reportMode:'historical-selection',
+    historySessionIds:sessions.map(s=>s.id),
+    historySessionLabel:`${sessions.length} selected session${sessions.length===1?'':'s'}`,
+    sessionSetup:{...DEFAULT_SESSION_SETUP},
+    pitchCountAlertShown:true,
+    smartSuggestionLabel:''
+  };
+  const t=appData.teams.find(x=>x.id===p.teamId);
+  document.getElementById('statsSubtitle').textContent='';
+  sessionContext.textContent=`${p.name}${t?' Â· '+t.name:''} Â· ${state.historySessionLabel}`;
+  buildStats();
+  managerScreen.style.display='none';
+  historyScreen.style.display='none';
+  trackingScreen.style.display='none';
+  statsScreen.style.display='flex';
+  const continueBtn=document.getElementById('continueSessionBtn');
+  if(continueBtn) continueBtn.textContent='â† BACK TO HISTORY';
 }
 
 function sessionCombinedScore(s){ return sessionCommandScore(s); }
@@ -5474,8 +5524,12 @@ function buildStats() {
   // Subtitle
   {
     const viewed = state.reportMode==='historical' && state.savedSessionId ? appData.sessions.find(s=>s.id===state.savedSessionId) : null;
-    const d = viewed?.createdAt ? new Date(viewed.createdAt) : new Date();
-    document.getElementById('statsSubtitle').textContent = `${total} pitches · ${d.toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'})}`;
+    if(state.reportMode==='historical-selection' && Array.isArray(state.historySessionIds)){
+      document.getElementById('statsSubtitle').textContent = `${total} pitches · ${state.historySessionLabel || state.historySessionIds.length+' selected sessions'}`;
+    }else{
+      const d = viewed?.createdAt ? new Date(viewed.createdAt) : new Date();
+      document.getElementById('statsSubtitle').textContent = `${total} pitches · ${d.toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'})}`;
+    }
   }
 
   // Big stat cards
@@ -5590,6 +5644,11 @@ document.getElementById('editSessionNotesBtn').addEventListener('click',()=>{
 
 const continueSessionBtn=document.getElementById('continueSessionBtn');
 continueSessionBtn.addEventListener('click',()=>{
+  if(state.reportMode==='historical-selection'){
+    statsScreen.style.display='none';
+    historyScreen.style.display='flex';
+    return;
+  }
   if(!state.activePlayerId || !state.pitches.length) return;
   // If it had already been saved, allow further pitches and update that same saved record next time Done is tapped.
   if(state.sessionSaved) state.sessionSaved=false;
