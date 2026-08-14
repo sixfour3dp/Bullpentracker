@@ -5016,7 +5016,15 @@ function bindPitchSwipe(wrap) {
   const card=wrap.querySelector('.pitch-log-item'); let sx=0, sy=0, base=0, drag=false;
   card.addEventListener('touchstart',e=>{ const t=e.touches[0]; sx=t.clientX; sy=t.clientY; base=wrap.classList.contains('open')?-144:0; drag=true; card.style.transition='none'; },{passive:true});
   card.addEventListener('touchmove',e=>{ if(!drag)return; const t=e.touches[0], dx=t.clientX-sx, dy=t.clientY-sy; if(Math.abs(dy)>Math.abs(dx)+6)return; const x=Math.max(-144,Math.min(0,base+dx)); card.style.transform=`translateX(${x}px)`; },{passive:true});
-  card.addEventListener('touchend',e=>{ if(!drag)return; drag=false; const t=e.changedTouches[0], dx=t.clientX-sx; wrap.classList.toggle('open', base+dx < -65); card.style.transition=''; card.style.transform=''; });
+  card.addEventListener('touchend',e=>{
+    if(!drag)return;
+    drag=false;
+    const t=e.changedTouches[0], dx=t.clientX-sx, dy=t.clientY-sy;
+    if(Math.abs(dx)<12 && Math.abs(dy)<12) wrap.classList.remove('open');
+    else wrap.classList.toggle('open', base+dx < -65);
+    card.style.transition='';
+    card.style.transform='';
+  });
 }
 
 function deletePitch(num) {
