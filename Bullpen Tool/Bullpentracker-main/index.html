@@ -5091,8 +5091,10 @@ function renderCustomSequenceLog(){
     wrap.querySelector('.custom-sequence-select').addEventListener('click',()=>showCustomSequenceStepOnZone(index,false));
     wrap.querySelector('.custom-sequence-delete').addEventListener('pointerdown',e=>e.stopPropagation());
     wrap.querySelector('.custom-sequence-delete').addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
-    wrap.querySelector('.custom-sequence-delete').addEventListener('click',e=>{
+    wrap.querySelector('.custom-sequence-delete').addEventListener('click',async e=>{
       e.stopPropagation();
+      const ok=await appConfirm('Delete Sequence Pitch?', `Delete pitch #${index+1} from this custom sequence?`, 'YES', 'NO');
+      if(!ok) return;
       deleteCustomSequenceStep(index);
     });
   });
