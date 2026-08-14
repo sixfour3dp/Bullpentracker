@@ -517,6 +517,8 @@
   .custom-sequence-action.delete { background:var(--red); }
   .custom-sequence-action.delete svg { width:18px; height:18px; }
   .custom-sequence-row.open .custom-sequence-select { transform:translateX(-96px); }
+  .custom-sequence-row.selected .custom-sequence-actions { display:none; }
+  .custom-sequence-row.selected .custom-sequence-select { transform:none!important; }
 
   .edit-modal {
     position:fixed; inset:0; z-index:1000; display:none; align-items:flex-end;
@@ -5075,10 +5077,12 @@ function showCustomSequenceStepOnZone(index, openEditor=true){
   setActivePitchType(state.currentPitchType);
   updateTargetBadges();
   pitchLogEl.querySelectorAll('.custom-sequence-row').forEach(row=>{
+    const selected=Number(row.dataset.sequenceIndex)===index;
     row.classList.remove('open');
+    row.classList.toggle('selected',selected);
     const item=row.querySelector('.custom-sequence-select');
     if(item) item.style.transform='';
-    row.querySelector('.custom-sequence-select')?.classList.toggle('selected',Number(row.dataset.sequenceIndex)===index);
+    row.querySelector('.custom-sequence-select')?.classList.toggle('selected',selected);
   });
   phaseInstEl.textContent=`PITCH #${index+1} TARGET LOCATION`;
   phaseInstEl.className='phase-instruction phase-target';
