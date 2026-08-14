@@ -5005,12 +5005,66 @@ function renderCustomSequenceLog(){
     wrap.dataset.sequenceIndex=String(index);
     wrap.innerHTML=`<div class="pitch-log-actions"><button class="pitch-log-action update" type="button">UPDATE</button><button class="pitch-log-action delete" type="button" aria-label="Delete sequence pitch" title="Delete sequence pitch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button></div><div class="pitch-log-item strike-log">${customSequenceLogHTML(step,index)}</div>`;
     pitchLogEl.appendChild(wrap);
-    bindPitchSwipe(wrap,()=>showCustomSequenceStepOnZone(index,false));
+    bindCustomSequenceSwipe(wrap,index);
     wrap.querySelector('.pitch-log-action.update').addEventListener('click',()=>showCustomSequenceStepOnZone(index));
     wrap.querySelector('.pitch-log-action.delete').addEventListener('click',()=>deleteCustomSequenceStep(index));
   });
   logLabel.textContent='CUSTOM SEQUENCE - SWIPE LEFT TO EDIT';
   logLabel.style.display=draft?.steps?.length?'block':'none';
+}
+
+function bindCustomSequenceSwipe(wrap,index){
+  const card=wrap.querySelector('.pitch-log-item');
+  if(!card) return;
+  let sx=0, sy=0, pointerId=null, tracking=false, moved=false, suppressClick=false;
+  const close=()=>{
+    wrap.classList.remove('open');
+    card.style.transition='';
+    card.style.transform='translateX(0px)';
+  };
+  const select=()=>{
+    close();
+    showCustomSequenceStepOnZone(index,false);
+  };
+  card.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='mouse' && e.button!==0) return;
+    pointerId=e.pointerId;
+    sx=e.clientX; sy=e.clientY;
+    tracking=true; moved=false; suppressClick=false;
+    card.setPointerCapture?.(e.pointerId);
+    card.style.transition='none';
+  });
+  card.addEventListener('pointermove',e=>{
+    if(!tracking || e.pointerId!==pointerId) return;
+    const dx=e.clientX-sx, dy=e.clientY-sy;
+    if(Math.abs(dy)>Math.abs(dx)+6) return;
+    if(dx>-55) return;
+    moved=true; suppressClick=true;
+    e.preventDefault();
+    card.style.transform=`translateX(${Math.max(-144,Math.min(0,dx+55))}px)`;
+  });
+  card.addEventListener('pointercancel',()=>{
+    tracking=false; pointerId=null; moved=false;
+    close();
+  });
+  card.addEventListener('pointerup',e=>{
+    if(!tracking || e.pointerId!==pointerId) return;
+    tracking=false; pointerId=null;
+    const dx=e.clientX-sx;
+    card.style.transition='';
+    if(moved && dx<=-70){
+      wrap.classList.add('open');
+      card.style.transform='';
+      setTimeout(()=>{ suppressClick=false; },300);
+      return;
+    }
+    select();
+    setTimeout(()=>{ suppressClick=false; },300);
+  });
+  card.addEventListener('click',e=>{
+    if(suppressClick){ e.preventDefault(); return; }
+    select();
+  });
 }
 
 function renderPitchLog() {
