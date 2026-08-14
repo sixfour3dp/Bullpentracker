@@ -1003,20 +1003,19 @@
   .app-input, .app-select { width:100%; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:12px; font-size:16px; outline:none; }
   .app-select { appearance:auto; }
   .mini-btn { border:0; border-radius:10px; padding:11px 14px; background:var(--accent); color:var(--bg); font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:14px; white-space:nowrap; }
-  .player-swipe { position:relative; overflow:hidden; border-radius:12px; margin-bottom:8px; background:var(--red); }
+  .player-swipe { position:relative; overflow:hidden; border-radius:12px; margin-bottom:8px; background:transparent; }
   .player-delete { position:absolute; top:0; right:0; bottom:0; width:88px; border:0; background:var(--red); color:white; font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:14px; letter-spacing:.8px; }
-  .player-card { position:relative; z-index:1; display:flex; align-items:center; gap:10px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; margin:0; transform:translateX(0); transition:transform .18s ease,border-color .16s ease,box-shadow .16s ease,background .16s ease; touch-action:pan-y; cursor:pointer; }
+  .player-card { position:relative; z-index:1; display:flex; align-items:center; gap:10px; padding:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; margin:0; transform:translateX(0); transition:transform .18s ease; touch-action:pan-y; cursor:pointer; }
   .player-card.swiping { transition:none; }
-  .player-card.profile-tap-feedback { border-color:rgba(34,197,94,.78); box-shadow:0 0 0 1px rgba(34,197,94,.42),0 0 18px rgba(34,197,94,.22); background:rgba(34,197,94,.08); }
   .player-main { flex:1; min-width:0; }
-  .player-name-row { display:flex; align-items:baseline; justify-content:space-between; gap:10px; min-width:0; }
-  .player-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:18px; color:var(--text); }
-  .player-last-session { flex:0 0 auto; color:var(--muted); font-size:11px; white-space:nowrap; }
+  .player-name-row { display:flex; align-items:center; gap:8px; min-width:0; }
+  .player-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:20px; color:var(--text); }
+  .player-last-session { color:var(--muted); font-size:10px; line-height:1.15; white-space:nowrap; text-align:center; }
   .player-meta { font-size:11px; color:var(--muted); margin-top:2px; }
-  .player-stat-strip { display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; }
+  .player-stat-strip { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
   .player-stat-pill { display:inline-flex; align-items:center; gap:4px; padding:3px 7px; border:1px solid var(--border); border-radius:8px; background:rgba(255,255,255,.035); font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:800; letter-spacing:.55px; color:var(--text); text-transform:uppercase; }
   .player-stat-pill span { color:var(--muted); }
-  .card-actions { display:flex; gap:6px; }
+  .card-actions { display:flex; flex-direction:column; align-items:stretch; gap:5px; }
   .card-btn { border:1px solid var(--border); background:var(--surface2); color:var(--text); border-radius:8px; padding:8px 9px; font-size:12px; font-weight:700; }
   .card-btn.primary { background:var(--accent); color:var(--bg); border-color:var(--accent); }
   .card-btn:disabled { opacity:.45; cursor:not-allowed; }
@@ -2517,7 +2516,7 @@ function renderManager() {
       const agg = aggregateHistorySessions(sessions,p);
       const strikeValue = sessions.length ? `${agg.strikePct}%${previous ? trendArrow(Number(last.strikePct)||0,Number(previous.strikePct)||0) : ''}` : '-';
       const lastLabel = last ? `Last ${new Date(last.createdAt).toLocaleDateString()}` : 'No sessions';
-      return `<div class="player-swipe" data-player-id="${escAttr(p.id)}"><button class="player-delete" type="button">DELETE</button><div class="player-card" data-profile-player-id="${escAttr(p.id)}" role="button" tabindex="0" aria-label="Open ${escAttr(p.name)} profile"><div class="player-main"><div class="player-name-row"><div class="player-name">${esc(p.name)}</div><div class="player-last-session">${esc(lastLabel)}</div></div><div class="player-stat-strip"><div class="player-stat-pill"><span>Sessions</span>${sessions.length}</div><div class="player-stat-pill"><span>Strike</span>${strikeValue}</div></div></div><div class="card-actions"><button class="card-btn primary" onclick="startBullpen('${escAttr(p.id)}')">START</button></div></div></div>`;
+      return `<div class="player-swipe" data-player-id="${escAttr(p.id)}"><button class="player-delete" type="button">DELETE</button><div class="player-card" data-profile-player-id="${escAttr(p.id)}" role="button" tabindex="0" aria-label="Open ${escAttr(p.name)} profile"><div class="player-main"><div class="player-name-row"><div class="player-name">${esc(p.name)}</div></div><div class="player-stat-strip"><div class="player-stat-pill"><span>Sessions</span>${sessions.length}</div><div class="player-stat-pill"><span>Strike</span>${strikeValue}</div></div></div><div class="card-actions"><button class="card-btn primary" onclick="startBullpen('${escAttr(p.id)}')">START SESSION</button><div class="player-last-session">${esc(lastLabel)}</div></div></div></div>`;
     }).join('') : '<div class="empty-state">Add a player to this roster to start saving bullpen sessions.</div>';
     setupPlayerSwipe();
 
@@ -2695,10 +2694,7 @@ function setupPlayerSwipe() {
     const setX = x => { currentX=Math.max(-88,Math.min(0,x)); card.style.transform=`translateX(${currentX}px)`; };
     const close = () => { card.classList.remove('swiping'); setX(0); if(openCard===card) openCard=null; };
     const open = () => { card.classList.remove('swiping'); setX(-88); openCard=card; };
-    const openProfile = () => {
-      card.classList.add('profile-tap-feedback');
-      setTimeout(()=>window.showHistory(playerId),110);
-    };
+    const openProfile = () => window.showHistory(playerId);
 
     card.addEventListener('touchstart', e => {
       if(openCard && openCard!==card) { openCard.style.transform='translateX(0)'; openCard=null; }
@@ -2709,13 +2705,21 @@ function setupPlayerSwipe() {
 
     card.addEventListener('touchmove', e => {
       const t=e.touches[0], dx=t.clientX-startX, dy=t.clientY-startY;
-      if(!dragging && Math.abs(dx)>8 && Math.abs(dx)>Math.abs(dy)) dragging=true;
-      if(dragging) { didSwipe=true; e.preventDefault(); setX(baseX+dx); }
+      const SWIPE_START=32;
+      if(Math.abs(dy)>Math.abs(dx)+6) return;
+      if(baseX===0){
+        if(dx>-SWIPE_START) return;
+        dragging=true; didSwipe=true; e.preventDefault();
+        setX(dx+SWIPE_START);
+      }else{
+        if(Math.abs(dx)>8) dragging=true;
+        if(dragging) { didSwipe=true; e.preventDefault(); setX(baseX+dx); }
+      }
     }, {passive:false});
 
     card.addEventListener('touchend', () => {
       card.classList.remove('swiping');
-      if(currentX < -40) open(); else close();
+      if(didSwipe && currentX < -40) open(); else close();
       setTimeout(()=>{ dragging=false; },0);
     });
 
