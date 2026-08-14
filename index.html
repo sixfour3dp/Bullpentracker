@@ -3105,7 +3105,6 @@ function beginCustomSequenceBuilder(setup){
   resetTrackingUI();
   sessionContext.textContent = `${p?.name || 'Custom Sequence'}${t ? ' - '+t.name : ''} - ${setup.existingPlanId?'Review':'Build'} ${state.customSequenceDraft.name}`;
   renderCustomSequenceLog();
-  if(existingSteps.length) showCustomSequenceStepOnZone(0,false);
   setCustomSequenceActionBar();
 }
 
