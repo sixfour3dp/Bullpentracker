@@ -2314,6 +2314,7 @@ let state = {
   pitchCountAlertShown: false,
   smartSuggestionLabel: '',
   customSequenceDraft: null,
+  selectedCustomSequenceIndex: null,
 };
 
 // pitch object: { num, type, targetZones, resultZone, resultX, resultY, isStrike, isOnTarget }
@@ -3055,6 +3056,7 @@ function beginCustomSequenceBuilder(setup){
     },
     pitchCountAlertShown:false,
     smartSuggestionLabel:'',
+    selectedCustomSequenceIndex:null,
     customSequenceDraft:{
       name:setup.sessionName || 'Custom Session',
       pitchCount:Number(setup.pitchCount)||25,
@@ -3104,6 +3106,7 @@ function beginSavedCustomSequenceEditor(planId){
     },
     pitchCountAlertShown:false,
     smartSuggestionLabel:'',
+    selectedCustomSequenceIndex:null,
     customSequenceDraft:{
       id:plan.id,
       name:plan.name || 'Custom Session',
@@ -3130,6 +3133,17 @@ function setCustomSequenceActionBar(){
   const stepNum=(draft?.steps?.length || 0)+1;
   const total=draft?.pitchCount || 1;
   const hasSavedSteps=(draft?.steps?.length || 0)>0;
+  const editingExisting=Number.isInteger(state.selectedCustomSequenceIndex) && Boolean(draft?.steps?.[state.selectedCustomSequenceIndex]);
+  if(editingExisting){
+    phaseInstEl.textContent = `EDIT SEQUENCE PITCH #${state.selectedCustomSequenceIndex+1}`;
+    phaseInstEl.className='phase-instruction phase-target';
+    clearTargetBtn.textContent='CANCEL';
+    clearTargetBtn.dataset.action='cancel-custom-builder';
+    doneBtn.textContent='SAVE SEQUENCE';
+    doneBtn.onclick=finalizeCustomSequence;
+    doneBtn.disabled=false;
+    return;
+  }
   if(draft?.steps?.length>=total || (hasSavedSteps && !state.targetZones.size)){
     phaseInstEl.textContent = 'REVIEW SEQUENCE OR SAVE';
     phaseInstEl.className='phase-instruction phase-target';
@@ -3159,12 +3173,14 @@ async function cancelCustomSequenceBuilder(){
     }
     state.targetZones.clear();
     state.customSequenceDraft=null;
+    state.selectedCustomSequenceIndex=null;
     returnFromCustomSequenceBuilder();
     customSessionReturnToSetup=false;
     return;
   }
   state.targetZones.clear();
   state.customSequenceDraft=null;
+  state.selectedCustomSequenceIndex=null;
   returnFromCustomSequenceBuilder();
   customSessionModal?.classList.add('visible');
 }
@@ -3186,15 +3202,30 @@ function saveCustomSequenceStep(){
   renderCustomSequenceLog();
   state.pitchNum=Math.min(draft.steps.length+1,draft.pitchCount);
   pitchNumEl.textContent=state.pitchNum;
+  state.selectedCustomSequenceIndex=null;
   state.targetZones.clear();
   strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('target'));
   updateTargetBadges();
   setCustomSequenceActionBar();
 }
 
+function syncSelectedCustomSequenceStep(){
+  const draft=state.customSequenceDraft;
+  const index=state.selectedCustomSequenceIndex;
+  const step=Number.isInteger(index) ? draft?.steps?.[index] : null;
+  if(!step || !state.targetZones.size) return false;
+  step.pitchType=state.currentPitchType || step.pitchType || '4S';
+  step.zones=[...state.targetZones].map(Number).filter(z=>ZONES.includes(z)).sort((a,b)=>a-b);
+  step.label=`${draft.name} - Pitch ${index+1}`;
+  renderCustomSequenceLog();
+  showCustomSequenceStepOnZone(index,false);
+  return true;
+}
+
 function finalizeCustomSequence(){
   const draft=state.customSequenceDraft;
   if(!draft) return;
+  syncSelectedCustomSequenceStep();
   if(!draft.steps.length){
     alert('Add at least one pitch before saving this custom sequence.');
     return;
@@ -3206,6 +3237,7 @@ function finalizeCustomSequence(){
   else appData.customSmartSequences.push(plan);
   saveAppData();
   state.customSequenceDraft=null;
+  state.selectedCustomSequenceIndex=null;
   state.targetZones.clear();
   pitchLogEl.innerHTML='';
   logLabel.style.display='none';
@@ -5079,6 +5111,7 @@ function showCustomSequenceStepOnZone(index, openEditor=true){
   const step=draft?.steps?.[index];
   if(!step) return;
   state.phase='target';
+  state.selectedCustomSequenceIndex=index;
   state.currentPitchType=step.pitchType || state.currentPitchType;
   state.targetZones=new Set((step.zones||[]).map(Number).filter(z=>ZONES.includes(z)));
   strikeZoneTarget.style.display='grid';
@@ -5213,6 +5246,7 @@ function deleteCustomSequenceStep(index) {
   const draft=state.customSequenceDraft;
   if(!draft?.steps?.[index]) return;
   draft.steps.splice(index,1);
+  state.selectedCustomSequenceIndex=null;
   state.pitchNum=Math.min(draft.steps.length+1,draft.pitchCount);
   pitchNumEl.textContent=state.pitchNum;
   renderCustomSequenceLog();
