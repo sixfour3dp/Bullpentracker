@@ -3335,6 +3335,9 @@ function missBiasDirectionLabel(direction){
 function missBiasCountLabel(miss){
   return `${miss.glove} GS / ${miss.throwing} AS`;
 }
+function missBiasSummaryLabel(miss){
+  return `${missBiasDirectionLabel(miss.direction)} · ${miss.glove} GS · ${miss.throwing} AS`;
+}
 function pitchLocationQuality(p){
   if(p.isWildPitch) return 5;
   const targets=pitchTargetZones(p); if(!targets.length) return p.isStrike?65:20;
@@ -3999,8 +4002,8 @@ function exportSessionPdf(){
   const locPct=targeted.length?Math.round(onTarget/targeted.length*100):0;
   const cmd=pocketCommandMetrics(pitches);
   const missBias=lateralMissBias(pitches,player?.throws||null);
-  const missBiasValue=!player?.throws?'HAND NOT SET':(missBias.sided?`${missBias.pct}% ${missBias.direction}`:'—');
-  const missBiasSub=!player?.throws?'Set throwing hand in player profile':(missBias.sided?`${missBias.glove} GS · ${missBias.throwing} AS`:'No lateral misses');
+  const missBiasValue=!player?.throws?'HAND NOT SET':(missBias.sided?`${missBias.pct}%`:'—');
+  const missBiasSub=!player?.throws?'Set throwing hand in player profile':(missBias.sided?missBiasSummaryLabel(missBias):'No lateral misses');
   const types=sessionPitchTypeStats(pitches);
   const notes=(rec?.notes||'').trim();
   const heat=heatmapBackgroundCss(pitches);
@@ -5265,7 +5268,7 @@ function buildStats() {
   const showCommandGrade=reportPlayer?.showCommandGrade!==false;
   const missBias=lateralMissBias(pitches,reportPlayer?.throws||null);
   const missBiasValue=!reportPlayer?.throws?'HAND NOT SET':(missBias.sided?`${missBias.pct}%`:'-');
-  const missBiasSub=!reportPlayer?.throws?'Set throwing hand in profile':(missBias.sided?missBiasDirectionLabel(missBias.direction):'No lateral misses');
+  const missBiasSub=!reportPlayer?.throws?'Set throwing hand in profile':(missBias.sided?missBiasSummaryLabel(missBias):'No lateral misses');
   const kStreak=longestStrikeStreak(pitches);
 
   // Subtitle
