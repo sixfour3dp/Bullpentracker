@@ -491,6 +491,7 @@
   .pitch-log-action.update { background:#1677ff; }
   .pitch-log-action.delete { background:var(--red); }
   .pitch-log-item { position:relative; z-index:1; transition:transform .18s ease; width:100%; }
+  .pitch-log-item.selected { border-color:rgba(0,212,255,.65); background:rgba(0,212,255,.13); box-shadow:inset 0 0 0 1px rgba(0,212,255,.25); }
   .pitch-log-swipe.open .pitch-log-item { transform:translateX(-144px); }
 
   .edit-modal {
@@ -4961,6 +4962,9 @@ function showCustomSequenceStepOnZone(index, openEditor=true){
   pitchNumEl.textContent=String(index+1);
   setActivePitchType(state.currentPitchType);
   updateTargetBadges();
+  pitchLogEl.querySelectorAll('.pitch-log-swipe').forEach(row=>{
+    row.querySelector('.pitch-log-item')?.classList.toggle('selected',Number(row.dataset.sequenceIndex)===index);
+  });
   phaseInstEl.textContent=`PITCH #${index+1} TARGET LOCATION`;
   phaseInstEl.className='phase-instruction phase-target';
   setCustomSequenceActionBar();
