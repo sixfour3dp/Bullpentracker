@@ -2581,6 +2581,12 @@ function renderCustomSessionsPage(){
       renderCustomSessionsPage();
     });
   });
+  list.querySelectorAll('.custom-session-row').forEach(row=>{
+    row.addEventListener('click',e=>{
+      if(e.target.closest('.custom-session-delete')) return;
+      beginSavedCustomSequenceEditor(row.dataset.customPlanId);
+    });
+  });
 }
 
 function teamPlayerStats(player){
@@ -3007,6 +3013,57 @@ function beginCustomSequenceBuilder(setup){
   setCustomSequenceActionBar();
 }
 
+function beginSavedCustomSequenceEditor(planId){
+  const plans=Array.isArray(appData.customSmartSequences)?appData.customSmartSequences:[];
+  const plan=plans.find(p=>p.id===planId);
+  if(!plan) return;
+  const steps=(plan.steps||[]).map((step,index)=>({
+    pitchType:step.pitchType || '4S',
+    zones:Array.isArray(step.zones)?step.zones.map(Number).filter(z=>ZONES.includes(z)):[],
+    label:step.label || `${plan.name || 'Custom Session'} - Pitch ${index+1}`
+  }));
+  const selectedTypes=[...new Set(steps.map(step=>step.pitchType).filter(code=>PITCH_TYPES.some(p=>p.code===code)))];
+  state = {
+    phase:'target',
+    targetZones:new Set(),
+    currentPitchType:selectedTypes[0] || '4S',
+    pitches:[],
+    pitchNum:Math.max(1,steps.length),
+    activePlayerId:null,
+    sessionSaved:false,
+    savedSessionId:null,
+    reportMode:null,
+    sessionSetup:{
+      sessionName:plan.name || 'Custom Session',
+      bullpenType:'Mound',
+      pitchCount:Math.max(steps.length,1),
+      mode:'custom-builder',
+      smartPlanId:'custom-builder',
+      smartPitchTypes:selectedTypes.length?selectedTypes:['4S']
+    },
+    pitchCountAlertShown:false,
+    smartSuggestionLabel:'',
+    customSequenceDraft:{
+      id:plan.id,
+      name:plan.name || 'Custom Session',
+      pitchCount:Math.max(steps.length,1),
+      smartPitchTypes:selectedTypes.length?selectedTypes:['4S'],
+      steps
+    }
+  };
+  customSessionReturnToSetup=false;
+  customSessionReturnView='customSessions';
+  managerScreen.style.display='none';
+  historyScreen.style.display='none';
+  statsScreen.style.display='none';
+  trackingScreen.style.display='flex';
+  resetTrackingUI();
+  sessionContext.textContent=`${state.customSequenceDraft.name} - Review Sequence`;
+  renderCustomSequenceLog();
+  showCustomSequenceStepOnZone(0,false);
+  setCustomSequenceActionBar();
+}
+
 function setCustomSequenceActionBar(){
   const draft=state.customSequenceDraft;
   const stepNum=(draft?.steps?.length || 0)+1;
@@ -3063,9 +3120,11 @@ function saveCustomSequenceStep(){
 function finalizeCustomSequence(){
   const draft=state.customSequenceDraft;
   if(!draft || draft.steps.length<draft.pitchCount) return;
-  const plan={id:uid('smart'),name:draft.name,steps:draft.steps};
+  const plan={id:draft.id || uid('smart'),name:draft.name,steps:draft.steps};
   if(!Array.isArray(appData.customSmartSequences)) appData.customSmartSequences=[];
-  appData.customSmartSequences.push(plan);
+  const existingIndex=appData.customSmartSequences.findIndex(p=>p.id===plan.id);
+  if(existingIndex>=0) appData.customSmartSequences[existingIndex]=plan;
+  else appData.customSmartSequences.push(plan);
   saveAppData();
   state.customSequenceDraft=null;
   state.targetZones.clear();
@@ -3192,6 +3251,10 @@ function pitchTargetZones(p){
 function zoneRC(z){ return {r:Math.floor((Number(z)-1)/3), c:(Number(z)-1)%3}; }
 function commandGrade(score){
   return score>=90?'ELITE':score>=80?'EXCELLENT':score>=70?'GOOD':score>=60?'DEVELOPING':score>=50?'INCONSISTENT':'BEGINNER';
+}
+function commandGradeDisplay(score){
+  const grade=commandGrade(score).toLowerCase();
+  return grade.charAt(0).toUpperCase()+grade.slice(1);
 }
 function clampCommandScore(n){ return Math.max(0,Math.min(100,Math.round(Number(n)||0))); }
 function commandResultGridCell(p){
@@ -3453,7 +3516,8 @@ function buildHistoryMetricCards(allSessions,player){
   const avgStrikeLabel=usingSelection?(sessionCount===1?'Session Strike %':'Selected Strike %'):'Avg Strike %';
   const showCommandGrade=player?.showCommandGrade!==false;
   const commandValue=showCommandGrade?(usingSelection?agg.commandScore:sessionCommandScore(latest)):'N/A';
-  const commandLabel=usingSelection?(sessionCount===1?'PB Command Score':'Combined PB Score'):'PB Command Score';
+  const commandBaseLabel=usingSelection?(sessionCount===1?'PB Command Score':'Combined PB Score'):'PB Command Score';
+  const commandLabel=showCommandGrade?`${commandBaseLabel} · ${commandGradeDisplay(commandValue)}`:commandBaseLabel;
 
   const miss=agg.missBias;
   const biasValue=!player.throws?'SET HAND':(miss.sided?`${miss.pct}% ${miss.direction}`:'—');
@@ -4881,6 +4945,28 @@ function customSequenceLogHTML(step,index) {
     </div>`;
 }
 
+function showCustomSequenceStepOnZone(index, openEditor=true){
+  const draft=state.customSequenceDraft;
+  const step=draft?.steps?.[index];
+  if(!step) return;
+  state.phase='target';
+  state.currentPitchType=step.pitchType || state.currentPitchType;
+  state.targetZones=new Set((step.zones||[]).map(Number).filter(z=>ZONES.includes(z)));
+  strikeZoneTarget.style.display='grid';
+  outerZone.style.display='none';
+  outerZone.classList.remove('active');
+  strikeZoneTarget.querySelectorAll('.zone-cell').forEach(cell=>{
+    cell.classList.toggle('target',state.targetZones.has(Number(cell.dataset.zone)));
+  });
+  pitchNumEl.textContent=String(index+1);
+  setActivePitchType(state.currentPitchType);
+  updateTargetBadges();
+  phaseInstEl.textContent=`PITCH #${index+1} TARGET LOCATION`;
+  phaseInstEl.className='phase-instruction phase-target';
+  setCustomSequenceActionBar();
+  if(openEditor) openCustomSequenceEditor(index);
+}
+
 function renderCustomSequenceLog(){
   const draft=state.customSequenceDraft;
   pitchLogEl.innerHTML='';
@@ -4892,8 +4978,9 @@ function renderCustomSequenceLog(){
     wrap.innerHTML=`<div class="pitch-log-actions"><button class="pitch-log-action update" type="button">UPDATE</button><button class="pitch-log-action delete" type="button">DELETE</button></div><div class="pitch-log-item strike-log">${customSequenceLogHTML(step,index)}</div>`;
     pitchLogEl.appendChild(wrap);
     bindPitchSwipe(wrap);
-    wrap.querySelector('.pitch-log-action.update').addEventListener('click',()=>openCustomSequenceEditor(index));
+    wrap.querySelector('.pitch-log-action.update').addEventListener('click',()=>showCustomSequenceStepOnZone(index));
     wrap.querySelector('.pitch-log-action.delete').addEventListener('click',()=>deleteCustomSequenceStep(index));
+    wrap.querySelector('.pitch-log-item').addEventListener('click',()=>showCustomSequenceStepOnZone(index));
   });
   logLabel.textContent='CUSTOM SEQUENCE - SWIPE LEFT TO EDIT';
   logLabel.style.display=draft?.steps?.length?'block':'none';
@@ -4942,6 +5029,7 @@ function deleteCustomSequenceStep(index) {
   state.pitchNum=Math.min(draft.steps.length+1,draft.pitchCount);
   pitchNumEl.textContent=state.pitchNum;
   renderCustomSequenceLog();
+  if(draft.steps.length) showCustomSequenceStepOnZone(Math.min(index,draft.steps.length-1),false);
   setCustomSequenceActionBar();
 }
 
@@ -5036,8 +5124,10 @@ document.getElementById('savePitchEditBtn').addEventListener('click',()=>{
     step.zones=[...editTargetZones.querySelectorAll('.edit-target-btn.active')].map(b=>Number(b.dataset.zone)).sort((a,b)=>a-b);
     if(!step.zones.length) return;
     step.label=`${draft.name} - Pitch ${editingCustomSequenceIndex+1}`;
+    const editedIndex=editingCustomSequenceIndex;
     closePitchEditor();
     renderCustomSequenceLog();
+    showCustomSequenceStepOnZone(editedIndex,false);
     setCustomSequenceActionBar();
     return;
   }
