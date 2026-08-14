@@ -2337,6 +2337,7 @@ const newSessionBtn    = document.getElementById('newSessionBtn');
 const veloInput         = document.getElementById('veloInput');
 const veloToggle        = document.getElementById('veloToggle');
 const veloModeLabel     = document.getElementById('veloModeLabel');
+const veloEntryRow      = document.querySelector('.velo-entry-row');
 const sessionSetupModal = document.getElementById('sessionSetupModal');
 const setupPitchCount   = document.getElementById('setupPitchCount');
 const smartPitchField   = document.getElementById('smartPitchField');
@@ -3067,6 +3068,7 @@ function beginCustomSequenceBuilder(setup){
   statsScreen.style.display='none';
   trackingScreen.style.display='flex';
   resetTrackingUI();
+  if(veloEntryRow) veloEntryRow.style.display='none';
   sessionContext.textContent = `${p?.name || 'Custom Sequence'}${t ? ' - '+t.name : ''} - Build ${state.customSequenceDraft.name}`;
   setCustomSequenceActionBar();
 }
@@ -3081,6 +3083,7 @@ function beginSavedCustomSequenceEditor(planId){
     label:step.label || `${plan.name || 'Custom Session'} - Pitch ${index+1}`
   }));
   const selectedTypes=[...new Set(steps.map(step=>step.pitchType).filter(code=>PITCH_TYPES.some(p=>p.code===code)))];
+  const pitchCount=Math.max(Number(plan.pitchCount)||steps.length||1,steps.length||1);
   state = {
     phase:'target',
     targetZones:new Set(),
@@ -3094,7 +3097,7 @@ function beginSavedCustomSequenceEditor(planId){
     sessionSetup:{
       sessionName:plan.name || 'Custom Session',
       bullpenType:'Mound',
-      pitchCount:Math.max(steps.length,1),
+      pitchCount,
       mode:'custom-builder',
       smartPlanId:'custom-builder',
       smartPitchTypes:selectedTypes.length?selectedTypes:['4S']
@@ -3104,7 +3107,7 @@ function beginSavedCustomSequenceEditor(planId){
     customSequenceDraft:{
       id:plan.id,
       name:plan.name || 'Custom Session',
-      pitchCount:Math.max(steps.length,1),
+      pitchCount,
       smartPitchTypes:selectedTypes.length?selectedTypes:['4S'],
       steps
     }
@@ -3116,6 +3119,7 @@ function beginSavedCustomSequenceEditor(planId){
   statsScreen.style.display='none';
   trackingScreen.style.display='flex';
   resetTrackingUI();
+  if(veloEntryRow) veloEntryRow.style.display='none';
   sessionContext.textContent=`${state.customSequenceDraft.name} - Review Sequence`;
   renderCustomSequenceLog();
   setCustomSequenceActionBar();
@@ -3125,7 +3129,8 @@ function setCustomSequenceActionBar(){
   const draft=state.customSequenceDraft;
   const stepNum=(draft?.steps?.length || 0)+1;
   const total=draft?.pitchCount || 1;
-  if(draft?.steps?.length>=total){
+  const hasSavedSteps=(draft?.steps?.length || 0)>0;
+  if(draft?.steps?.length>=total || (hasSavedSteps && !state.targetZones.size)){
     phaseInstEl.textContent = 'REVIEW SEQUENCE OR SAVE';
     phaseInstEl.className='phase-instruction phase-target';
     clearTargetBtn.textContent='CANCEL';
@@ -3144,7 +3149,20 @@ function setCustomSequenceActionBar(){
   doneBtn.disabled=state.targetZones.size===0;
 }
 
-function cancelCustomSequenceBuilder(){
+async function cancelCustomSequenceBuilder(){
+  const draft=state.customSequenceDraft;
+  if(draft?.id){
+    const saveChanges=await appConfirm('Save Changes?', `Save changes to "${draft.name}" before returning to Custom Sessions?`, 'YES', 'NO');
+    if(saveChanges && draft.steps.length){
+      finalizeCustomSequence();
+      return;
+    }
+    state.targetZones.clear();
+    state.customSequenceDraft=null;
+    returnFromCustomSequenceBuilder();
+    customSessionReturnToSetup=false;
+    return;
+  }
   state.targetZones.clear();
   state.customSequenceDraft=null;
   returnFromCustomSequenceBuilder();
@@ -3176,8 +3194,12 @@ function saveCustomSequenceStep(){
 
 function finalizeCustomSequence(){
   const draft=state.customSequenceDraft;
-  if(!draft || draft.steps.length<draft.pitchCount) return;
-  const plan={id:draft.id || uid('smart'),name:draft.name,steps:draft.steps};
+  if(!draft) return;
+  if(!draft.steps.length){
+    alert('Add at least one pitch before saving this custom sequence.');
+    return;
+  }
+  const plan={id:draft.id || uid('smart'),name:draft.name,pitchCount:draft.pitchCount,smartPitchTypes:draft.smartPitchTypes,steps:draft.steps};
   if(!Array.isArray(appData.customSmartSequences)) appData.customSmartSequences=[];
   const existingIndex=appData.customSmartSequences.findIndex(p=>p.id===plan.id);
   if(existingIndex>=0) appData.customSmartSequences[existingIndex]=plan;
@@ -3276,6 +3298,7 @@ function beginBullpenSession(playerId, setup=DEFAULT_SESSION_SETUP) {
     smartSuggestionLabel:''
   };
   resetTrackingUI();
+  if(veloEntryRow) veloEntryRow.style.display='flex';
   const p=activePlayer(); const t=appData.teams.find(x=>x.id===p?.teamId);
   if(p) {
     const customName=state.sessionSetup.sessionName ? ` - ${state.sessionSetup.sessionName}` : '';
