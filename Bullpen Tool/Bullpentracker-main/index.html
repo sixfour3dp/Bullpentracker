@@ -1923,6 +1923,16 @@
         </div>
       </div>
       <div class="trend-cards" id="trendCards"></div>
+      <div class="panel">
+        <div class="panel-title">Bullpen Sessions</div>
+        <div id="historyList"></div>
+        <button id="historyNewSessionBtn" class="card-btn history-new-session-btn" type="button">+ NEW SESSION</button>
+        <div class="utility-row history-session-tools">
+          <button id="importSessionBtn" class="card-btn" type="button">IMPORT SESSION</button>
+          <button id="exportSessionDataBtn" class="card-btn" type="button">EXPORT SESSION</button>
+          <input id="importSessionFile" type="file" accept="application/json,.json" style="display:none">
+        </div>
+      </div>
       <div class="history-chart-grid">
         <div class="history-chart-panel">
           <div class="history-chart-title">Strike % Trend By Session</div>
@@ -1939,16 +1949,6 @@
           <div class="history-heatmap-note" id="historyHeatmapNote"></div>
           <div class="section-label" style="padding:12px 0 0;margin:0">BY PITCH TYPE</div>
           <div class="pitch-breakdown" id="historyPitchBreakdown"></div>
-        </div>
-      </div>
-      <div class="panel">
-        <div class="panel-title">Bullpen Sessions</div>
-        <div id="historyList"></div>
-        <button id="historyNewSessionBtn" class="card-btn history-new-session-btn" type="button">+ NEW SESSION</button>
-        <div class="utility-row history-session-tools">
-          <button id="importSessionBtn" class="card-btn" type="button">IMPORT SESSION</button>
-          <button id="exportSessionDataBtn" class="card-btn" type="button">EXPORT SESSION</button>
-          <input id="importSessionFile" type="file" accept="application/json,.json" style="display:none">
         </div>
       </div>
     </div>
@@ -3971,10 +3971,12 @@ function renderHistoryPitchBreakdown(sessions,player){
 }
 
 function renderHistoryProfileCharts(sessions,player){
+  const selected=sessions.filter(s=>historySelectedSessionIds.has(s.id));
+  const chartSessions=selected.length ? selected : sessions;
   const trend=document.getElementById('historyStrikeTrend');
-  if(trend) trend.innerHTML=buildHistoryStrikeSvg(sessions);
-  renderHistoryCommandHeatmap(sessions,player);
-  renderHistoryPitchBreakdown(sessions,player);
+  if(trend) trend.innerHTML=buildHistoryStrikeSvg(chartSessions);
+  renderHistoryCommandHeatmap(chartSessions,player);
+  renderHistoryPitchBreakdown(chartSessions,player);
 }
 
 
@@ -5087,6 +5089,8 @@ function renderCustomSequenceLog(){
     wrap.innerHTML=`<button class="custom-sequence-select pitch-log-item strike-log" type="button">${customSequenceLogHTML(step,index)}</button><button class="custom-sequence-delete" type="button" aria-label="Delete sequence pitch" title="Delete sequence pitch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button>`;
     pitchLogEl.appendChild(wrap);
     wrap.querySelector('.custom-sequence-select').addEventListener('click',()=>showCustomSequenceStepOnZone(index,false));
+    wrap.querySelector('.custom-sequence-delete').addEventListener('pointerdown',e=>e.stopPropagation());
+    wrap.querySelector('.custom-sequence-delete').addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});
     wrap.querySelector('.custom-sequence-delete').addEventListener('click',e=>{
       e.stopPropagation();
       deleteCustomSequenceStep(index);
@@ -5187,7 +5191,9 @@ function deleteCustomSequenceStep(index) {
   state.pitchNum=Math.min(draft.steps.length+1,draft.pitchCount);
   pitchNumEl.textContent=state.pitchNum;
   renderCustomSequenceLog();
-  if(draft.steps.length) showCustomSequenceStepOnZone(Math.min(index,draft.steps.length-1),false);
+  state.targetZones.clear();
+  strikeZoneTarget.querySelectorAll('.zone-cell').forEach(c=>c.classList.remove('target'));
+  updateTargetBadges();
   setCustomSequenceActionBar();
 }
 
