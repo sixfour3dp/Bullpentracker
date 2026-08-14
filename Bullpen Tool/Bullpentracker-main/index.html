@@ -5054,7 +5054,6 @@ function renderPitchLog() {
 function bindPitchSwipe(wrap,onTap=null) {
   const card=wrap.querySelector('.pitch-log-item');
   let sx=0, sy=0, base=0, drag=false, moved=false, touched=false;
-  const SWIPE_START=32;
   card.addEventListener('touchstart',e=>{
     const t=e.touches[0];
     sx=t.clientX; sy=t.clientY;
@@ -5067,9 +5066,9 @@ function bindPitchSwipe(wrap,onTap=null) {
     const t=e.touches[0], dx=t.clientX-sx, dy=t.clientY-sy;
     if(Math.abs(dy)>Math.abs(dx)+6)return;
     if(base===0){
-      if(dx>-SWIPE_START) return;
+      if(dx>-55) return;
       moved=true;
-      const x=Math.max(-144,Math.min(0,dx+SWIPE_START));
+      const x=Math.max(-144,Math.min(0,dx+55));
       card.style.transform=`translateX(${x}px)`;
     }else{
       if(Math.abs(dx)>8) moved=true;
