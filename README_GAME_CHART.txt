@@ -13,6 +13,9 @@ Features:
 - 3 strikes / 4 balls auto-advance to next batter
 - Next Batter button for balls put in play
 - Undo last pitch
+- Change Pitcher keeps the same batter and count
+- Strike % and Last 10 are calculated for the active pitcher only
+- Every pitch is tagged to the pitcher who threw it
 - Saves the active game in browser localStorage so leaving/reopening does not immediately lose it
 - Export Backup downloads the entire current game as a JSON backup file
 - Import Backup restores a previously exported game backup

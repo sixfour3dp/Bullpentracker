@@ -71,6 +71,7 @@ button{border:0;border-radius:12px;min-height:48px;padding:10px 14px;font-size:1
         <button id="undo" class="secondary">Undo Pitch</button>
         <button id="next" class="secondary">Next Batter</button>
       </div>
+      <button id="changePitcher" class="secondary" style="width:100%;margin-top:8px">Change Pitcher</button>
     </div>
 
     <div class="card">
@@ -85,7 +86,7 @@ button{border:0;border-radius:12px;min-height:48px;padding:10px 14px;font-size:1
     <div class="card">
       <div class="small">RECENT PITCHES</div>
       <div id="log" class="log"></div>
-      <div class="notice">3 strikes or 4 balls automatically advances to the next batter. Use Next Batter for a ball put in play.</div>
+      <div class="notice">3 strikes or 4 balls automatically advances to the next batter. Use Next Batter for a ball put in play. Change Pitcher keeps the current hitter and count.</div>
       <div class="actions" style="margin-top:12px">
         <button id="exportData" class="secondary">Export Backup</button>
         <button id="importData" class="secondary">Import Backup</button>
@@ -98,19 +99,21 @@ button{border:0;border-radius:12px;min-height:48px;padding:10px 14px;font-size:1
 <script>
 (()=>{
 const KEY='pocketbullpen_gamechart_v1';
-let s={pitcher:'',opponent:'',batters:[],batterIndex:0,balls:0,strikes:0,pitches:[]};
+let s={pitcher:'',pitchers:[],currentPitcher:'',opponent:'',batters:[],batterIndex:0,balls:0,strikes:0,pitches:[]};
 const $=id=>document.getElementById(id);
 function save(){localStorage.setItem(KEY,JSON.stringify(s))}
 function pct(a,b){return b?Math.round(a/b*100)+'%':'—'}
 function currentBatter(){return s.batters[s.batterIndex]||'Batter '+(s.batterIndex+1)}
 function render(){
  $('setup').classList.add('hidden'); $('game').classList.remove('hidden');
- $('pitcherName').textContent=s.pitcher; $('opponentName').textContent=s.opponent;
+ $('pitcherName').textContent=s.currentPitcher||s.pitcher; $('opponentName').textContent=s.opponent;
  $('batterName').textContent=currentBatter(); $('count').textContent=s.balls+'-'+s.strikes;
  $('pitches').textContent=s.pitches.length;
- const strikes=s.pitches.filter(p=>p.result==='S').length;
- $('strikePct').textContent=pct(strikes,s.pitches.length);
- const ten=s.pitches.slice(-10); $('last10').textContent=ten.length<10?'—':pct(ten.filter(p=>p.result==='S').length,10);
+ const activePitcher=s.currentPitcher||s.pitcher;
+ const pitcherPitches=s.pitches.filter(p=>(p.pitcher||s.pitcher)===activePitcher);
+ const strikes=pitcherPitches.filter(p=>p.result==='S').length;
+ $('strikePct').textContent=pct(strikes,pitcherPitches.length);
+ const ten=pitcherPitches.slice(-10); $('last10').textContent=ten.length<10?'—':pct(ten.filter(p=>p.result==='S').length,10);
  $('batterList').innerHTML='';
  s.batters.forEach((b,i)=>{const x=document.createElement('button');x.className='chip'+(i===s.batterIndex?' active':'');x.textContent=(i+1)+'. '+b;x.addEventListener('click',()=>{s.batterIndex=i;s.balls=0;s.strikes=0;save();render()});$('batterList').appendChild(x)});
  $('log').innerHTML='';
@@ -119,7 +122,7 @@ function render(){
 function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function nextBatter(){s.balls=0;s.strikes=0;if(s.batters.length)s.batterIndex=(s.batterIndex+1)%s.batters.length;save();render()}
 function pitch(result){
- s.pitches.push({result,batter:currentBatter(),batterIndex:s.batterIndex,time:Date.now()});
+ s.pitches.push({result,batter:currentBatter(),batterIndex:s.batterIndex,pitcher:s.currentPitcher||s.pitcher,time:Date.now()});
  if(result==='S')s.strikes++;else s.balls++;
  if(s.strikes>=3||s.balls>=4){s.balls=0;s.strikes=0;if(s.batters.length)s.batterIndex=(s.batterIndex+1)%s.batters.length}
  save();render();
@@ -127,10 +130,20 @@ function pitch(result){
 $('start').addEventListener('click',()=>{
  const p=$('pitcher').value.trim(),o=$('opponent').value.trim(),b=$('firstBatter').value.trim();
  if(!p||!o||!b){alert('Enter pitcher, opponent, and first batter.');return}
- s={pitcher:p,opponent:o,batters:[b],batterIndex:0,balls:0,strikes:0,pitches:[]};save();render();
+ s={pitcher:p,pitchers:[p],currentPitcher:p,opponent:o,batters:[b],batterIndex:0,balls:0,strikes:0,pitches:[]};save();render();
 });
 $('ball').addEventListener('click',()=>pitch('B'));$('strike').addEventListener('click',()=>pitch('S'));
 $('next').addEventListener('click',nextBatter);
+$('changePitcher').addEventListener('click',()=>{
+ const current=s.currentPitcher||s.pitcher;
+ const name=prompt('New pitcher name:',current||'');
+ if(name===null)return;
+ const p=name.trim(); if(!p)return;
+ if(!Array.isArray(s.pitchers))s.pitchers=[];
+ if(!s.pitchers.includes(p))s.pitchers.push(p);
+ s.currentPitcher=p;
+ save();render();
+});
 $('addBatter').addEventListener('click',()=>{const b=$('newBatter').value.trim();if(!b)return;s.batters.push(b);$('newBatter').value='';save();render()});
 $('undo').addEventListener('click',()=>{if(!s.pitches.length)return;s.pitches.pop();s.balls=0;s.strikes=0;for(let i=s.pitches.length-1;i>=0;i--){const p=s.pitches[i];if(p.batterIndex!==s.batterIndex)break;if(p.result==='S')s.strikes++;else s.balls++;if(s.strikes>=3||s.balls>=4){s.balls=0;s.strikes=0;break}}save();render()});
 $('exportData').addEventListener('click',()=>{
@@ -148,7 +161,10 @@ $('importFile').addEventListener('change',async e=>{
   const data=JSON.parse(await file.text());
   const game=data&&data.type==='PocketBullpenGameChartBackup'?data.game:data;
   if(!game||typeof game!=='object'||!game.pitcher||!game.opponent||!Array.isArray(game.batters)||!Array.isArray(game.pitches))throw new Error('Invalid backup');
-  s={pitcher:String(game.pitcher),opponent:String(game.opponent),batters:game.batters.map(String),batterIndex:Number(game.batterIndex)||0,balls:Number(game.balls)||0,strikes:Number(game.strikes)||0,pitches:game.pitches};
+  const basePitcher=String(game.pitcher);
+  const activePitcher=String(game.currentPitcher||basePitcher);
+  s={pitcher:basePitcher,pitchers:Array.isArray(game.pitchers)?game.pitchers.map(String):[basePitcher],currentPitcher:activePitcher,opponent:String(game.opponent),batters:game.batters.map(String),batterIndex:Number(game.batterIndex)||0,balls:Number(game.balls)||0,strikes:Number(game.strikes)||0,pitches:game.pitches.map(p=>({...p,pitcher:String(p.pitcher||basePitcher)}))};
+  if(!s.pitchers.includes(activePitcher))s.pitchers.push(activePitcher);
   if(!s.batters.length)throw new Error('No batters');
   s.batterIndex=Math.max(0,Math.min(s.batterIndex,s.batters.length-1));
   save();render();alert('Backup imported.');
@@ -156,7 +172,12 @@ $('importFile').addEventListener('change',async e=>{
  e.target.value='';
 });
 $('end').addEventListener('click',()=>{if(confirm('End and clear this game? Export a backup first if you want to keep it.')){localStorage.removeItem(KEY);location.reload()}});
-const saved=localStorage.getItem(KEY);if(saved){try{const q=JSON.parse(saved);if(q&&q.pitcher&&q.opponent){$('resume').classList.remove('hidden');$('resume').addEventListener('click',()=>{s=q;render()})}}catch(e){}}
+const saved=localStorage.getItem(KEY);if(saved){try{const q=JSON.parse(saved);if(q&&q.pitcher&&q.opponent){
+  if(!Array.isArray(q.pitchers))q.pitchers=[q.pitcher];
+  if(!q.currentPitcher)q.currentPitcher=q.pitcher;
+  q.pitches=(q.pitches||[]).map(p=>({...p,pitcher:p.pitcher||q.pitcher}));
+  $('resume').classList.remove('hidden');$('resume').addEventListener('click',()=>{s=q;render()})
+}}catch(e){}}
 })();
 </script>
 </body>
