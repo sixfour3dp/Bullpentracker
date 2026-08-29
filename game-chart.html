@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0e14">
+<title>Pocket Bullpen — Game Chart</title>
+<style>
+:root{--bg:#0a0e14;--surface:#111720;--surface2:#1a2333;--border:#1e2d42;--accent:#00d4ff;--orange:#ff5c35;--green:#22c55e;--text:#e8f0fe;--muted:#7890aa}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.app{max-width:520px;margin:auto;min-height:100vh;padding:calc(16px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}
+h1{margin:0;font-size:24px;letter-spacing:.5px}.brand{color:var(--accent)} .sub{color:var(--muted);font-size:13px;margin-top:4px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px;margin-top:14px}
+label{display:block;color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin:10px 0 6px}
+input{width:100%;font-size:16px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:12px}
+.row{display:flex;gap:8px}.row>*{min-width:0}.grow{flex:1}
+button{border:0;border-radius:12px;min-height:48px;padding:10px 14px;font-size:15px;font-weight:800;cursor:pointer}
+.primary{background:var(--accent);color:#071017}.secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.danger{background:rgba(255,92,53,.12);color:var(--orange);border:1px solid rgba(255,92,53,.35)}
+.hidden{display:none!important}
+.game-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.game-head strong{font-size:18px}.small{font-size:12px;color:var(--muted)}
+.batter{font-size:20px;font-weight:900;margin-top:4px}
+.count{font-size:58px;font-weight:900;line-height:1;text-align:center;margin:12px 0 4px}.count-label{text-align:center;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:1px}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.metric{background:var(--surface2);border-radius:12px;padding:10px;text-align:center}.metric b{display:block;font-size:22px}.metric span{font-size:10px;color:var(--muted);text-transform:uppercase}
+.pitch-buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.pitch-buttons button{min-height:92px;font-size:23px}.ball{background:var(--orange);color:white}.strike{background:var(--green);color:#04150a}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.list{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}.chip{background:var(--surface2);border:1px solid var(--border);color:var(--text);min-height:38px;padding:7px 10px;font-size:13px}.chip.active{border-color:var(--accent);color:var(--accent)}
+.log{max-height:180px;overflow:auto;margin-top:8px}.log-item{display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:7px 2px;font-size:13px}.S{color:var(--green);font-weight:900}.B{color:var(--orange);font-weight:900}
+.notice{font-size:12px;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+<main class="app">
+  <h1><span class="brand">POCKET</span>BULLPEN</h1>
+  <div class="sub">Game Charting · Simple Ball / Strike Tracker</div>
+
+  <section id="setup" class="card">
+    <h2 style="margin:0 0 4px">Chart Game</h2>
+    <label for="pitcher">Pitcher</label>
+    <input id="pitcher" placeholder="Pitcher name">
+    <label for="opponent">Opponent</label>
+    <input id="opponent" placeholder="Opponent">
+    <label for="firstBatter">First batter</label>
+    <input id="firstBatter" placeholder="Batter name or #">
+    <button id="start" class="primary" style="width:100%;margin-top:14px">Start Game</button>
+    <button id="resume" class="secondary hidden" style="width:100%;margin-top:8px">Resume Saved Game</button>
+  </section>
+
+  <section id="game" class="hidden">
+    <div class="card">
+      <div class="game-head">
+        <div><div class="small">PITCHER</div><strong id="pitcherName"></strong></div>
+        <div style="text-align:right"><div class="small">VS</div><strong id="opponentName"></strong></div>
+      </div>
+      <div class="small" style="margin-top:14px">CURRENT BATTER</div>
+      <div id="batterName" class="batter"></div>
+      <div id="count" class="count">0-0</div>
+      <div class="count-label">Balls — Strikes</div>
+      <div class="metrics">
+        <div class="metric"><b id="pitches">0</b><span>Pitches</span></div>
+        <div class="metric"><b id="strikePct">—</b><span>Strike %</span></div>
+        <div class="metric"><b id="last10">—</b><span>Last 10</span></div>
+      </div>
+      <div class="pitch-buttons">
+        <button id="ball" class="ball">BALL</button>
+        <button id="strike" class="strike">STRIKE</button>
+      </div>
+      <div class="actions">
+        <button id="undo" class="secondary">Undo Pitch</button>
+        <button id="next" class="secondary">Next Batter</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="small">LINEUP</div>
+      <div id="batterList" class="list"></div>
+      <div class="row" style="margin-top:10px">
+        <input id="newBatter" class="grow" placeholder="Add batter">
+        <button id="addBatter" class="primary">Add</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="small">RECENT PITCHES</div>
+      <div id="log" class="log"></div>
+      <div class="notice">3 strikes or 4 balls automatically advances to the next batter. Use Next Batter for a ball put in play.</div>
+      <div class="actions" style="margin-top:12px">
+        <button id="exportData" class="secondary">Export Backup</button>
+        <button id="importData" class="secondary">Import Backup</button>
+      </div>
+      <input id="importFile" type="file" accept="application/json,.json" class="hidden">
+      <button id="end" class="danger" style="width:100%;margin-top:10px">End / Clear Game</button>
+    </div>
+  </section>
+</main>
+<script>
+(()=>{
+const KEY='pocketbullpen_gamechart_v1';
+let s={pitcher:'',opponent:'',batters:[],batterIndex:0,balls:0,strikes:0,pitches:[]};
+const $=id=>document.getElementById(id);
+function save(){localStorage.setItem(KEY,JSON.stringify(s))}
+function pct(a,b){return b?Math.round(a/b*100)+'%':'—'}
+function currentBatter(){return s.batters[s.batterIndex]||'Batter '+(s.batterIndex+1)}
+function render(){
+ $('setup').classList.add('hidden'); $('game').classList.remove('hidden');
+ $('pitcherName').textContent=s.pitcher; $('opponentName').textContent=s.opponent;
+ $('batterName').textContent=currentBatter(); $('count').textContent=s.balls+'-'+s.strikes;
+ $('pitches').textContent=s.pitches.length;
+ const strikes=s.pitches.filter(p=>p.result==='S').length;
+ $('strikePct').textContent=pct(strikes,s.pitches.length);
+ const ten=s.pitches.slice(-10); $('last10').textContent=ten.length<10?'—':pct(ten.filter(p=>p.result==='S').length,10);
+ $('batterList').innerHTML='';
+ s.batters.forEach((b,i)=>{const x=document.createElement('button');x.className='chip'+(i===s.batterIndex?' active':'');x.textContent=(i+1)+'. '+b;x.addEventListener('click',()=>{s.batterIndex=i;s.balls=0;s.strikes=0;save();render()});$('batterList').appendChild(x)});
+ $('log').innerHTML='';
+ s.pitches.slice(-15).reverse().forEach((p,i)=>{const d=document.createElement('div');d.className='log-item';d.innerHTML='<span>#'+(s.pitches.length-i)+' · '+escapeHtml(p.batter)+'</span><span class="'+p.result+'">'+(p.result==='S'?'STRIKE':'BALL')+'</span>';$('log').appendChild(d)});
+}
+function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function nextBatter(){s.balls=0;s.strikes=0;if(s.batters.length)s.batterIndex=(s.batterIndex+1)%s.batters.length;save();render()}
+function pitch(result){
+ s.pitches.push({result,batter:currentBatter(),batterIndex:s.batterIndex,time:Date.now()});
+ if(result==='S')s.strikes++;else s.balls++;
+ if(s.strikes>=3||s.balls>=4){s.balls=0;s.strikes=0;if(s.batters.length)s.batterIndex=(s.batterIndex+1)%s.batters.length}
+ save();render();
+}
+$('start').addEventListener('click',()=>{
+ const p=$('pitcher').value.trim(),o=$('opponent').value.trim(),b=$('firstBatter').value.trim();
+ if(!p||!o||!b){alert('Enter pitcher, opponent, and first batter.');return}
+ s={pitcher:p,opponent:o,batters:[b],batterIndex:0,balls:0,strikes:0,pitches:[]};save();render();
+});
+$('ball').addEventListener('click',()=>pitch('B'));$('strike').addEventListener('click',()=>pitch('S'));
+$('next').addEventListener('click',nextBatter);
+$('addBatter').addEventListener('click',()=>{const b=$('newBatter').value.trim();if(!b)return;s.batters.push(b);$('newBatter').value='';save();render()});
+$('undo').addEventListener('click',()=>{if(!s.pitches.length)return;s.pitches.pop();s.balls=0;s.strikes=0;for(let i=s.pitches.length-1;i>=0;i--){const p=s.pitches[i];if(p.batterIndex!==s.batterIndex)break;if(p.result==='S')s.strikes++;else s.balls++;if(s.strikes>=3||s.balls>=4){s.balls=0;s.strikes=0;break}}save();render()});
+$('exportData').addEventListener('click',()=>{
+ const payload={type:'PocketBullpenGameChartBackup',version:1,exportedAt:new Date().toISOString(),game:s};
+ const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');
+ const safe=(s.opponent||'game').replace(/[^a-z0-9_-]+/gi,'_');
+ a.href=url;a.download='PocketBullpen_Game_'+safe+'_Backup.json';
+ document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+$('importData').addEventListener('click',()=>$('importFile').click());
+$('importFile').addEventListener('change',async e=>{
+ const file=e.target.files&&e.target.files[0]; if(!file)return;
+ try{
+  const data=JSON.parse(await file.text());
+  const game=data&&data.type==='PocketBullpenGameChartBackup'?data.game:data;
+  if(!game||typeof game!=='object'||!game.pitcher||!game.opponent||!Array.isArray(game.batters)||!Array.isArray(game.pitches))throw new Error('Invalid backup');
+  s={pitcher:String(game.pitcher),opponent:String(game.opponent),batters:game.batters.map(String),batterIndex:Number(game.batterIndex)||0,balls:Number(game.balls)||0,strikes:Number(game.strikes)||0,pitches:game.pitches};
+  if(!s.batters.length)throw new Error('No batters');
+  s.batterIndex=Math.max(0,Math.min(s.batterIndex,s.batters.length-1));
+  save();render();alert('Backup imported.');
+ }catch(err){alert('That file is not a valid Pocket Bullpen game backup.')}
+ e.target.value='';
+});
+$('end').addEventListener('click',()=>{if(confirm('End and clear this game? Export a backup first if you want to keep it.')){localStorage.removeItem(KEY);location.reload()}});
+const saved=localStorage.getItem(KEY);if(saved){try{const q=JSON.parse(saved);if(q&&q.pitcher&&q.opponent){$('resume').classList.remove('hidden');$('resume').addEventListener('click',()=>{s=q;render()})}}catch(e){}}
+})();
+</script>
+</body>
+</html>
