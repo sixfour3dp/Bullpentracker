@@ -29,6 +29,17 @@ button{border:0;border-radius:12px;min-height:48px;padding:10px 14px;font-size:1
 .list{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}.chip{background:var(--surface2);border:1px solid var(--border);color:var(--text);min-height:38px;padding:7px 10px;font-size:13px}.chip.active{border-color:var(--accent);color:var(--accent)}
 .log{max-height:180px;overflow:auto;margin-top:8px}.log-item{display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:7px 2px;font-size:13px}.S{color:var(--green);font-weight:900}.B{color:var(--orange);font-weight:900}
 .notice{font-size:12px;color:var(--muted);margin-top:8px}
+
+    .scorecard-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:10px}
+    .scorecard{border-collapse:collapse;width:max-content;min-width:100%;font-size:13px}
+    .scorecard th,.scorecard td{border:1px solid var(--border);min-width:46px;height:42px;text-align:center;padding:4px}
+    .scorecard th{background:var(--surface2);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+    .scorecard .name-col{position:sticky;left:0;z-index:2;min-width:105px;text-align:left;background:var(--surface2)}
+    .scorecard td.name-col{background:var(--surface);font-weight:700}
+    .scorecard td.current-batter{outline:2px solid var(--accent);outline-offset:-2px}
+    .result-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+    .result-grid button{min-height:44px}
+
 </style>
 </head>
 <body>
@@ -59,7 +70,7 @@ button{border:0;border-radius:12px;min-height:48px;padding:10px 14px;font-size:1
       <div id="count" class="count">0-0</div>
       <div class="count-label">Balls — Strikes</div>
       <div class="metrics">
-        <div class="metric"><b id="pitches">0</b><span>Pitches</span></div>
+        <div class="metric"><b id="pitches">0</b><span>Pitcher Pitches</span></div>
         <div class="metric"><b id="strikePct">—</b><span>Strike %</span></div>
         <div class="metric"><b id="last10">—</b><span>Last 10</span></div>
       </div>
@@ -69,9 +80,22 @@ button{border:0;border-radius:12px;min-height:48px;padding:10px 14px;font-size:1
       </div>
       <div class="actions">
         <button id="undo" class="secondary">Undo Pitch</button>
-        <button id="next" class="secondary">Next Batter</button>
+        <button id="next" class="secondary">Record Result / Next Batter</button>
       </div>
       <button id="changePitcher" class="secondary" style="width:100%;margin-top:8px">Change Pitcher</button>
+      <div id="resultPanel" class="hidden">
+        <div class="small" style="margin-top:12px">BATTING RESULT</div>
+        <div class="result-grid">
+          <button type="button" data-result="1B">1B</button>
+          <button type="button" data-result="2B">2B</button>
+          <button type="button" data-result="3B">3B</button>
+          <button type="button" data-result="HR">HR</button>
+          <button type="button" data-result="OUT">OUT</button>
+          <button type="button" data-result="ROE">ERROR</button>
+          <button type="button" data-result="FC">FC</button>
+          <button type="button" data-result="HBP">HBP</button>
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -84,9 +108,25 @@ button{border:0;border-radius:12px;min-height:48px;padding:10px 14px;font-size:1
     </div>
 
     <div class="card">
+      <div class="small">BATTING SCORECARD</div>
+      <div class="scorecard-wrap">
+        <table class="scorecard">
+          <thead><tr><th class="name-col">Batter</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead>
+          <tbody id="scorecardBody"></tbody>
+        </table>
+      </div>
+      <div class="small" style="margin-top:8px">K = strikeout · BB = walk · 1B/2B/3B/HR = hit · OUT = out · ROE = error · FC = fielder's choice · HBP = hit by pitch</div>
+    </div>
+
+    <div class="card">
+      <div class="small">PITCHERS USED</div>
+      <div id="pitchersUsed" class="log"></div>
+    </div>
+
+    <div class="card">
       <div class="small">RECENT PITCHES</div>
       <div id="log" class="log"></div>
-      <div class="notice">3 strikes or 4 balls automatically advances to the next batter. Use Next Batter for a ball put in play. Change Pitcher keeps the current hitter and count.</div>
+      <div class="notice">3 strikes records a K and 4 balls records a BB automatically. For a ball put in play, tap Record Result / Next Batter and choose the batting result. Change Pitcher keeps the current hitter and ball-strike count, but the displayed pitcher pitch count starts over at 0 for the new pitcher.</div>
       <div class="actions" style="margin-top:12px">
         <button id="exportData" class="secondary">Export Backup</button>
         <button id="importData" class="secondary">Import Backup</button>
@@ -99,7 +139,7 @@ button{border:0;border-radius:12px;min-height:48px;padding:10px 14px;font-size:1
 <script>
 (()=>{
 const KEY='pocketbullpen_gamechart_v1';
-let s={pitcher:'',pitchers:[],currentPitcher:'',opponent:'',batters:[],batterIndex:0,balls:0,strikes:0,pitches:[]};
+let s={pitcher:'',pitchers:[],currentPitcher:'',opponent:'',batters:[],batterIndex:0,balls:0,strikes:0,pitches:[],plateAppearances:[],paNumber:1};
 const $=id=>document.getElementById(id);
 function save(){localStorage.setItem(KEY,JSON.stringify(s))}
 function pct(a,b){return b?Math.round(a/b*100)+'%':'—'}
@@ -108,16 +148,45 @@ function render(){
  $('setup').classList.add('hidden'); $('game').classList.remove('hidden');
  $('pitcherName').textContent=s.currentPitcher||s.pitcher; $('opponentName').textContent=s.opponent;
  $('batterName').textContent=currentBatter(); $('count').textContent=s.balls+'-'+s.strikes;
- $('pitches').textContent=s.pitches.length;
  const activePitcher=s.currentPitcher||s.pitcher;
  const pitcherPitches=s.pitches.filter(p=>(p.pitcher||s.pitcher)===activePitcher);
+ $('pitches').textContent=pitcherPitches.length;
  const strikes=pitcherPitches.filter(p=>p.result==='S').length;
  $('strikePct').textContent=pct(strikes,pitcherPitches.length);
  const ten=pitcherPitches.slice(-10); $('last10').textContent=ten.length<10?'—':pct(ten.filter(p=>p.result==='S').length,10);
  $('batterList').innerHTML='';
  s.batters.forEach((b,i)=>{const x=document.createElement('button');x.className='chip'+(i===s.batterIndex?' active':'');x.textContent=(i+1)+'. '+b;x.addEventListener('click',()=>{s.batterIndex=i;s.balls=0;s.strikes=0;save();render()});$('batterList').appendChild(x)});
+ $('scorecardBody').innerHTML='';
+ const pas=Array.isArray(s.plateAppearances)?s.plateAppearances:[];
+ s.batters.forEach((name,idx)=>{
+   const tr=document.createElement('tr');
+   const tdName=document.createElement('td');
+   tdName.className='name-col'+(idx===s.batterIndex?' current-batter':'');
+   tdName.textContent=(idx+1)+'. '+name;
+   tr.appendChild(tdName);
+   const batterPAs=pas.filter(pa=>pa.batterIndex===idx);
+   for(let c=0;c<6;c++){
+     const td=document.createElement('td');
+     td.textContent=batterPAs[c]?.result||'';
+     if(batterPAs[c])td.title=(batterPAs[c].pitcher||'')+' · PA '+batterPAs[c].pa;
+     tr.appendChild(td);
+   }
+   $('scorecardBody').appendChild(tr);
+ });
+ $('pitchersUsed').innerHTML='';
+ const usedNames=[];
+ (Array.isArray(s.pitchers)?s.pitchers:[]).forEach(name=>{if(name&&!usedNames.includes(name))usedNames.push(name)});
+ s.pitches.forEach(p=>{const name=p.pitcher||s.pitcher;if(name&&!usedNames.includes(name))usedNames.push(name)});
+ usedNames.forEach(name=>{
+   const pp=s.pitches.filter(p=>(p.pitcher||s.pitcher)===name);
+   const ps=pp.filter(p=>p.result==='S').length;
+   const d=document.createElement('div');
+   d.className='log-item';
+   d.innerHTML='<span><strong>'+escapeHtml(name)+'</strong>'+(name===activePitcher?' <span class="small">(CURRENT)</span>':'')+'</span><span>'+pp.length+' pitches · '+pct(ps,pp.length)+'</span>';
+   $('pitchersUsed').appendChild(d);
+ });
  $('log').innerHTML='';
- s.pitches.slice(-15).reverse().forEach((p,i)=>{const d=document.createElement('div');d.className='log-item';d.innerHTML='<span>#'+(s.pitches.length-i)+' · '+escapeHtml(p.batter)+'</span><span class="'+p.result+'">'+(p.result==='S'?'STRIKE':'BALL')+'</span>';$('log').appendChild(d)});
+ s.pitches.slice(-15).reverse().forEach((p,i)=>{const d=document.createElement('div');d.className='log-item';d.innerHTML='<span>#'+(s.pitches.length-i)+' · '+escapeHtml(p.batter)+' <span class="small">· '+escapeHtml(p.pitcher||s.pitcher)+'</span></span><span class="'+p.result+'">'+(p.result==='S'?'STRIKE':'BALL')+'</span>';$('log').appendChild(d)});
 }
 function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function nextBatter(){s.balls=0;s.strikes=0;if(s.batters.length)s.batterIndex=(s.batterIndex+1)%s.batters.length;save();render()}
@@ -130,10 +199,13 @@ function pitch(result){
 $('start').addEventListener('click',()=>{
  const p=$('pitcher').value.trim(),o=$('opponent').value.trim(),b=$('firstBatter').value.trim();
  if(!p||!o||!b){alert('Enter pitcher, opponent, and first batter.');return}
- s={pitcher:p,pitchers:[p],currentPitcher:p,opponent:o,batters:[b],batterIndex:0,balls:0,strikes:0,pitches:[]};save();render();
+ s={pitcher:p,pitchers:[p],currentPitcher:p,opponent:o,batters:[b],batterIndex:0,balls:0,strikes:0,pitches:[],plateAppearances:[],paNumber:1};save();render();
 });
 $('ball').addEventListener('click',()=>pitch('B'));$('strike').addEventListener('click',()=>pitch('S'));
 $('next').addEventListener('click',nextBatter);
+document.querySelectorAll('[data-result]').forEach(btn=>{
+ btn.addEventListener('click',()=>{finishPA(btn.dataset.result);$('resultPanel').classList.add('hidden');});
+});
 $('changePitcher').addEventListener('click',()=>{
  const current=s.currentPitcher||s.pitcher;
  const name=prompt('New pitcher name:',current||'');
@@ -163,7 +235,7 @@ $('importFile').addEventListener('change',async e=>{
   if(!game||typeof game!=='object'||!game.pitcher||!game.opponent||!Array.isArray(game.batters)||!Array.isArray(game.pitches))throw new Error('Invalid backup');
   const basePitcher=String(game.pitcher);
   const activePitcher=String(game.currentPitcher||basePitcher);
-  s={pitcher:basePitcher,pitchers:Array.isArray(game.pitchers)?game.pitchers.map(String):[basePitcher],currentPitcher:activePitcher,opponent:String(game.opponent),batters:game.batters.map(String),batterIndex:Number(game.batterIndex)||0,balls:Number(game.balls)||0,strikes:Number(game.strikes)||0,pitches:game.pitches.map(p=>({...p,pitcher:String(p.pitcher||basePitcher)}))};
+  s={pitcher:basePitcher,pitchers:Array.isArray(game.pitchers)?game.pitchers.map(String):[basePitcher],currentPitcher:activePitcher,opponent:String(game.opponent),batters:game.batters.map(String),batterIndex:Number(game.batterIndex)||0,balls:Number(game.balls)||0,strikes:Number(game.strikes)||0,pitches:game.pitches.map(p=>({...p,pitcher:String(p.pitcher||basePitcher)})),plateAppearances:Array.isArray(game.plateAppearances)?game.plateAppearances:[],paNumber:Number(game.paNumber)||((game.plateAppearances||[]).length+1)};
   if(!s.pitchers.includes(activePitcher))s.pitchers.push(activePitcher);
   if(!s.batters.length)throw new Error('No batters');
   s.batterIndex=Math.max(0,Math.min(s.batterIndex,s.batters.length-1));
@@ -175,6 +247,8 @@ $('end').addEventListener('click',()=>{if(confirm('End and clear this game? Expo
 const saved=localStorage.getItem(KEY);if(saved){try{const q=JSON.parse(saved);if(q&&q.pitcher&&q.opponent){
   if(!Array.isArray(q.pitchers))q.pitchers=[q.pitcher];
   if(!q.currentPitcher)q.currentPitcher=q.pitcher;
+  if(!Array.isArray(q.plateAppearances))q.plateAppearances=[];
+  if(!q.paNumber)q.paNumber=q.plateAppearances.length+1;
   q.pitches=(q.pitches||[]).map(p=>({...p,pitcher:p.pitcher||q.pitcher}));
   $('resume').classList.remove('hidden');$('resume').addEventListener('click',()=>{s=q;render()})
 }}catch(e){}}
