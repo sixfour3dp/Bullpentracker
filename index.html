@@ -1059,6 +1059,14 @@
   .game-pitch-btn.strike { background:var(--green); color:#06150b; }
   .game-pitch-btn.foul { background:#2f80ed; }
   .game-pitch-btn:disabled { opacity:.38; cursor:not-allowed; }
+  .game-pitch-types { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; }
+  .game-pitch-type-btn { min-height:38px; border:1px solid var(--border); border-radius:10px; background:var(--surface2); color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:900; letter-spacing:.7px; }
+  .game-pitch-type-btn.active { border-color:rgba(0,212,255,.55); background:rgba(0,212,255,.12); color:var(--accent); }
+  .game-pitch-type-btn:disabled { opacity:.38; cursor:not-allowed; }
+  .game-report-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+  .game-report-card { background:rgba(255,255,255,.035); border:1px solid var(--border); border-radius:10px; padding:10px; min-width:0; }
+  .game-report-card b { display:block; font-family:'Barlow Condensed',sans-serif; font-size:25px; line-height:1; color:var(--text); }
+  .game-report-card span { display:block; margin-top:4px; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; }
   .game-action-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
   .game-result-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px; }
   .game-result-grid .card-btn { min-height:42px; padding:8px 5px; font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:900; }
@@ -1107,6 +1115,7 @@
   .game-history-actions .card-btn { min-height:36px; padding:7px 8px; font-size:11px; }
   @media (max-width:360px) {
     .game-live-grid, .game-chart-grid { grid-template-columns:1fr; }
+    .game-state-row.pitcher-top-stats { grid-template-columns:repeat(2,1fr); }
     .game-count-display { min-height:74px; font-size:46px; }
     .game-pitch-btn { min-height:68px; font-size:18px; }
   }
@@ -2853,6 +2862,7 @@ const GAME_CHART_RESULTS=[
   {code:'DP',label:'DP',outs:2}
 ];
 const GAME_PITCH_LABELS={B:'BALL',S:'STRIKE',F:'FOUL'};
+const GAME_PITCH_TYPES=['FB','CB','CH'];
 const GAME_CONTACT_TYPES=[
   {code:'GB',label:'Grounder'},
   {code:'LD',label:'Line Drive'},
@@ -2861,6 +2871,8 @@ const GAME_CONTACT_TYPES=[
 const GAME_BIP_RESULTS=new Set(['1B','2B','3B','HR','OUT','ROE','FC','SAC','DP']);
 let pendingGameContact={result:null,type:null,x:null,y:null};
 let selectedGamePaId=null;
+let gamePitchType='FB';
+let gameReportOpen=false;
 
 function gameManualResults(){
   return GAME_CHART_RESULTS.filter(r=>r.code!=='K' && r.code!=='BB');
@@ -2910,6 +2922,7 @@ function normalizeGameChart(game){
     p.id=p.id||uid('gp');
     p.num=Number(p.num)||i+1;
     p.result=['B','S','F'].includes(p.result)?p.result:(p.result==='ball'?'B':'S');
+    p.pitchType=GAME_PITCH_TYPES.includes(p.pitchType)?p.pitchType:'FB';
     p.pitcherKey=p.pitcherKey || (p.pitcherId?pitcherKeyForPlayer(p.pitcherId):pitcherKeyForName(p.pitcherName||p.pitcher||game.currentPitcherName||game.pitcher));
     p.pitcherName=p.pitcherName || p.pitcher || game.currentPitcherName || game.pitcher || 'Pitcher';
   });
@@ -2978,7 +2991,13 @@ function currentGameBatter(game){
 }
 
 function gamePct(strikes,total){ return total?`${Math.round((strikes/total)*100)}%`:'-'; }
-function gameInningLabel(game){ return `${game.half==='bottom'?'BOT':'TOP'} ${game.inning}`; }
+function gameOrdinal(n){
+  const num=Math.max(1,Number(n)||1);
+  const mod100=num%100;
+  const suffix=mod100>=11 && mod100<=13 ? 'th' : (num%10===1?'st':num%10===2?'nd':num%10===3?'rd':'th');
+  return `${num}${suffix}`;
+}
+function gameInningLabel(game){ return `${gameOrdinal(game.inning)} Inning`; }
 function gameResultMeta(code){ return GAME_CHART_RESULTS.find(r=>r.code===code) || {code,label:code,outs:0}; }
 function gameContactCode(type){
   if(type==='PU') return 'FB';
@@ -3012,7 +3031,7 @@ function gamePitcherWalks(game,pitcherKey){
 }
 
 function gamePitcherInningWalks(game,pitcherKey){
-  return (game.plateAppearances||[]).filter(pa=>pa.pitcherKey===pitcherKey && pa.result==='BB' && Number(pa.inning)===Number(game.inning) && pa.half===game.half).length;
+  return (game.plateAppearances||[]).filter(pa=>pa.pitcherKey===pitcherKey && pa.result==='BB' && Number(pa.inning)===Number(game.inning)).length;
 }
 
 function gameFieldChartSvg(contact={},mode='view'){
@@ -3129,6 +3148,7 @@ function recordGameContactPitch(game){
     id:uid('gp'),
     num:game.pitches.length+1,
     result:'S',
+    pitchType:gamePitchType,
     pitcherKey:pitcher.key,
     pitcherId:pitcher.playerId||null,
     pitcherName:pitcher.name,
@@ -3153,8 +3173,7 @@ function gameAdvanceOuts(game,outs){
     game.outs++;
     if(game.outs>=3){
       game.outs=0;
-      if(game.half==='top') game.half='bottom';
-      else { game.half='top'; game.inning++; }
+      game.inning++;
     }
     remaining--;
   }
@@ -3221,8 +3240,94 @@ function gamePitchLogHtml(game){
   return game.pitches.slice(-24).reverse().map(p=>{
     const cls=p.result==='B'?'ball':p.result==='F'?'foul':'strike';
     const count=`${p.ballsBefore||0}-${p.strikesBefore||0}`;
-    return `<div class="game-log-item"><span>#${p.num} - ${esc(p.batterName||'Batter')} - ${count} - ${esc(p.pitcherName||'Pitcher')}</span><span class="${cls}">${GAME_PITCH_LABELS[p.result]||p.result}</span></div>`;
+    return `<div class="game-log-item"><span>#${p.num} - ${esc(p.pitchType||'FB')} - ${esc(p.batterName||'Batter')} - ${count} - ${esc(p.pitcherName||'Pitcher')}</span><span class="${cls}">${GAME_PITCH_LABELS[p.result]||p.result}</span></div>`;
   }).join('');
+}
+
+function gameReportStats(game){
+  const pitcherKey=game.currentPitcherKey;
+  const pitches=(game.pitches||[]).filter(p=>p.pitcherKey===pitcherKey);
+  const pas=(game.plateAppearances||[]).filter(pa=>pa.pitcherKey===pitcherKey);
+  const strikes=pitches.filter(p=>p.result!=='B').length;
+  const hits=pas.filter(pa=>['1B','2B','3B','HR'].includes(pa.result)).length;
+  const walks=pas.filter(pa=>pa.result==='BB').length;
+  const strikeouts=pas.filter(pa=>pa.result==='K').length;
+  const outs=pas.reduce((sum,pa)=>sum+(gameResultMeta(pa.result).outs||0),0);
+  const innings=outs/3;
+  let run=0, maxRun=0;
+  pitches.forEach(p=>{
+    if(p.result==='B') run=0;
+    else { run++; maxRun=Math.max(maxRun,run); }
+  });
+  const pitchTypeStats={};
+  GAME_PITCH_TYPES.forEach(type=>{
+    const typed=pitches.filter(p=>(p.pitchType||'FB')===type);
+    const typedStrikes=typed.filter(p=>p.result!=='B').length;
+    pitchTypeStats[type]=gamePct(typedStrikes,typed.length);
+  });
+  return {
+    pitches,
+    whip:innings ? ((walks+hits)/innings).toFixed(2) : '-',
+    strikeouts,
+    walks,
+    strikePct:gamePct(strikes,pitches.length),
+    pitchTypeStats,
+    maxStrikeRun:maxRun
+  };
+}
+
+function buildGameStrikeProgressSvg(pitches){
+  if(!pitches.length) return '<div class="empty-state">No pitches recorded.</div>';
+  const W=320,H=150,pad=26;
+  let strikes=0;
+  const pts=pitches.map((p,i)=>{
+    if(p.result!=='B') strikes++;
+    const pct=(strikes/(i+1))*100;
+    const x=pad+(i/Math.max(1,pitches.length-1))*(W-pad*2);
+    const y=H-pad-(pct/100)*(H-pad*2);
+    return {x,y,pct};
+  });
+  const path=pts.map((p,i)=>`${i?'L':'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+  const grid=[0,25,50,75,100].map(v=>{
+    const y=H-pad-(v/100)*(H-pad*2);
+    return `<path d="M${pad} ${y.toFixed(1)} H${W-pad}" stroke="rgba(255,255,255,.08)" stroke-width="1"></path><text x="5" y="${(y+3).toFixed(1)}" fill="#8aa0b7" font-size="9">${v}%</text>`;
+  }).join('');
+  const dots=pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2" fill="#00d4ff"></circle>`).join('');
+  return `<svg class="strike-progress" viewBox="0 0 ${W} ${H}" role="img" aria-label="Game strike percentage by pitch">${grid}<path d="${path}" fill="none" stroke="#00d4ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>${dots}</svg>`;
+}
+
+function renderGameReport(team,players,game){
+  const pitcher=currentGamePitcher(game,players);
+  const stats=gameReportStats(game);
+  gameChartContent.innerHTML=`<div class="game-chart-content">
+    <div class="game-chart-panel">
+      <div class="game-status-row">
+        <div><div class="game-status-title">Game Report</div><div class="game-status-sub">${esc(team.name)} vs ${esc(game.opponent||'Opponent')} - ${esc(pitcher.name)} - ${esc(game.gameDate||'')}</div></div>
+        <button id="gameReportBackBtn" class="card-btn" type="button">BACK</button>
+      </div>
+    </div>
+    <div class="game-chart-panel">
+      <div class="panel-title">Pitching Stats</div>
+      <div class="game-report-grid">
+        <div class="game-report-card"><b>${stats.whip}</b><span>WHIP</span></div>
+        <div class="game-report-card"><b>${stats.strikeouts}</b><span>Strikeouts</span></div>
+        <div class="game-report-card"><b>${stats.walks}</b><span>Walks</span></div>
+        <div class="game-report-card"><b>${stats.strikePct}</b><span>Strike %</span></div>
+        <div class="game-report-card"><b>${stats.pitchTypeStats.FB}</b><span>FB Strike %</span></div>
+        <div class="game-report-card"><b>${stats.pitchTypeStats.CB}</b><span>CB Strike %</span></div>
+        <div class="game-report-card"><b>${stats.pitchTypeStats.CH}</b><span>CH Strike %</span></div>
+        <div class="game-report-card"><b>${stats.maxStrikeRun}</b><span>Strikes in a Row</span></div>
+      </div>
+    </div>
+    <div class="game-chart-panel">
+      <div class="panel-title">Strike % By Pitch</div>
+      ${buildGameStrikeProgressSvg(stats.pitches)}
+    </div>
+  </div>`;
+  document.getElementById('gameReportBackBtn')?.addEventListener('click',()=>{
+    gameReportOpen=false;
+    renderManager();
+  });
 }
 
 function renderGameChart(team,players){
@@ -3232,6 +3337,7 @@ function renderGameChart(team,players){
   const game=activeGameChart(team.id);
   if(!game) return renderGameChartSetup(team,players);
   normalizeGameChart(game);
+  if(gameReportOpen) return renderGameReport(team,players,game);
   if(!game.plateAppearances.some(pa=>pa.id===selectedGamePaId)){
     selectedGamePaId=game.plateAppearances[game.plateAppearances.length-1]?.id || null;
   }
@@ -3272,6 +3378,7 @@ function renderGameChart(team,players){
         <button id="gameStrikeBtn" class="game-pitch-btn strike" type="button" ${pendingGameContact.result?'disabled':''}>STRIKE</button>
         <button id="gameFoulBtn" class="game-pitch-btn foul" type="button" ${pendingGameContact.result?'disabled':''}>FOUL</button>
       </div>
+      <div class="game-pitch-types">${GAME_PITCH_TYPES.map(type=>`<button class="game-pitch-type-btn ${gamePitchType===type?'active':''}" type="button" data-game-pitch-type="${type}" ${pendingGameContact.result?'disabled':''}>${type}</button>`).join('')}</div>
       <div class="game-action-row">
         <button id="gameUndoPitchBtn" class="card-btn" type="button">UNDO PITCH</button>
         <button id="gameUndoPaBtn" class="card-btn" type="button">UNDO PA</button>
@@ -3293,7 +3400,7 @@ function renderGameChart(team,players){
         <div class="game-state-stat"><b>${game.plateAppearances.length}</b><span>PA</span></div>
       </div>
       <div class="game-action-row">
-        <button id="gameHalfBtn" class="card-btn" type="button">${gameInningLabel(game)}</button>
+        <button id="gameInningBtn" class="card-btn" type="button">${gameInningLabel(game)}</button>
         <button id="gameOutBtn" class="card-btn" type="button">${game.outs} OUT${game.outs===1?'':'S'}</button>
       </div>
     </div>
@@ -3338,6 +3445,7 @@ function renderGameChart(team,players){
         <button id="gameExportBtn" class="card-btn" type="button">EXPORT GAME</button>
         <button id="gameImportBtn" class="card-btn" type="button">IMPORT GAME</button>
       </div>
+      <button id="gameReportBtn" class="card-btn primary" type="button" style="width:100%;margin-top:8px">GAME REPORT</button>
       <button id="gameFinishBtn" class="card-btn team-remove-btn" type="button" style="width:100%;margin-top:8px">FINISH GAME</button>
     </div>
   </div>`;
@@ -3388,6 +3496,7 @@ function bindGameChartSetup(team,players){
     if(!game) return;
     if(game.status==='final' && !await appConfirm('Reopen Game Chart?',`Reopen ${team.name} vs ${game.opponent||'Opponent'}?`,'YES','NO')) return;
     game.status='active';
+    gameReportOpen=false;
     game.updatedAt=new Date().toISOString();
     saveAppData();
     renderManager();
@@ -3407,6 +3516,10 @@ function bindActiveGameChart(team,players,game){
   document.getElementById('gameBallBtn')?.addEventListener('click',()=>recordGamePitch('B'));
   document.getElementById('gameStrikeBtn')?.addEventListener('click',()=>recordGamePitch('S'));
   document.getElementById('gameFoulBtn')?.addEventListener('click',()=>recordGamePitch('F'));
+  document.querySelectorAll('[data-game-pitch-type]').forEach(btn=>btn.addEventListener('click',()=>{
+    gamePitchType=GAME_PITCH_TYPES.includes(btn.dataset.gamePitchType)?btn.dataset.gamePitchType:'FB';
+    renderManager();
+  }));
   document.getElementById('gameUndoPitchBtn')?.addEventListener('click',()=>undoLastGamePitch());
   document.getElementById('gameUndoPaBtn')?.addEventListener('click',()=>undoLastGamePlateAppearance());
   document.getElementById('gameChangePitcherBtn')?.addEventListener('click',()=>changeGamePitcher(players));
@@ -3414,6 +3527,10 @@ function bindActiveGameChart(team,players,game){
   document.getElementById('gameExportBtn')?.addEventListener('click',()=>exportGameChart(game.id));
   document.getElementById('gameImportBtn')?.addEventListener('click',()=>document.getElementById('gameChartImportFile')?.click());
   document.getElementById('gameRecordContactBtn')?.addEventListener('click',()=>completePendingGameContact());
+  document.getElementById('gameReportBtn')?.addEventListener('click',()=>{
+    gameReportOpen=true;
+    renderManager();
+  });
   document.getElementById('gameFinishBtn')?.addEventListener('click',async ()=>{
     if(!await appConfirm('Finish Game Chart?',`Save ${team.name} vs ${game.opponent||'Opponent'} as final?`,'YES','NO')) return;
     game.status='final';
@@ -3421,9 +3538,9 @@ function bindActiveGameChart(team,players,game){
     saveAppData();
     renderManager();
   });
-  document.getElementById('gameHalfBtn')?.addEventListener('click',()=>{
-    game.half=game.half==='top'?'bottom':'top';
-    if(game.half==='top') game.inning++;
+  document.getElementById('gameInningBtn')?.addEventListener('click',()=>{
+    game.inning++;
+    game.outs=0;
     game.updatedAt=new Date().toISOString();
     saveAppData();
     renderManager();
@@ -3493,6 +3610,7 @@ function startGameChart(team,players){
   };
   ensureGameCharts().push(game);
   selectedGamePaId=null;
+  gameReportOpen=false;
   resetPendingGameContact();
   saveAppData();
   renderManager();
@@ -3519,6 +3637,7 @@ function recordGamePitch(result){
     id:uid('gp'),
     num:game.pitches.length+1,
     result,
+    pitchType:gamePitchType,
     pitcherKey:pitcher.key,
     pitcherId:pitcher.playerId||null,
     pitcherName:pitcher.name,
@@ -3656,6 +3775,7 @@ function changeGamePitcher(players){
   addGamePitcher(game,pitcher);
   game.currentPitcherKey=pitcher.key;
   game.currentPitcherName=pitcher.name;
+  resetPendingGameContact();
   game.updatedAt=new Date().toISOString();
   saveAppData();
   renderManager();
