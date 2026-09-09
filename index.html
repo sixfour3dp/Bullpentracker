@@ -995,8 +995,8 @@
   /* ===== TEAM / PLAYER / HISTORY ===== */
   .manager-screen { flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); position:relative; }
   .manager-scroll { flex:1; overflow-y:auto; padding:16px 16px 24px; }
-  .manager-screen:has(.team-bottom-nav.visible) .manager-scroll { padding-bottom:calc(86px + env(safe-area-inset-bottom) + var(--viewport-bottom-gap) + var(--team-nav-bottom-offset)); }
-  .team-bottom-nav { display:none; position:fixed; left:50%; right:auto; bottom:var(--team-nav-bottom-offset); transform:translateX(-50%); width:100%; max-width:520px; z-index:30; grid-template-columns:1fr 1fr; gap:8px; padding:8px max(14px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom) + var(--viewport-bottom-gap)) max(14px, env(safe-area-inset-right)); background:rgba(11,18,27,.98); border-top:1px solid var(--border); box-shadow:0 -10px 24px rgba(0,0,0,.28); }
+  .manager-screen:has(.team-bottom-nav.visible) .manager-scroll { padding-bottom:calc(86px + var(--team-nav-bottom-offset)); }
+  .team-bottom-nav { display:none; position:fixed; left:50%; right:auto; bottom:var(--team-nav-bottom-offset); transform:translateX(-50%); width:100%; max-width:520px; z-index:30; grid-template-columns:1fr 1fr; gap:8px; padding:8px max(14px, env(safe-area-inset-left)) 8px max(14px, env(safe-area-inset-right)); background:rgba(11,18,27,.98); border-top:1px solid var(--border); box-shadow:0 -10px 24px rgba(0,0,0,.28); }
   .team-bottom-nav.visible { display:grid; }
   body.team-nav-visible::after { content:''; position:fixed; left:0; right:0; bottom:0; height:calc(var(--team-nav-fill) + var(--team-nav-bottom-offset)); background:rgba(11,18,27,.98); z-index:29; pointer-events:none; }
   @media (min-width:700px) {
