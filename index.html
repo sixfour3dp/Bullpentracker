@@ -1058,6 +1058,7 @@
   .game-action-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
   .game-result-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px; }
   .game-result-grid .card-btn { min-height:42px; padding:8px 5px; font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:900; }
+  .game-result-grid .card-btn.active { border-color:rgba(0,212,255,.55); background:rgba(0,212,255,.14); color:var(--accent); }
   .game-lineup-list { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
   .game-chip { border:1px solid var(--border); border-radius:999px; background:var(--surface2); color:var(--text); min-height:36px; padding:7px 10px; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:12px; letter-spacing:.35px; }
   .game-chip.active { border-color:rgba(0,212,255,.6); color:var(--accent); background:rgba(0,212,255,.12); }
@@ -2854,7 +2855,7 @@ const GAME_CONTACT_TYPES=[
   {code:'FB',label:'Fly Ball'}
 ];
 const GAME_BIP_RESULTS=new Set(['1B','2B','3B','HR','OUT','ROE','FC','SAC','DP']);
-let pendingGameContact={type:'GB',x:null,y:null};
+let pendingGameContact={result:null,type:'GB',x:null,y:null};
 let selectedGamePaId=null;
 
 function ensureGameCharts(){
@@ -2997,11 +2998,11 @@ function gameFieldChartSvg(contact={},mode='view'){
   return `<svg class="game-field-chart" data-game-field-chart="${mode}" viewBox="0 0 100 100" role="img" aria-label="${label}">
     <rect class="blueprint-bg" x="0" y="0" width="100" height="100"></rect>
     <g class="blueprint-grid">
-      <path d="M6 0 V100 M14 0 V100 M22 0 V100 M30 0 V100 M38 0 V100 M46 0 V100 M54 0 V100 M62 0 V100 M70 0 V100 M78 0 V100 M86 0 V100 M94 0 V100"></path>
-      <path d="M0 6 H100 M0 14 H100 M0 22 H100 M0 30 H100 M0 38 H100 M0 46 H100 M0 54 H100 M0 62 H100 M0 70 H100 M0 78 H100 M0 86 H100 M0 94 H100"></path>
+      <path d="M10 0 V100 M20 0 V100 M30 0 V100 M40 0 V100 M50 0 V100 M60 0 V100 M70 0 V100 M80 0 V100 M90 0 V100"></path>
+      <path d="M0 10 H100 M0 20 H100 M0 30 H100 M0 40 H100 M0 50 H100 M0 60 H100 M0 70 H100 M0 80 H100 M0 90 H100"></path>
     </g>
     <g class="blueprint-grid major">
-      <path d="M10 0 V100 M50 0 V100 M90 0 V100 M0 10 H100 M0 50 H100 M0 90 H100"></path>
+      <path d="M0 0 H100 V100 H0 Z M50 0 V100 M0 50 H100"></path>
     </g>
     <path class="line" d="M2 32 L50 88.5 L98 32"></path>
     <path class="line" d="M2 32 Q50 -12 98 32"></path>
@@ -3021,7 +3022,7 @@ function gameFieldChartSvg(contact={},mode='view'){
 }
 
 function resetPendingGameContact(){
-  pendingGameContact={type:'GB',x:null,y:null};
+  pendingGameContact={result:null,type:'GB',x:null,y:null};
 }
 
 function syncPendingGameContactMarker(){
@@ -3031,9 +3032,12 @@ function syncPendingGameContactMarker(){
   const summary=document.getElementById('gameContactSummary');
   if(summary){
     const hasPoint=Number.isFinite(Number(pendingGameContact.x)) && Number.isFinite(Number(pendingGameContact.y));
-    summary.textContent=hasPoint
+    const result=pendingGameContact.result ? gameResultMeta(pendingGameContact.result).label : '';
+    summary.textContent=!pendingGameContact.result
+      ? 'Choose a batted-ball result before charting contact'
+      : hasPoint
       ? `${gameContactLabel(pendingGameContact.type)} to ${gameFieldAreaLabel(Number(pendingGameContact.x),Number(pendingGameContact.y))}`
-      : `${gameContactLabel(pendingGameContact.type)} - no location selected`;
+      : `${result} - choose contact type, then tap the field`;
   }
   bindGameContactField();
 }
@@ -3043,12 +3047,30 @@ function bindGameContactField(){
   if(!svg || svg.dataset.bound==='true') return;
   svg.dataset.bound='true';
   svg.addEventListener('pointerdown',e=>{
+    if(!pendingGameContact.result){
+      alert('Select a batted-ball result before marking the field.');
+      return;
+    }
     const rect=svg.getBoundingClientRect();
     if(!rect.width || !rect.height) return;
     pendingGameContact.x=Math.max(0,Math.min(100,((e.clientX-rect.left)/rect.width)*100));
     pendingGameContact.y=Math.max(0,Math.min(100,((e.clientY-rect.top)/rect.height)*100));
-    syncPendingGameContactMarker();
+    completePendingGameContact();
   },{passive:true});
+}
+
+function completePendingGameContact(){
+  const game=activeGameChart(appData.selectedTeamId);
+  if(!game || !pendingGameContact.result) return;
+  const x=Number(pendingGameContact.x), y=Number(pendingGameContact.y);
+  if(!Number.isFinite(x) || !Number.isFinite(y)) return;
+  const result=pendingGameContact.result;
+  const contact={type:pendingGameContact.type || 'GB',x,y};
+  finishGamePlateAppearanceForGame(game,result,contact);
+  resetPendingGameContact();
+  game.updatedAt=new Date().toISOString();
+  saveAppData();
+  renderManager();
 }
 
 function gameAdvanceOuts(game,outs){
@@ -3172,15 +3194,15 @@ function renderGameChart(team,players){
     </div>
 
     <div class="game-chart-panel tight">
+      <div class="panel-title">Plate Appearance Result</div>
+      <div class="game-result-grid">${GAME_CHART_RESULTS.map(r=>`<button class="card-btn ${pendingGameContact.result===r.code?'active':''}" type="button" data-game-result="${r.code}">${r.label}</button>`).join('')}</div>
+    </div>
+
+    <div class="game-chart-panel tight">
       <div class="panel-title">Contact Chart</div>
       <div class="game-contact-types">${GAME_CONTACT_TYPES.map(t=>`<button class="game-contact-type-btn ${pendingGameContact.type===t.code?'active':''}" type="button" data-game-contact-type="${t.code}">${t.label}</button>`).join('')}</div>
       <div id="gameContactChartWrap">${gameFieldChartSvg(pendingGameContact,'input')}</div>
       <div class="game-contact-summary" id="gameContactSummary"></div>
-    </div>
-
-    <div class="game-chart-panel tight">
-      <div class="panel-title">Plate Appearance Result</div>
-      <div class="game-result-grid">${GAME_CHART_RESULTS.map(r=>`<button class="card-btn" type="button" data-game-result="${r.code}">${r.label}</button>`).join('')}</div>
     </div>
 
     <div class="game-chart-panel">
@@ -3446,12 +3468,11 @@ function finishGamePlateAppearance(result){
   if(!game) return;
   let contact=null;
   if(GAME_BIP_RESULTS.has(result)){
-    const x=Number(pendingGameContact.x), y=Number(pendingGameContact.y);
-    if(!Number.isFinite(x) || !Number.isFinite(y)){
-      alert('Tap the field chart to mark where the ball was put in play.');
-      return;
-    }
-    contact={type:pendingGameContact.type || 'GB',x,y};
+    pendingGameContact.result=result;
+    pendingGameContact.x=null;
+    pendingGameContact.y=null;
+    renderManager();
+    return;
   }
   finishGamePlateAppearanceForGame(game,result,contact);
   resetPendingGameContact();
