@@ -1070,16 +1070,20 @@
   .game-scorecard td.current-batter { color:var(--accent); box-shadow:inset 3px 0 0 var(--accent); }
   .game-score-btn { width:100%; min-height:30px; border:0; border-radius:8px; background:transparent; color:var(--text); font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:900; }
   .game-score-btn.selected { background:rgba(0,212,255,.14); color:var(--accent); }
-  .game-contact-types { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin-top:10px; }
+  .game-contact-types { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-top:10px; }
   .game-contact-type-btn { min-height:38px; border:1px solid var(--border); border-radius:10px; background:var(--surface2); color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:900; letter-spacing:.65px; }
   .game-contact-type-btn.active { border-color:rgba(0,212,255,.55); background:rgba(0,212,255,.12); color:var(--accent); }
-  .game-field-chart { width:100%; max-width:360px; aspect-ratio:1; height:auto; margin:10px auto 0; display:block; border:1px solid var(--border); border-radius:12px; background:#10211a; touch-action:manipulation; cursor:crosshair; }
-  .game-field-chart .grass { fill:#10251b; }
-  .game-field-chart .dirt { fill:#7a5837; opacity:.92; }
-  .game-field-chart .line { fill:none; stroke:#e8f0fe; stroke-width:.7; opacity:.65; }
-  .game-field-chart .cutout { fill:none; stroke:#d8c48a; stroke-width:.7; stroke-dasharray:2 2; opacity:.6; }
-  .game-field-chart .field-label { fill:#8aa0b7; font-family:'Barlow Condensed',sans-serif; font-size:4px; font-weight:800; letter-spacing:.7px; }
-  .game-field-marker { fill:var(--accent2); stroke:#fff; stroke-width:1.8; filter:drop-shadow(0 0 4px rgba(255,92,53,.55)); }
+  .game-field-chart { width:100%; max-width:360px; aspect-ratio:1; height:auto; margin:10px auto 0; display:block; border:1px solid rgba(0,212,255,.42); border-radius:6px; background:#071827; box-shadow:inset 0 0 0 1px rgba(255,255,255,.08), inset 0 0 28px rgba(0,212,255,.08); touch-action:manipulation; cursor:crosshair; }
+  .game-field-chart .blueprint-bg { fill:#071827; }
+  .game-field-chart .blueprint-grid { stroke:rgba(0,212,255,.13); stroke-width:.28; }
+  .game-field-chart .blueprint-grid.major { stroke:rgba(0,212,255,.2); stroke-width:.38; }
+  .game-field-chart .line { fill:none; stroke:rgba(0,212,255,.82); stroke-width:.62; stroke-linecap:round; stroke-linejoin:round; }
+  .game-field-chart .base { fill:#071827; stroke:rgba(0,212,255,.88); stroke-width:.62; }
+  .game-field-chart .mound { fill:none; stroke:rgba(0,212,255,.88); stroke-width:.62; }
+  .game-field-chart .batted-path { fill:none; stroke:#fff; stroke-width:1.25; stroke-linecap:round; stroke-linejoin:round; filter:drop-shadow(0 0 3px rgba(255,255,255,.36)); }
+  .game-field-chart .batted-path.dotted { stroke-dasharray:2.4 2.4; }
+  .game-field-chart .batted-path.solid { stroke-dasharray:none; }
+  .game-field-marker { fill:#fff; stroke:#071827; stroke-width:1.6; filter:drop-shadow(0 0 4px rgba(255,255,255,.55)); }
   .game-contact-summary { margin-top:8px; color:var(--muted); font-size:12px; text-align:center; }
   .game-log { display:flex; flex-direction:column; max-height:220px; overflow:auto; margin-top:8px; }
   .game-log-item { display:flex; justify-content:space-between; gap:10px; border-bottom:1px solid rgba(30,45,66,.75); padding:8px 1px; font-size:12px; color:var(--text); }
@@ -2847,8 +2851,7 @@ const GAME_PITCH_LABELS={B:'BALL',S:'STRIKE',F:'FOUL'};
 const GAME_CONTACT_TYPES=[
   {code:'GB',label:'Grounder'},
   {code:'LD',label:'Line Drive'},
-  {code:'FB',label:'Fly Ball'},
-  {code:'PU',label:'Pop Fly'}
+  {code:'FB',label:'Fly Ball'}
 ];
 const GAME_BIP_RESULTS=new Set(['1B','2B','3B','HR','OUT','ROE','FC','SAC','DP']);
 let pendingGameContact={type:'GB',x:null,y:null};
@@ -2911,6 +2914,7 @@ function normalizeGameChart(game){
     }
     pa.contactX=Number.isFinite(Number(pa.contactX))?Number(pa.contactX):null;
     pa.contactY=Number.isFinite(Number(pa.contactY))?Number(pa.contactY):null;
+    if(pa.contactType==='PU') pa.contactType='FB';
     if(!pa.contactType && pa.contactX!==null && pa.contactY!==null) pa.contactType='GB';
   });
   if(!game.currentPitcherKey){
@@ -2967,7 +2971,8 @@ function currentGameBatter(game){
 function gamePct(strikes,total){ return total?`${Math.round((strikes/total)*100)}%`:'-'; }
 function gameInningLabel(game){ return `${game.half==='bottom'?'BOT':'TOP'} ${game.inning}`; }
 function gameResultMeta(code){ return GAME_CHART_RESULTS.find(r=>r.code===code) || {code,label:code,outs:0}; }
-function gameContactLabel(type){ return GAME_CONTACT_TYPES.find(t=>t.code===type)?.label || 'Contact'; }
+function gameContactCode(type){ return type==='PU'?'FB':(type||'GB'); }
+function gameContactLabel(type){ return GAME_CONTACT_TYPES.find(t=>t.code===gameContactCode(type))?.label || 'Contact'; }
 function gameFieldAreaLabel(x,y){
   const side=x<36?'LF':x>64?'RF':'CF';
   if(y>69) return x<43?'left infield':x>57?'right infield':'middle infield';
@@ -2978,25 +2983,42 @@ function gameFieldAreaLabel(x,y){
 function gameFieldChartSvg(contact={},mode='view'){
   const x=Number(contact.x), y=Number(contact.y);
   const hasPoint=Number.isFinite(x) && Number.isFinite(y);
-  const marker=hasPoint?`<circle class="game-field-marker" cx="${Math.max(2,Math.min(98,x)).toFixed(1)}" cy="${Math.max(2,Math.min(98,y)).toFixed(1)}" r="3.2"></circle>`:'';
+  const type=gameContactCode(contact.type);
+  const cx=hasPoint?Math.max(2,Math.min(98,x)):50;
+  const cy=hasPoint?Math.max(2,Math.min(98,y)):50;
+  const pathClass=type==='LD'?'solid':'dotted';
+  const hitPath=hasPoint
+    ? type==='FB'
+      ? `<path class="batted-path dotted" d="M50 91 Q${((50+cx)/2).toFixed(1)} ${Math.max(6,Math.min(cy,72)-22).toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)}"></path>`
+      : `<path class="batted-path ${pathClass}" d="M50 91 L${cx.toFixed(1)} ${cy.toFixed(1)}"></path>`
+    : '';
+  const marker=hasPoint?`<circle class="game-field-marker" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.2"></circle>`:'';
   const label=mode==='input'?'Record batted ball location':'Batted ball location';
   return `<svg class="game-field-chart" data-game-field-chart="${mode}" viewBox="0 0 100 100" role="img" aria-label="${label}">
-    <rect class="grass" x="0" y="0" width="100" height="100"></rect>
-    <path class="dirt" d="M50 91 L27 68 L50 45 L73 68 Z"></path>
-    <path class="dirt" d="M18 72 Q50 46 82 72 Q66 81 50 91 Q34 81 18 72 Z" opacity=".55"></path>
-    <path class="line" d="M50 91 L8 24"></path>
-    <path class="line" d="M50 91 L92 24"></path>
-    <path class="line" d="M50 91 L27 68 L50 45 L73 68 Z"></path>
-    <path class="cutout" d="M17 71 Q50 33 83 71"></path>
-    <path class="cutout" d="M10 24 Q50 2 90 24"></path>
-    <rect class="line" x="48" y="88" width="4" height="4" transform="rotate(45 50 90)"></rect>
-    <rect class="line" x="25" y="66" width="4" height="4" transform="rotate(45 27 68)"></rect>
-    <rect class="line" x="48" y="43" width="4" height="4" transform="rotate(45 50 45)"></rect>
-    <rect class="line" x="71" y="66" width="4" height="4" transform="rotate(45 73 68)"></rect>
-    <text class="field-label" x="18" y="28">LF</text>
-    <text class="field-label" x="47" y="13">CF</text>
-    <text class="field-label" x="78" y="28">RF</text>
-    <text class="field-label" x="43" y="78">INF</text>
+    <rect class="blueprint-bg" x="0" y="0" width="100" height="100"></rect>
+    <g class="blueprint-grid">
+      <path d="M6 0 V100 M14 0 V100 M22 0 V100 M30 0 V100 M38 0 V100 M46 0 V100 M54 0 V100 M62 0 V100 M70 0 V100 M78 0 V100 M86 0 V100 M94 0 V100"></path>
+      <path d="M0 6 H100 M0 14 H100 M0 22 H100 M0 30 H100 M0 38 H100 M0 46 H100 M0 54 H100 M0 62 H100 M0 70 H100 M0 78 H100 M0 86 H100 M0 94 H100"></path>
+    </g>
+    <g class="blueprint-grid major">
+      <path d="M10 0 V100 M50 0 V100 M90 0 V100 M0 10 H100 M0 50 H100 M0 90 H100"></path>
+    </g>
+    <path class="line" d="M0.8 30 L50 88.5 L99.2 30"></path>
+    <path class="line" d="M0.8 30 Q50 -28 99.2 30"></path>
+    <path class="line" d="M27 64 Q50 35.5 73 64"></path>
+    <path class="line" d="M50 88.5 L32.5 68.5 L50 49 L67.5 68.5 Z"></path>
+    <path class="line" d="M32.5 68.5 L24 76 M67.5 68.5 L76 76"></path>
+    <path class="line" d="M27.5 73.2 L23.5 69.2 M72.5 73.2 L76.5 69.2"></path>
+    <path class="line" d="M22.5 78.2 L26.2 74.5 M77.5 78.2 L73.8 74.5"></path>
+    <rect class="base" x="30.9" y="66.9" width="3.2" height="3.2" transform="rotate(45 32.5 68.5)"></rect>
+    <rect class="base" x="48.4" y="47.4" width="3.2" height="3.2" transform="rotate(45 50 49)"></rect>
+    <rect class="base" x="65.9" y="66.9" width="3.2" height="3.2" transform="rotate(45 67.5 68.5)"></rect>
+    <path class="base" d="M46.6 86.6 H53.4 V91.7 L50 94 L46.6 91.7 Z"></path>
+    <path class="line" d="M41 86.4 Q50 82 59 86.4"></path>
+    <path class="line" d="M43.4 87.7 V94.2 M56.6 87.7 V94.2"></path>
+    <circle class="mound" cx="50" cy="66.5" r="3.1"></circle>
+    <path class="mound" d="M47.7 66.5 H52.3"></path>
+    ${hitPath}
     ${marker}
   </svg>`;
 }
@@ -3054,7 +3076,7 @@ function gameScorecardHtml(game){
     const cells=Array.from({length:cols},(_,i)=>{
       const pa=batterPAs[i];
       const title=pa?`${pa.pitcherName||''} - ${gameInningLabel(pa)} - ${pa.pitchCount||0} pitches`:'';
-      const label=pa?`${pa.result}${pa.contactType?' '+pa.contactType:''}`:'';
+      const label=pa?`${pa.result}${pa.contactType?' '+gameContactLabel(pa.contactType):''}`:'';
       return `<td title="${escAttr(title)}">${pa?`<button class="game-score-btn ${pa.id===selectedGamePaId?'selected':''}" type="button" data-game-pa-id="${escAttr(pa.id)}">${esc(label)}</button>`:''}</td>`;
     }).join('');
     return `<tr><td class="name-col ${idx===game.batterIndex?'current-batter':''}">${idx+1}. ${esc(b.name)}</td>${cells}</tr>`;
@@ -3076,7 +3098,7 @@ function gamePlateAppearanceDetailHtml(game){
     ? `${gameContactLabel(selected.contactType)} to ${gameFieldAreaLabel(Number(selected.contactX),Number(selected.contactY))}`
     : 'No batted ball';
   const chart=hasContact
-    ? gameFieldChartSvg({x:selected.contactX,y:selected.contactY},'view')
+    ? gameFieldChartSvg({type:selected.contactType,x:selected.contactX,y:selected.contactY},'view')
     : '<div class="empty-state">No contact chart for this result.</div>';
   return `<div class="game-status-row">
       <div><div class="game-status-title">${esc(selected.batterName||'Batter')} - ${esc(selected.result)}</div><div class="game-status-sub">${gameInningLabel(selected)} - ${esc(selected.pitcherName||'Pitcher')} - ${selected.pitchCount||0} pitch${selected.pitchCount===1?'':'es'}</div></div>
@@ -3465,7 +3487,7 @@ function finishGamePlateAppearanceForGame(game,result,contact=null){
     result:meta.code,
     pitchCount:pitchIds.length,
     pitchIds,
-    contactType:contactX!==null && contactY!==null ? (contact.type||'GB') : null,
+    contactType:contactX!==null && contactY!==null ? gameContactCode(contact.type) : null,
     contactX,
     contactY,
     balls:Math.min(game.balls,3),
