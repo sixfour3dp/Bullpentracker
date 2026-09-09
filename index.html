@@ -3031,12 +3031,12 @@ function resetPendingGameContact(){
 }
 
 function syncPendingGameContactMarker(){
+  const hasPoint=Number.isFinite(Number(pendingGameContact.x)) && Number.isFinite(Number(pendingGameContact.y));
   const wrap=document.getElementById('gameContactChartWrap');
   if(wrap) wrap.innerHTML=gameFieldChartSvg(pendingGameContact,'input');
   document.querySelectorAll('.game-contact-type-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.gameContactType===pendingGameContact.type));
   const summary=document.getElementById('gameContactSummary');
   if(summary){
-    const hasPoint=Number.isFinite(Number(pendingGameContact.x)) && Number.isFinite(Number(pendingGameContact.y));
     const result=pendingGameContact.result ? gameResultMeta(pendingGameContact.result).label : '';
     summary.textContent=!pendingGameContact.result
       ? 'Choose a batted-ball result before charting contact'
