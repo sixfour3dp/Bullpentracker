@@ -1,4 +1,4 @@
-const CACHE='pocketbullpen-v72-team-nav-bottom-fill';
+const CACHE='pocketbullpen-v73-stable-team-nav-dock';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./apple-touch-icon.png','./icon-192.png','./icon-512.png','./header-heatmap.png','./pocketbullpen-header.png'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));});
 self.addEventListener('activate',e=>e.waitUntil(Promise.all([
