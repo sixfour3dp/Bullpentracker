@@ -30,6 +30,7 @@
     --strike-zone: #0d1f35;
     --app-height: 100dvh;
     --viewport-bottom-gap: 0px;
+    --team-nav-bleed: max(env(safe-area-inset-bottom), var(--viewport-bottom-gap));
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -980,6 +981,11 @@
   @media (min-width: 700px) {
     .phone { max-width: 520px; margin: 0 auto; }
   }
+  @media (display-mode: standalone) {
+    :root {
+      --team-nav-bleed: max(22px, env(safe-area-inset-bottom), var(--viewport-bottom-gap));
+    }
+  }
 
 
 
@@ -987,7 +993,7 @@
   .manager-screen { flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--bg); position:relative; }
   .manager-scroll { flex:1; overflow-y:auto; padding:16px 16px 24px; }
   .manager-screen:has(.team-bottom-nav.visible) .manager-scroll { padding-bottom:calc(86px + env(safe-area-inset-bottom) + var(--viewport-bottom-gap)); }
-  .team-bottom-nav { display:none; position:fixed; left:50%; right:auto; bottom:calc(-1 * var(--viewport-bottom-gap)); transform:translateX(-50%); width:100%; max-width:520px; z-index:30; grid-template-columns:1fr 1fr; gap:8px; padding:8px max(14px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom) + var(--viewport-bottom-gap)) max(14px, env(safe-area-inset-right)); background:rgba(11,18,27,.98); border-top:1px solid var(--border); box-shadow:0 -10px 24px rgba(0,0,0,.28); }
+  .team-bottom-nav { display:none; position:fixed; left:50%; right:auto; bottom:calc(-1 * var(--team-nav-bleed)); transform:translateX(-50%); width:100%; max-width:520px; z-index:30; grid-template-columns:1fr 1fr; gap:8px; padding:8px max(14px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom) + var(--viewport-bottom-gap)) max(14px, env(safe-area-inset-right)); background:rgba(11,18,27,.98); border-top:1px solid var(--border); box-shadow:0 -10px 24px rgba(0,0,0,.28); }
   .team-bottom-nav.visible { display:grid; }
   .team-nav-btn { min-height:54px; border:1px solid transparent; border-radius:10px; background:transparent; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:900; letter-spacing:.8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; }
   .team-nav-btn.active { border-color:rgba(0,212,255,.55); background:rgba(0,212,255,.12); color:var(--accent); }
