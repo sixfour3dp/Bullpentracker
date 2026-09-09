@@ -1055,6 +1055,7 @@
   .game-pitch-btn.ball { background:var(--accent2); }
   .game-pitch-btn.strike { background:var(--green); color:#06150b; }
   .game-pitch-btn.foul { background:#2f80ed; }
+  .game-pitch-btn:disabled { opacity:.38; cursor:not-allowed; }
   .game-action-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
   .game-result-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px; }
   .game-result-grid .card-btn { min-height:42px; padding:8px 5px; font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:900; }
@@ -2997,8 +2998,8 @@ function gameFieldChartSvg(contact={},mode='view'){
   const pathClass=type==='LD'?'solid':'dotted';
   const hitPath=hasPoint && type
     ? type==='FB'
-      ? `<path class="batted-path dotted" d="M50 89.5 Q${((50+cx)/2).toFixed(1)} ${Math.max(6,Math.min(cy,72)-22).toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)}"></path>`
-      : `<path class="batted-path ${pathClass}" d="M50 89.5 L${cx.toFixed(1)} ${cy.toFixed(1)}"></path>`
+      ? `<path class="batted-path dotted" d="M50 86.8 Q${((50+cx)/2).toFixed(1)} ${Math.max(6,Math.min(cy,72)-22).toFixed(1)} ${cx.toFixed(1)} ${cy.toFixed(1)}"></path>`
+      : `<path class="batted-path ${pathClass}" d="M50 86.8 L${cx.toFixed(1)} ${cy.toFixed(1)}"></path>`
     : '';
   const marker=hasPoint?`<circle class="game-field-marker" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.2"></circle>`:'';
   const label=mode==='input'?'Record batted ball location':'Batted ball location';
@@ -3017,9 +3018,7 @@ function gameFieldChartSvg(contact={},mode='view'){
     <rect class="base" x="33" y="66.9" width="3" height="3" transform="rotate(45 34.5 68.4)"></rect>
     <rect class="base" x="48.5" y="51.7" width="3" height="3" transform="rotate(45 50 53.2)"></rect>
     <rect class="base" x="64" y="66.9" width="3" height="3" transform="rotate(45 65.5 68.4)"></rect>
-    <path class="base" d="M48.2 87.5 H51.8 V90.4 L50 91.7 L48.2 90.4 Z"></path>
-    <path class="line" d="M43 86.5 Q50 83.4 57 86.5"></path>
-    <path class="line" d="M46.4 88 V93 M53.6 88 V93"></path>
+    <path class="base" d="M48.4 84.8 H51.6 V87.2 L50 88.4 L48.4 87.2 Z"></path>
     <circle class="mound" cx="50" cy="69.8" r="3.1"></circle>
     <path class="mound" d="M47.7 69.8 H52.3"></path>
     ${hitPath}
@@ -3083,11 +3082,43 @@ function completePendingGameContact(){
   }
   const result=pendingGameContact.result;
   const contact={type:pendingGameContact.type,x,y};
+  recordGameContactPitch(game);
   finishGamePlateAppearanceForGame(game,result,contact);
   resetPendingGameContact();
   game.updatedAt=new Date().toISOString();
   saveAppData();
   renderManager();
+}
+
+function recordGameContactPitch(game){
+  const team=selectedTeam();
+  if(!game || !team) return;
+  const players=appData.players.filter(p=>p.teamId===team.id);
+  normalizeGameChart(game);
+  const pitcher=currentGamePitcher(game,players);
+  const batter=currentGameBatter(game);
+  const before={balls:game.balls,strikes:game.strikes,outs:game.outs,inning:game.inning,half:game.half,batterIndex:game.batterIndex};
+  const strikes=Math.min(game.strikes+1,2);
+  game.pitches.push({
+    id:uid('gp'),
+    num:game.pitches.length+1,
+    result:'S',
+    pitcherKey:pitcher.key,
+    pitcherId:pitcher.playerId||null,
+    pitcherName:pitcher.name,
+    batterId:batter.id,
+    batterIndex:game.batterIndex,
+    batterName:batter.name,
+    ballsBefore:before.balls,
+    strikesBefore:before.strikes,
+    outsBefore:before.outs,
+    inningBefore:before.inning,
+    halfBefore:before.half,
+    ballsAfter:Math.min(game.balls,3),
+    strikesAfter:strikes,
+    time:new Date().toISOString()
+  });
+  game.strikes=strikes;
 }
 
 function gameAdvanceOuts(game,outs){
@@ -3208,9 +3239,9 @@ function renderGameChart(team,players){
         <div class="game-state-stat"><b>${last10.length===10?gamePct(last10.filter(p=>p.result!=='B').length,10):'-'}</b><span>Last 10</span></div>
       </div>
       <div class="game-pitch-actions">
-        <button id="gameBallBtn" class="game-pitch-btn ball" type="button">BALL</button>
-        <button id="gameStrikeBtn" class="game-pitch-btn strike" type="button">STRIKE</button>
-        <button id="gameFoulBtn" class="game-pitch-btn foul" type="button">FOUL</button>
+        <button id="gameBallBtn" class="game-pitch-btn ball" type="button" ${pendingGameContact.result?'disabled':''}>BALL</button>
+        <button id="gameStrikeBtn" class="game-pitch-btn strike" type="button" ${pendingGameContact.result?'disabled':''}>STRIKE</button>
+        <button id="gameFoulBtn" class="game-pitch-btn foul" type="button" ${pendingGameContact.result?'disabled':''}>FOUL</button>
       </div>
       <div class="game-action-row">
         <button id="gameUndoPitchBtn" class="card-btn" type="button">UNDO PITCH</button>
@@ -3442,6 +3473,10 @@ function recordGamePitch(result){
   const game=activeGameChart(appData.selectedTeamId);
   const team=selectedTeam();
   if(!game || !team) return;
+  if(pendingGameContact.result){
+    alert('Record the pending contact result before charting another pitch.');
+    return;
+  }
   const players=appData.players.filter(p=>p.teamId===team.id);
   normalizeGameChart(game);
   const pitcher=currentGamePitcher(game,players);
