@@ -2855,7 +2855,7 @@ const GAME_CONTACT_TYPES=[
   {code:'FB',label:'Fly Ball'}
 ];
 const GAME_BIP_RESULTS=new Set(['1B','2B','3B','HR','OUT','ROE','FC','SAC','DP']);
-let pendingGameContact={result:null,type:'GB',x:null,y:null};
+let pendingGameContact={result:null,type:null,x:null,y:null};
 let selectedGamePaId=null;
 
 function ensureGameCharts(){
@@ -2972,7 +2972,10 @@ function currentGameBatter(game){
 function gamePct(strikes,total){ return total?`${Math.round((strikes/total)*100)}%`:'-'; }
 function gameInningLabel(game){ return `${game.half==='bottom'?'BOT':'TOP'} ${game.inning}`; }
 function gameResultMeta(code){ return GAME_CHART_RESULTS.find(r=>r.code===code) || {code,label:code,outs:0}; }
-function gameContactCode(type){ return type==='PU'?'FB':(type||'GB'); }
+function gameContactCode(type){
+  if(type==='PU') return 'FB';
+  return GAME_CONTACT_TYPES.some(t=>t.code===type) ? type : '';
+}
 function gameContactLabel(type){ return GAME_CONTACT_TYPES.find(t=>t.code===gameContactCode(type))?.label || 'Contact'; }
 function gameFieldAreaLabel(x,y){
   const side=x<36?'LF':x>64?'RF':'CF';
@@ -3006,7 +3009,6 @@ function gameFieldChartSvg(contact={},mode='view'){
     </g>
     <path class="line" d="M2 32 L50 88.5 L98 32"></path>
     <path class="line" d="M2 32 Q50 -12 98 32"></path>
-    <path class="line" d="M24 68 Q50 41 76 68"></path>
     <path class="line" d="M50 88.5 L32.5 68.5 L50 51 L67.5 68.5 Z"></path>
     <rect class="base" x="33" y="66.9" width="3" height="3" transform="rotate(45 34.5 68.4)"></rect>
     <rect class="base" x="48.5" y="51.7" width="3" height="3" transform="rotate(45 50 53.2)"></rect>
@@ -3022,7 +3024,7 @@ function gameFieldChartSvg(contact={},mode='view'){
 }
 
 function resetPendingGameContact(){
-  pendingGameContact={result:null,type:'GB',x:null,y:null};
+  pendingGameContact={result:null,type:null,x:null,y:null};
 }
 
 function syncPendingGameContactMarker(){
@@ -3035,6 +3037,8 @@ function syncPendingGameContactMarker(){
     const result=pendingGameContact.result ? gameResultMeta(pendingGameContact.result).label : '';
     summary.textContent=!pendingGameContact.result
       ? 'Choose a batted-ball result before charting contact'
+      : !pendingGameContact.type
+      ? `${result} - choose contact type`
       : hasPoint
       ? `${gameContactLabel(pendingGameContact.type)} to ${gameFieldAreaLabel(Number(pendingGameContact.x),Number(pendingGameContact.y))}`
       : `${result} - choose contact type, then tap the field`;
@@ -3051,6 +3055,10 @@ function bindGameContactField(){
       alert('Select a batted-ball result before marking the field.');
       return;
     }
+    if(!pendingGameContact.type){
+      alert('Select Grounder, Line Drive, or Fly Ball before marking the field.');
+      return;
+    }
     const rect=svg.getBoundingClientRect();
     if(!rect.width || !rect.height) return;
     pendingGameContact.x=Math.max(0,Math.min(100,((e.clientX-rect.left)/rect.width)*100));
@@ -3062,10 +3070,14 @@ function bindGameContactField(){
 function completePendingGameContact(){
   const game=activeGameChart(appData.selectedTeamId);
   if(!game || !pendingGameContact.result) return;
+  if(!pendingGameContact.type){
+    alert('Select Grounder, Line Drive, or Fly Ball before marking the field.');
+    return;
+  }
   const x=Number(pendingGameContact.x), y=Number(pendingGameContact.y);
   if(!Number.isFinite(x) || !Number.isFinite(y)) return;
   const result=pendingGameContact.result;
-  const contact={type:pendingGameContact.type || 'GB',x,y};
+  const contact={type:pendingGameContact.type,x,y};
   finishGamePlateAppearanceForGame(game,result,contact);
   resetPendingGameContact();
   game.updatedAt=new Date().toISOString();
@@ -3355,7 +3367,7 @@ function bindActiveGameChart(team,players,game){
   });
   document.querySelectorAll('[data-game-result]').forEach(btn=>btn.addEventListener('click',()=>finishGamePlateAppearance(btn.dataset.gameResult)));
   document.querySelectorAll('[data-game-contact-type]').forEach(btn=>btn.addEventListener('click',()=>{
-    pendingGameContact.type=btn.dataset.gameContactType || 'GB';
+    pendingGameContact.type=gameContactCode(btn.dataset.gameContactType) || null;
     syncPendingGameContactMarker();
   }));
   document.querySelectorAll('[data-game-pa-id]').forEach(btn=>btn.addEventListener('click',()=>{
