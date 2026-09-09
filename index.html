@@ -1047,9 +1047,12 @@
   .game-current-name { margin-top:5px; font-family:'Barlow Condensed',sans-serif; font-size:24px; font-weight:900; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .game-count-display { display:flex; align-items:center; justify-content:center; min-height:88px; background:linear-gradient(180deg,rgba(0,212,255,.12),rgba(0,212,255,.04)); border:1px solid rgba(0,212,255,.22); border-radius:12px; font-family:'Barlow Condensed',sans-serif; font-size:54px; font-weight:900; line-height:1; color:var(--text); }
   .game-state-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px; }
+  .game-state-row.pitcher-top-stats { grid-template-columns:repeat(4,1fr); }
   .game-state-stat { background:rgba(255,255,255,.035); border:1px solid var(--border); border-radius:10px; padding:8px; text-align:center; min-width:0; }
   .game-state-stat b { display:block; font-family:'Barlow Condensed',sans-serif; font-size:20px; color:var(--text); line-height:1; }
   .game-state-stat span { display:block; margin-top:3px; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:9px; font-weight:800; letter-spacing:.75px; text-transform:uppercase; }
+  .game-state-stat.warning { border-color:rgba(239,68,68,.6); background:rgba(239,68,68,.14); }
+  .game-state-stat.warning b, .game-state-stat.warning span { color:var(--red); }
   .game-pitch-actions { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:12px; }
   .game-pitch-btn { min-height:76px; border:0; border-radius:12px; font-family:'Barlow Condensed',sans-serif; font-size:20px; font-weight:900; letter-spacing:.8px; color:white; }
   .game-pitch-btn.ball { background:var(--accent2); }
@@ -2982,11 +2985,34 @@ function gameContactCode(type){
   return GAME_CONTACT_TYPES.some(t=>t.code===type) ? type : '';
 }
 function gameContactLabel(type){ return GAME_CONTACT_TYPES.find(t=>t.code===gameContactCode(type))?.label || 'Contact'; }
+function gamePointInInfield(x,y){
+  if(y<47 || y>92) return false;
+  const buffer=10;
+  let left, right;
+  if(y<=68.5){
+    const t=(y-51)/(68.5-51);
+    left=50-(17.5*t);
+    right=50+(17.5*t);
+  }else{
+    const t=(y-68.5)/(88.5-68.5);
+    left=32.5+(17.5*t);
+    right=67.5-(17.5*t);
+  }
+  return x>=left-buffer && x<=right+buffer;
+}
 function gameFieldAreaLabel(x,y){
   const side=x<36?'LF':x>64?'RF':'CF';
-  if(y>69) return x<43?'left infield':x>57?'right infield':'middle infield';
+  if(gamePointInInfield(x,y)) return x<43?'left infield':x>57?'right infield':'middle infield';
   if(y>48) return x<38?'left-center gap':x>62?'right-center gap':'shallow center';
   return side;
+}
+
+function gamePitcherWalks(game,pitcherKey){
+  return (game.plateAppearances||[]).filter(pa=>pa.pitcherKey===pitcherKey && pa.result==='BB').length;
+}
+
+function gamePitcherInningWalks(game,pitcherKey){
+  return (game.plateAppearances||[]).filter(pa=>pa.pitcherKey===pitcherKey && pa.result==='BB' && Number(pa.inning)===Number(game.inning) && pa.half===game.half).length;
 }
 
 function gameFieldChartSvg(contact={},mode='view'){
@@ -3214,6 +3240,8 @@ function renderGameChart(team,players){
   const pitcherPitches=game.pitches.filter(p=>p.pitcherKey===pitcher.key);
   const pitcherStrikes=pitcherPitches.filter(p=>p.result!=='B').length;
   const last10=pitcherPitches.slice(-10);
+  const pitcherWalks=gamePitcherWalks(game,pitcher.key);
+  const inningWalks=gamePitcherInningWalks(game,pitcher.key);
   const gameStrikes=game.pitches.filter(p=>p.result!=='B').length;
   const canRecordContact=pendingGameContact.result && pendingGameContact.type && Number.isFinite(Number(pendingGameContact.x)) && Number.isFinite(Number(pendingGameContact.y));
   const contactChartHtml=pendingGameContact.result ? `<div class="game-chart-panel tight">
@@ -3233,10 +3261,11 @@ function renderGameChart(team,players){
         <div class="game-current-card"><div class="game-label">Current Batter</div><div class="game-current-name">${game.batterIndex+1}. ${esc(batter.name)}</div><div class="game-status-sub">${esc(pitcher.name)} pitching</div></div>
         <div class="game-count-display">${game.balls}-${game.strikes}</div>
       </div>
-      <div class="game-state-row">
+      <div class="game-state-row pitcher-top-stats">
         <div class="game-state-stat"><b>${pitcherPitches.length}</b><span>Pitcher P</span></div>
         <div class="game-state-stat"><b>${gamePct(pitcherStrikes,pitcherPitches.length)}</b><span>Pitcher STR</span></div>
         <div class="game-state-stat"><b>${last10.length===10?gamePct(last10.filter(p=>p.result!=='B').length,10):'-'}</b><span>Last 10</span></div>
+        <div class="game-state-stat ${inningWalks>=2?'warning':''}"><b>${pitcherWalks}</b><span>BB</span></div>
       </div>
       <div class="game-pitch-actions">
         <button id="gameBallBtn" class="game-pitch-btn ball" type="button" ${pendingGameContact.result?'disabled':''}>BALL</button>
