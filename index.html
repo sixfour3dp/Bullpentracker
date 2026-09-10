@@ -1139,6 +1139,14 @@
   .game-pitcher-summary-pill { border:1px solid rgba(30,45,66,.9); border-radius:8px; padding:5px 8px; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:900; letter-spacing:.7px; text-transform:uppercase; }
   .game-pitcher-summary-pill strong { color:var(--text); font-size:16px; line-height:1; margin-right:2px; }
   .game-pitcher-current-badge { display:block; margin-top:5px; color:var(--accent); font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:900; letter-spacing:.8px; text-transform:uppercase; }
+  .game-manual-state-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+  .game-manual-control { display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .game-manual-control label { font-family:'Barlow Condensed',sans-serif; color:var(--muted); font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
+  .game-manual-select {
+    width:100%; min-height:42px; border:1px solid rgba(0,212,255,.34); border-radius:10px;
+    background:var(--surface2); color:var(--text); padding:8px 10px;
+    font-family:'Barlow Condensed',sans-serif; font-size:15px; font-weight:900; letter-spacing:.65px;
+  }
   .game-history-row { display:flex; align-items:center; justify-content:space-between; gap:10px; border-bottom:1px solid rgba(30,45,66,.75); padding:10px 0; }
   .game-history-row:last-child { border-bottom:0; padding-bottom:0; }
   .game-history-row:first-child { padding-top:0; }
@@ -3051,6 +3059,11 @@ function gameOrdinal(n){
   return `${num}${suffix}`;
 }
 function gameInningLabel(game){ return `${gameOrdinal(game.inning)} Inning`; }
+function gameInningOptions(current){
+  const selected=Math.max(1,Number(current)||1);
+  const max=Math.max(12,selected);
+  return Array.from({length:max},(_,i)=>i+1).map(n=>`<option value="${n}" ${n===selected?'selected':''}>${gameOrdinal(n)} Inning</option>`).join('');
+}
 function gameResultMeta(code){ return GAME_CHART_RESULTS.find(r=>r.code===code) || {code,label:code,outs:0}; }
 function gameContactCode(type){
   if(type==='PU') return 'FB';
@@ -3523,9 +3536,9 @@ function renderGameChart(team,players){
       <div class="game-status-row">
         <div><div class="game-status-title">${esc(team.name)} vs ${esc(game.opponent||'Opponent')}</div><div class="game-status-sub">${esc(game.gameDate||'')}</div></div>
       </div>
-      <div class="game-action-row">
-        <button id="gameInningBtn" class="card-btn" type="button">${gameInningLabel(game)}</button>
-        <button id="gameOutBtn" class="card-btn" type="button">${game.outs} OUT${game.outs===1?'':'S'}</button>
+      <div class="game-manual-state-row">
+        <div class="game-manual-control"><label for="gameInningSelect">Inning</label><select id="gameInningSelect" class="game-manual-select">${gameInningOptions(game.inning)}</select></div>
+        <div class="game-manual-control"><label for="gameOutSelect">Outs</label><select id="gameOutSelect" class="game-manual-select"><option value="0" ${game.outs===0?'selected':''}>0 Outs</option><option value="1" ${game.outs===1?'selected':''}>1 Out</option><option value="2" ${game.outs===2?'selected':''}>2 Outs</option></select></div>
       </div>
       <div class="game-live-grid">
         <div class="game-current-card"><div class="game-label">Current Batter</div><div class="game-current-name">${game.batterIndex+1}. ${esc(batter.name)}</div><div class="game-status-sub">${esc(lastAbLabel)}</div></div>
@@ -3697,15 +3710,14 @@ function bindActiveGameChart(team,players,game){
     saveAppData();
     renderManager();
   });
-  document.getElementById('gameInningBtn')?.addEventListener('click',()=>{
-    game.inning++;
-    game.outs=0;
+  document.getElementById('gameInningSelect')?.addEventListener('change',e=>{
+    game.inning=Math.max(1,Number(e.target.value)||1);
     game.updatedAt=new Date().toISOString();
     saveAppData();
     renderManager();
   });
-  document.getElementById('gameOutBtn')?.addEventListener('click',()=>{
-    game.outs=(game.outs+1)%3;
+  document.getElementById('gameOutSelect')?.addEventListener('change',e=>{
+    game.outs=Math.max(0,Math.min(2,Number(e.target.value)||0));
     game.updatedAt=new Date().toISOString();
     saveAppData();
     renderManager();
