@@ -1036,8 +1036,7 @@
   .game-chart-field { display:flex; flex-direction:column; gap:6px; min-width:0; }
   .game-chart-field.full { grid-column:1/-1; }
   .game-chart-field label { font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--muted); }
-  #gameDateInput { min-height:45px; line-height:1.2; padding-top:11px; padding-bottom:11px; }
-  #gameDateInput::-webkit-date-and-time-value { min-height:1.2em; text-align:left; }
+  #gameDateInput { height:45px; min-height:0; line-height:1.2; padding-top:11px; padding-bottom:11px; }
   .app-textarea { width:100%; min-height:112px; resize:vertical; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:12px; font-family:'Barlow',sans-serif; font-size:16px; line-height:1.35; outline:none; }
   .game-status-row { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
   .game-status-title { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:24px; line-height:1; text-transform:uppercase; }
@@ -1066,6 +1065,26 @@
   .game-pitch-type-btn { min-height:38px; border:1px solid var(--border); border-radius:10px; background:var(--surface2); color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:900; letter-spacing:.7px; }
   .game-pitch-type-btn.active { border-color:rgba(0,212,255,.55); background:rgba(0,212,255,.12); color:var(--accent); }
   .game-pitch-type-btn:disabled { opacity:.38; cursor:not-allowed; }
+  .game-pitcher-list { display:flex; flex-direction:column; gap:8px; margin-top:2px; }
+  .game-pitcher-row {
+    width:100%; min-height:54px; display:flex; align-items:center; justify-content:space-between; gap:12px;
+    border:1px solid var(--border); border-radius:10px; background:var(--surface2); color:var(--text);
+    padding:10px 12px; text-align:left; cursor:pointer;
+  }
+  .game-pitcher-row.active { border-color:rgba(0,212,255,.65); background:rgba(0,212,255,.12); box-shadow:inset 3px 0 0 var(--accent); }
+  .game-pitcher-row-main { min-width:0; }
+  .game-pitcher-row-name {
+    font-family:'Barlow Condensed',sans-serif; font-size:19px; font-weight:900; line-height:1;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .game-pitcher-row-meta {
+    margin-top:4px; color:var(--muted); font-family:'Barlow Condensed',sans-serif;
+    font-size:10px; font-weight:800; letter-spacing:.8px; text-transform:uppercase;
+  }
+  .game-pitcher-row-action {
+    flex:0 0 auto; color:var(--accent); font-family:'Barlow Condensed',sans-serif;
+    font-size:11px; font-weight:900; letter-spacing:.8px; text-transform:uppercase;
+  }
   .game-report-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
   .game-report-card { background:rgba(255,255,255,.035); border:1px solid var(--border); border-radius:10px; padding:10px; min-width:0; }
   .game-report-card b { display:block; font-family:'Barlow Condensed',sans-serif; font-size:25px; line-height:1; color:var(--text); }
@@ -3440,7 +3459,9 @@ function renderGamePitcherChange(team,players,game){
   const roster=players.length ? players.map(player=>{
     const key=pitcherKeyForPlayer(player.id);
     const used=game.pitchers.some(p=>p.key===key) || game.pitches.some(p=>p.pitcherKey===key);
-    return `<button class="game-chip ${key===pitcher.key?'active':''}" type="button" data-game-pitcher-key="${escAttr(key)}">${esc(player.name)}${used?' - used':''}</button>`;
+    const active=key===pitcher.key;
+    const meta=active?'Current pitcher':(used?'Used in this game':'Available');
+    return `<button class="game-pitcher-row ${active?'active':''}" type="button" data-game-pitcher-key="${escAttr(key)}"><span class="game-pitcher-row-main"><span class="game-pitcher-row-name">${esc(player.name)}</span><span class="game-pitcher-row-meta">${meta}</span></span><span class="game-pitcher-row-action">${active?'Current':'Select'}</span></button>`;
   }).join('') : '<div class="empty-state">Add players to this team roster before changing pitchers.</div>';
   gameChartContent.innerHTML=`<div class="game-chart-content">
     <div class="game-chart-panel">
@@ -3451,7 +3472,7 @@ function renderGamePitcherChange(team,players,game){
     </div>
     <div class="game-chart-panel">
       <div class="panel-title">Team Roster</div>
-      <div class="game-lineup-list">${roster}</div>
+      <div class="game-pitcher-list">${roster}</div>
     </div>
   </div>`;
   bindActiveGameChart(team,players,game);
@@ -3482,7 +3503,6 @@ function renderGameChart(team,players){
   const last10=pitcherPitches.slice(-10);
   const pitcherWalks=gamePitcherWalks(game,pitcher.key);
   const inningWalks=gamePitcherInningWalks(game,pitcher.key);
-  const gameStrikes=game.pitches.filter(p=>p.result!=='B').length;
   const lastAbLabel=gameLastBatterResultLabel(game,game.batterIndex);
   gameChartContent.innerHTML=`<div class="game-chart-content">
     <div class="game-chart-panel">
@@ -3490,32 +3510,38 @@ function renderGameChart(team,players){
         <div><div class="game-status-title">${esc(team.name)} vs ${esc(game.opponent||'Opponent')}</div><div class="game-status-sub">${esc(game.gameDate||'')} - ${gameInningLabel(game)} - ${game.outs} out${game.outs===1?'':'s'}</div></div>
         <div class="game-status-pill">Live</div>
       </div>
+      <div class="game-action-row">
+        <button id="gameInningBtn" class="card-btn" type="button">${gameInningLabel(game)}</button>
+        <button id="gameOutBtn" class="card-btn" type="button">${game.outs} OUT${game.outs===1?'':'S'}</button>
+      </div>
       <div class="game-live-grid">
         <div class="game-current-card"><div class="game-label">Current Batter</div><div class="game-current-name">${game.batterIndex+1}. ${esc(batter.name)}</div><div class="game-status-sub">${esc(lastAbLabel)}</div></div>
         <div class="game-current-card"><div class="game-label">Count</div><div class="game-count-display">${game.balls}-${game.strikes}</div></div>
       </div>
-      <div class="game-state-row pitcher-top-stats">
-        <div class="game-state-stat"><b>${pitcherPitches.length}</b><span>Pitcher P</span></div>
-        <div class="game-state-stat"><b>${gamePct(pitcherStrikes,pitcherPitches.length)}</b><span>Pitcher STR</span></div>
-        <div class="game-state-stat"><b>${last10.length===10?gamePct(last10.filter(p=>p.result!=='B').length,10):'-'}</b><span>Last 10</span></div>
-        <div class="game-state-stat ${inningWalks>=2?'warning':''}"><b>${pitcherWalks}</b><span>BB</span></div>
-      </div>
+      <div class="game-pitch-types">${GAME_PITCH_TYPES.map(type=>`<button class="game-pitch-type-btn ${gamePitchType===type?'active':''}" type="button" data-game-pitch-type="${type}">${type}</button>`).join('')}</div>
       <div class="game-pitch-actions">
         <button id="gameBallBtn" class="game-pitch-btn ball" type="button">BALL</button>
         <button id="gameStrikeBtn" class="game-pitch-btn strike" type="button">STRIKE</button>
         <button id="gameFoulBtn" class="game-pitch-btn foul" type="button">FOUL</button>
         <button id="gameBallInPlayBtn" class="game-pitch-btn in-play" type="button">BALL IN PLAY</button>
       </div>
-      <div class="game-pitch-types">${GAME_PITCH_TYPES.map(type=>`<button class="game-pitch-type-btn ${gamePitchType===type?'active':''}" type="button" data-game-pitch-type="${type}">${type}</button>`).join('')}</div>
       <div class="game-action-row">
         <button id="gameUndoPitchBtn" class="card-btn" type="button">UNDO PITCH</button>
         <button id="gameUndoPaBtn" class="card-btn" type="button">UNDO PA</button>
       </div>
-      <div class="game-action-row">
-        <button id="gameReportBtn" class="card-btn primary" type="button">GAME REPORT</button>
-        <button id="gameRecentPitchesBtn" class="card-btn" type="button">RECENT PITCHES</button>
-      </div>
+      <button id="gameRecentPitchesBtn" class="card-btn" type="button" style="width:100%;margin-top:8px">RECENT PITCHES</button>
       <button id="gameChangePitcherScreenBtn" class="card-btn" type="button" style="width:100%;margin-top:8px">CHANGE PITCHER</button>
+    </div>
+
+    <div class="game-chart-panel">
+      <div class="panel-title">Game State</div>
+      <div class="game-state-row pitcher-top-stats">
+        <div class="game-state-stat"><b>${pitcherPitches.length}</b><span>Pitcher P</span></div>
+        <div class="game-state-stat"><b>${gamePct(pitcherStrikes,pitcherPitches.length)}</b><span>Pitcher STR</span></div>
+        <div class="game-state-stat"><b>${last10.length===10?gamePct(last10.filter(p=>p.result!=='B').length,10):'-'}</b><span>Last 10</span></div>
+        <div class="game-state-stat ${inningWalks>=2?'warning':''}"><b>${pitcherWalks}</b><span>BB</span></div>
+      </div>
+      <button id="gameReportBtn" class="card-btn primary" type="button" style="width:100%;margin-top:8px">GAME REPORT</button>
     </div>
 
     <div class="game-chart-panel">
@@ -3530,19 +3556,6 @@ function renderGameChart(team,players){
     <div class="game-chart-panel">
       <div class="panel-title">Selected At Bat</div>
       ${gamePlateAppearanceDetailHtml(game)}
-    </div>
-
-    <div class="game-chart-panel">
-      <div class="panel-title">Game State</div>
-      <div class="game-state-row">
-        <div class="game-state-stat"><b>${game.pitches.length}</b><span>Game Pitches</span></div>
-        <div class="game-state-stat"><b>${gamePct(gameStrikes,game.pitches.length)}</b><span>Game STR</span></div>
-        <div class="game-state-stat"><b>${game.plateAppearances.length}</b><span>PA</span></div>
-      </div>
-      <div class="game-action-row">
-        <button id="gameInningBtn" class="card-btn" type="button">${gameInningLabel(game)}</button>
-        <button id="gameOutBtn" class="card-btn" type="button">${game.outs} OUT${game.outs===1?'':'S'}</button>
-      </div>
     </div>
 
     <div class="game-chart-panel">
@@ -3582,7 +3595,7 @@ function renderGameChartSetup(team,players){
       <div class="panel-title">New Game Chart</div>
       <div class="game-chart-grid">
         <div class="game-chart-field"><label for="gameOpponentInput">Opponent</label><input id="gameOpponentInput" class="app-input" placeholder="Opponent"></div>
-        <div class="game-chart-field"><label for="gameDateInput">Date</label><input id="gameDateInput" class="app-input" type="date" value="${today}"></div>
+        <div class="game-chart-field"><label for="gameDateInput">Date</label><input id="gameDateInput" class="app-input" type="text" inputmode="numeric" pattern="\\d{4}-\\d{2}-\\d{2}" placeholder="YYYY-MM-DD" value="${today}"></div>
         <div class="game-chart-field"><label for="gameStartPitcherSelect">Starting Pitcher</label><select id="gameStartPitcherSelect" class="app-select">${gamePitcherOptions(players,players[0]?pitcherKeyForPlayer(players[0].id):'')}</select></div>
         <div class="game-chart-field"><label for="gameStartPitcherCustom">Custom Pitcher</label><input id="gameStartPitcherCustom" class="app-input" placeholder="Pitcher name"></div>
         <div class="game-chart-field full"><label for="gameLineupInput">Opposing Lineup</label><textarea id="gameLineupInput" class="app-textarea" placeholder="One batter per line"></textarea></div>
