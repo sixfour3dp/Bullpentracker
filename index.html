@@ -1036,6 +1036,8 @@
   .game-chart-field { display:flex; flex-direction:column; gap:6px; min-width:0; }
   .game-chart-field.full { grid-column:1/-1; }
   .game-chart-field label { font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--muted); }
+  #gameDateInput { min-height:45px; line-height:1.2; padding-top:11px; padding-bottom:11px; }
+  #gameDateInput::-webkit-date-and-time-value { min-height:1.2em; text-align:left; }
   .app-textarea { width:100%; min-height:112px; resize:vertical; background:var(--surface2); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:12px; font-family:'Barlow',sans-serif; font-size:16px; line-height:1.35; outline:none; }
   .game-status-row { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
   .game-status-title { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:24px; line-height:1; text-transform:uppercase; }
@@ -1045,7 +1047,7 @@
   .game-current-card { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:12px; min-width:0; }
   .game-label { font-family:'Barlow Condensed',sans-serif; color:var(--muted); font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
   .game-current-name { margin-top:5px; font-family:'Barlow Condensed',sans-serif; font-size:24px; font-weight:900; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .game-count-display { display:flex; align-items:center; justify-content:center; min-height:88px; background:linear-gradient(180deg,rgba(0,212,255,.12),rgba(0,212,255,.04)); border:1px solid rgba(0,212,255,.22); border-radius:12px; font-family:'Barlow Condensed',sans-serif; font-size:54px; font-weight:900; line-height:1; color:var(--text); }
+  .game-count-display { margin-top:5px; font-family:'Barlow Condensed',sans-serif; font-size:54px; font-weight:900; line-height:.92; color:var(--text); text-align:center; }
   .game-state-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px; }
   .game-state-row.pitcher-top-stats { grid-template-columns:repeat(4,1fr); }
   .game-state-stat { background:rgba(255,255,255,.035); border:1px solid var(--border); border-radius:10px; padding:8px; text-align:center; min-width:0; }
@@ -1058,6 +1060,7 @@
   .game-pitch-btn.ball { background:var(--accent2); }
   .game-pitch-btn.strike { background:var(--green); color:#06150b; }
   .game-pitch-btn.foul { background:#2f80ed; }
+  .game-pitch-btn.in-play { grid-column:1/-1; min-height:58px; background:var(--accent); color:#071018; }
   .game-pitch-btn:disabled { opacity:.38; cursor:not-allowed; }
   .game-pitch-types { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; }
   .game-pitch-type-btn { min-height:38px; border:1px solid var(--border); border-radius:10px; background:var(--surface2); color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:900; letter-spacing:.7px; }
@@ -2864,18 +2867,31 @@ const GAME_CHART_RESULTS=[
 const GAME_PITCH_LABELS={B:'BALL',S:'STRIKE',F:'FOUL'};
 const GAME_PITCH_TYPES=['FB','CB','CH'];
 const GAME_CONTACT_TYPES=[
-  {code:'GB',label:'Grounder'},
-  {code:'LD',label:'Line Drive'},
-  {code:'FB',label:'Fly Ball'}
+  {code:'GB',label:'GB'},
+  {code:'LD',label:'LD'},
+  {code:'FB',label:'FB'}
 ];
 const GAME_BIP_RESULTS=new Set(['1B','2B','3B','HR','OUT','ROE','FC','SAC','DP']);
-let pendingGameContact={result:null,type:null,x:null,y:null};
+let pendingGameContact={open:false,result:null,type:null,x:null,y:null};
 let selectedGamePaId=null;
 let gamePitchType='FB';
 let gameReportOpen=false;
+let gameRecentPitchesOpen=false;
+let gamePitcherChangeOpen=false;
 
 function gameManualResults(){
   return GAME_CHART_RESULTS.filter(r=>r.code!=='K' && r.code!=='BB');
+}
+
+function gameBallInPlayResults(){
+  return GAME_CHART_RESULTS.filter(r=>GAME_BIP_RESULTS.has(r.code));
+}
+
+function gamePaHasChartedContact(pa){
+  return GAME_BIP_RESULTS.has(pa?.result)
+    && Boolean(gameContactCode(pa.contactType))
+    && Number.isFinite(Number(pa.contactX))
+    && Number.isFinite(Number(pa.contactY));
 }
 
 function ensureGameCharts(){
@@ -2929,15 +2945,21 @@ function normalizeGameChart(game){
   game.plateAppearances.forEach((pa,i)=>{
     pa.id=pa.id||uid('pa');
     pa.pa=Number(pa.pa)||i+1;
-    if(pa.contact && typeof pa.contact==='object'){
+    if(GAME_BIP_RESULTS.has(pa.result) && pa.contact && typeof pa.contact==='object'){
       pa.contactType=pa.contactType || pa.contact.type;
       pa.contactX=pa.contactX ?? pa.contact.x;
       pa.contactY=pa.contactY ?? pa.contact.y;
     }
     pa.contactX=Number.isFinite(Number(pa.contactX))?Number(pa.contactX):null;
     pa.contactY=Number.isFinite(Number(pa.contactY))?Number(pa.contactY):null;
-    if(pa.contactType==='PU') pa.contactType='FB';
-    if(!pa.contactType && pa.contactX!==null && pa.contactY!==null) pa.contactType='GB';
+    pa.contactType=gameContactCode(pa.contactType);
+    if(!GAME_BIP_RESULTS.has(pa.result)){
+      pa.contactType=null;
+      pa.contactX=null;
+      pa.contactY=null;
+    }else if(!pa.contactType && pa.contactX!==null && pa.contactY!==null){
+      pa.contactType='GB';
+    }
   });
   if(!game.currentPitcherKey){
     const first=game.pitchers[0];
@@ -3004,6 +3026,12 @@ function gameContactCode(type){
   return GAME_CONTACT_TYPES.some(t=>t.code===type) ? type : '';
 }
 function gameContactLabel(type){ return GAME_CONTACT_TYPES.find(t=>t.code===gameContactCode(type))?.label || 'Contact'; }
+function gameLastBatterResultLabel(game,batterIndex){
+  const pa=(game.plateAppearances||[]).filter(x=>Number(x.batterIndex)===Number(batterIndex)).slice(-1)[0];
+  if(!pa) return 'Last AB: -';
+  const contact=gamePaHasChartedContact(pa) ? ` ${gameContactLabel(pa.contactType)}` : '';
+  return `Last AB: ${pa.result}${contact}`;
+}
 function gamePointInInfield(x,y){
   if(y<47 || y>92) return false;
   const buffer=10;
@@ -3072,7 +3100,19 @@ function gameFieldChartSvg(contact={},mode='view'){
 }
 
 function resetPendingGameContact(){
-  pendingGameContact={result:null,type:null,x:null,y:null};
+  pendingGameContact={open:false,result:null,type:null,x:null,y:null};
+}
+
+function gameContactEntryOpen(){
+  return Boolean(pendingGameContact.open || pendingGameContact.result);
+}
+
+function openGameContactEntry(){
+  resetPendingGameContact();
+  pendingGameContact.open=true;
+  gameRecentPitchesOpen=false;
+  gamePitcherChangeOpen=false;
+  renderManager();
 }
 
 function syncPendingGameContactMarker(){
@@ -3117,7 +3157,7 @@ function completePendingGameContact(){
   const game=activeGameChart(appData.selectedTeamId);
   if(!game || !pendingGameContact.result) return;
   if(!pendingGameContact.type){
-    alert('Select Grounder, Line Drive, or Fly Ball before marking the field.');
+    alert('Select GB, LD, or FB before marking the field.');
     return;
   }
   const x=Number(pendingGameContact.x), y=Number(pendingGameContact.y);
@@ -3205,7 +3245,7 @@ function gamePlateAppearanceDetailHtml(game){
     .filter(p=>selected.pitchIds?.includes(p.id))
     .map(p=>`${p.ballsBefore||0}-${p.strikesBefore||0} ${GAME_PITCH_LABELS[p.result]||p.result}`)
     .join(' - ') || 'No pitches assigned';
-  const hasContact=Number.isFinite(Number(selected.contactX)) && Number.isFinite(Number(selected.contactY));
+  const hasContact=gamePaHasChartedContact(selected);
   const contact=hasContact
     ? `${gameContactLabel(selected.contactType)} to ${gameFieldAreaLabel(Number(selected.contactX),Number(selected.contactY))}`
     : 'No batted ball';
@@ -3244,8 +3284,24 @@ function gamePitchLogHtml(game){
   }).join('');
 }
 
-function gameReportStats(game){
-  const pitcherKey=game.currentPitcherKey;
+function gamePitchersUsed(game,players){
+  const pitchers=[...game.pitchers];
+  (game.pitches||[]).forEach(p=>{
+    if(!pitchers.some(x=>x.key===p.pitcherKey)) pitchers.push({key:p.pitcherKey,name:p.pitcherName,playerId:p.pitcherId||null});
+  });
+  (game.plateAppearances||[]).forEach(pa=>{
+    if(!pitchers.some(x=>x.key===pa.pitcherKey)) pitchers.push({key:pa.pitcherKey,name:pa.pitcherName,playerId:pa.pitcherId||null});
+  });
+  return pitchers
+    .filter(p=>p?.key)
+    .filter(p=>(game.pitches||[]).some(x=>x.pitcherKey===p.key) || (game.plateAppearances||[]).some(pa=>pa.pitcherKey===p.key))
+    .map(p=>({
+      ...p,
+      name:p.key?.startsWith('player:') ? (players.find(x=>x.id===p.key.slice(7))?.name || p.name) : p.name
+    }));
+}
+
+function gameReportStats(game,pitcherKey){
   const pitches=(game.pitches||[]).filter(p=>p.pitcherKey===pitcherKey);
   const pas=(game.plateAppearances||[]).filter(pa=>pa.pitcherKey===pitcherKey);
   const strikes=pitches.filter(p=>p.result!=='B').length;
@@ -3278,36 +3334,31 @@ function gameReportStats(game){
 
 function buildGameStrikeProgressSvg(pitches){
   if(!pitches.length) return '<div class="empty-state">No pitches recorded.</div>';
-  const W=320,H=150,pad=26;
+  const W=760,H=240,L=44,R=18,T=18,B=36,iw=W-L-R,ih=H-T-B;
+  const x=i=>pitches.length<=1?L+iw/2:L+(i/(pitches.length-1))*iw;
+  const y=v=>T+ih-(v/100)*ih;
   let strikes=0;
-  const pts=pitches.map((p,i)=>{
+  const rows=pitches.map((p,i)=>{
     if(p.result!=='B') strikes++;
-    const pct=(strikes/(i+1))*100;
-    const x=pad+(i/Math.max(1,pitches.length-1))*(W-pad*2);
-    const y=H-pad-(pct/100)*(H-pad*2);
-    return {x,y,pct};
+    return {p,pct:Math.round(strikes/(i+1)*100),i};
   });
-  const path=pts.map((p,i)=>`${i?'L':'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
-  const grid=[0,25,50,75,100].map(v=>{
-    const y=H-pad-(v/100)*(H-pad*2);
-    return `<path d="M${pad} ${y.toFixed(1)} H${W-pad}" stroke="rgba(255,255,255,.08)" stroke-width="1"></path><text x="5" y="${(y+3).toFixed(1)}" fill="#8aa0b7" font-size="9">${v}%</text>`;
+  const grid=[0,25,50,75,100].map(v=>`<line x1="${L}" y1="${y(v)}" x2="${W-R}" y2="${y(v)}" stroke="#294057" stroke-width="1"/><text x="${L-8}" y="${y(v)+4}" fill="#7890a8" font-size="10" text-anchor="end">${v}%</text>`).join('');
+  const path=rows.map(r=>`${r.i?'L':'M'} ${x(r.i).toFixed(1)} ${y(r.pct).toFixed(1)}`).join(' ');
+  const dots=rows.map(r=>{
+    const color=r.p.result==='B'?'#ef4444':(r.p.result==='F'?'#2f80ed':'#22c55e');
+    return `<circle cx="${x(r.i).toFixed(1)}" cy="${y(r.pct).toFixed(1)}" r="5" fill="${color}" stroke="#edf5ff" stroke-width="1.5"/>`;
   }).join('');
-  const dots=pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2" fill="#00d4ff"></circle>`).join('');
-  return `<svg class="strike-progress" viewBox="0 0 ${W} ${H}" role="img" aria-label="Game strike percentage by pitch">${grid}<path d="${path}" fill="none" stroke="#00d4ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>${dots}</svg>`;
+  const labels=rows.filter(r=>r.i===0 || (r.i+1)%5===0 || r.i===rows.length-1).map(r=>`<text x="${x(r.i).toFixed(1)}" y="${H-14}" fill="#7890a8" font-size="9" text-anchor="middle">${r.i+1}</text>`).join('');
+  return `<svg class="strike-progress" viewBox="0 0 ${W} ${H}" role="img" aria-label="Game strike percentage by pitch">${grid}<path d="${path}" fill="none" stroke="#00d4ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${dots}${labels}</svg>`;
 }
 
 function renderGameReport(team,players,game){
-  const pitcher=currentGamePitcher(game,players);
-  const stats=gameReportStats(game);
-  gameChartContent.innerHTML=`<div class="game-chart-content">
-    <div class="game-chart-panel">
-      <div class="game-status-row">
-        <div><div class="game-status-title">Game Report</div><div class="game-status-sub">${esc(team.name)} vs ${esc(game.opponent||'Opponent')} - ${esc(pitcher.name)} - ${esc(game.gameDate||'')}</div></div>
-        <button id="gameReportBackBtn" class="card-btn" type="button">BACK</button>
-      </div>
-    </div>
-    <div class="game-chart-panel">
-      <div class="panel-title">Pitching Stats</div>
+  const pitchers=gamePitchersUsed(game,players);
+  const current=currentGamePitcher(game,players);
+  const pitcherSections=(pitchers.length?pitchers:[current]).map(pitcher=>{
+    const stats=gameReportStats(game,pitcher.key);
+    return `<div class="game-chart-panel">
+      <div class="panel-title">${esc(pitcher.name||'Pitcher')} - Pitching Stats</div>
       <div class="game-report-grid">
         <div class="game-report-card"><b>${stats.whip}</b><span>WHIP</span></div>
         <div class="game-report-card"><b>${stats.strikeouts}</b><span>Strikeouts</span></div>
@@ -3318,14 +3369,94 @@ function renderGameReport(team,players,game){
         <div class="game-report-card"><b>${stats.pitchTypeStats.CH}</b><span>CH Strike %</span></div>
         <div class="game-report-card"><b>${stats.maxStrikeRun}</b><span>Strikes in a Row</span></div>
       </div>
-    </div>
+      <div class="panel-title" style="margin-top:14px">Strike % By Pitch</div>
+      <div class="stats-chart-panel">${buildGameStrikeProgressSvg(stats.pitches)}</div>
+    </div>`;
+  }).join('');
+  gameChartContent.innerHTML=`<div class="game-chart-content">
     <div class="game-chart-panel">
-      <div class="panel-title">Strike % By Pitch</div>
-      ${buildGameStrikeProgressSvg(stats.pitches)}
+      <div class="game-status-row">
+        <div><div class="game-status-title">Game Report</div><div class="game-status-sub">${esc(team.name)} vs ${esc(game.opponent||'Opponent')} - ${esc(game.gameDate||'')}</div></div>
+        <button id="gameReportBackBtn" class="card-btn" type="button">BACK</button>
+      </div>
     </div>
+    ${pitcherSections}
   </div>`;
   document.getElementById('gameReportBackBtn')?.addEventListener('click',()=>{
     gameReportOpen=false;
+    renderManager();
+  });
+}
+
+function renderGameContactEntry(team,players,game){
+  const pitcher=currentGamePitcher(game,players);
+  const batter=currentGameBatter(game);
+  const canRecordContact=pendingGameContact.result && pendingGameContact.type && Number.isFinite(Number(pendingGameContact.x)) && Number.isFinite(Number(pendingGameContact.y));
+  gameChartContent.innerHTML=`<div class="game-chart-content">
+    <div class="game-chart-panel">
+      <div class="game-status-row">
+        <div><div class="game-status-title">Ball In Play</div><div class="game-status-sub">${game.batterIndex+1}. ${esc(batter.name)} - ${esc(pitcher.name)} pitching - Count ${game.balls}-${game.strikes}</div></div>
+        <button id="gameCancelContactBtn" class="card-btn" type="button">CANCEL</button>
+      </div>
+    </div>
+    <div class="game-chart-panel tight">
+      <div class="panel-title">Plate Appearance Result</div>
+      <div class="game-result-grid">${gameBallInPlayResults().map(r=>`<button class="card-btn ${pendingGameContact.result===r.code?'active':''}" type="button" data-game-result="${r.code}">${r.label}</button>`).join('')}</div>
+    </div>
+    <div class="game-chart-panel tight">
+      <div class="panel-title">Contact Chart</div>
+      <div class="game-contact-types">${GAME_CONTACT_TYPES.map(t=>`<button class="game-contact-type-btn ${pendingGameContact.type===t.code?'active':''}" type="button" data-game-contact-type="${t.code}">${t.label}</button>`).join('')}</div>
+      <div id="gameContactChartWrap">${gameFieldChartSvg(pendingGameContact,'input')}</div>
+      <div class="game-contact-summary" id="gameContactSummary"></div>
+      <div class="game-action-row">
+        <button id="gameRecordContactBtn" class="card-btn primary" type="button" ${canRecordContact?'':'disabled'}>RECORD</button>
+        <button id="gameCancelContactBtn2" class="card-btn" type="button">CANCEL</button>
+      </div>
+    </div>
+  </div>`;
+  bindActiveGameChart(team,players,game);
+}
+
+function renderGameRecentPitches(team,players,game){
+  gameChartContent.innerHTML=`<div class="game-chart-content">
+    <div class="game-chart-panel">
+      <div class="game-status-row">
+        <div><div class="game-status-title">Recent Pitches</div><div class="game-status-sub">${esc(team.name)} vs ${esc(game.opponent||'Opponent')} - ${esc(game.gameDate||'')}</div></div>
+        <button id="gameRecentBackBtn" class="card-btn" type="button">BACK</button>
+      </div>
+    </div>
+    <div class="game-chart-panel">
+      <div class="game-log">${gamePitchLogHtml(game)}</div>
+    </div>
+  </div>`;
+  document.getElementById('gameRecentBackBtn')?.addEventListener('click',()=>{
+    gameRecentPitchesOpen=false;
+    renderManager();
+  });
+}
+
+function renderGamePitcherChange(team,players,game){
+  const pitcher=currentGamePitcher(game,players);
+  const roster=players.length ? players.map(player=>{
+    const key=pitcherKeyForPlayer(player.id);
+    const used=game.pitchers.some(p=>p.key===key) || game.pitches.some(p=>p.pitcherKey===key);
+    return `<button class="game-chip ${key===pitcher.key?'active':''}" type="button" data-game-pitcher-key="${escAttr(key)}">${esc(player.name)}${used?' - used':''}</button>`;
+  }).join('') : '<div class="empty-state">Add players to this team roster before changing pitchers.</div>';
+  gameChartContent.innerHTML=`<div class="game-chart-content">
+    <div class="game-chart-panel">
+      <div class="game-status-row">
+        <div><div class="game-status-title">Change Pitcher</div><div class="game-status-sub">${esc(team.name)} vs ${esc(game.opponent||'Opponent')} - Current: ${esc(pitcher.name)}</div></div>
+        <button id="gamePitcherBackBtn" class="card-btn" type="button">BACK</button>
+      </div>
+    </div>
+    <div class="game-chart-panel">
+      <div class="panel-title">Team Roster</div>
+      <div class="game-lineup-list">${roster}</div>
+    </div>
+  </div>`;
+  bindActiveGameChart(team,players,game);
+  document.getElementById('gamePitcherBackBtn')?.addEventListener('click',()=>{
+    gamePitcherChangeOpen=false;
     renderManager();
   });
 }
@@ -3338,6 +3469,9 @@ function renderGameChart(team,players){
   if(!game) return renderGameChartSetup(team,players);
   normalizeGameChart(game);
   if(gameReportOpen) return renderGameReport(team,players,game);
+  if(gameContactEntryOpen()) return renderGameContactEntry(team,players,game);
+  if(gameRecentPitchesOpen) return renderGameRecentPitches(team,players,game);
+  if(gamePitcherChangeOpen) return renderGamePitcherChange(team,players,game);
   if(!game.plateAppearances.some(pa=>pa.id===selectedGamePaId)){
     selectedGamePaId=game.plateAppearances[game.plateAppearances.length-1]?.id || null;
   }
@@ -3349,14 +3483,7 @@ function renderGameChart(team,players){
   const pitcherWalks=gamePitcherWalks(game,pitcher.key);
   const inningWalks=gamePitcherInningWalks(game,pitcher.key);
   const gameStrikes=game.pitches.filter(p=>p.result!=='B').length;
-  const canRecordContact=pendingGameContact.result && pendingGameContact.type && Number.isFinite(Number(pendingGameContact.x)) && Number.isFinite(Number(pendingGameContact.y));
-  const contactChartHtml=pendingGameContact.result ? `<div class="game-chart-panel tight">
-      <div class="panel-title">Contact Chart</div>
-      <div class="game-contact-types">${GAME_CONTACT_TYPES.map(t=>`<button class="game-contact-type-btn ${pendingGameContact.type===t.code?'active':''}" type="button" data-game-contact-type="${t.code}">${t.label}</button>`).join('')}</div>
-      <div id="gameContactChartWrap">${gameFieldChartSvg(pendingGameContact,'input')}</div>
-      <div class="game-contact-summary" id="gameContactSummary"></div>
-      <button id="gameRecordContactBtn" class="card-btn" type="button" style="width:100%;margin-top:10px" ${canRecordContact?'':'disabled'}>RECORD RESULT</button>
-    </div>` : '';
+  const lastAbLabel=gameLastBatterResultLabel(game,game.batterIndex);
   gameChartContent.innerHTML=`<div class="game-chart-content">
     <div class="game-chart-panel">
       <div class="game-status-row">
@@ -3364,8 +3491,8 @@ function renderGameChart(team,players){
         <div class="game-status-pill">Live</div>
       </div>
       <div class="game-live-grid">
-        <div class="game-current-card"><div class="game-label">Current Batter</div><div class="game-current-name">${game.batterIndex+1}. ${esc(batter.name)}</div><div class="game-status-sub">${esc(pitcher.name)} pitching</div></div>
-        <div class="game-count-display">${game.balls}-${game.strikes}</div>
+        <div class="game-current-card"><div class="game-label">Current Batter</div><div class="game-current-name">${game.batterIndex+1}. ${esc(batter.name)}</div><div class="game-status-sub">${esc(lastAbLabel)}</div></div>
+        <div class="game-current-card"><div class="game-label">Count</div><div class="game-count-display">${game.balls}-${game.strikes}</div></div>
       </div>
       <div class="game-state-row pitcher-top-stats">
         <div class="game-state-stat"><b>${pitcherPitches.length}</b><span>Pitcher P</span></div>
@@ -3374,23 +3501,36 @@ function renderGameChart(team,players){
         <div class="game-state-stat ${inningWalks>=2?'warning':''}"><b>${pitcherWalks}</b><span>BB</span></div>
       </div>
       <div class="game-pitch-actions">
-        <button id="gameBallBtn" class="game-pitch-btn ball" type="button" ${pendingGameContact.result?'disabled':''}>BALL</button>
-        <button id="gameStrikeBtn" class="game-pitch-btn strike" type="button" ${pendingGameContact.result?'disabled':''}>STRIKE</button>
-        <button id="gameFoulBtn" class="game-pitch-btn foul" type="button" ${pendingGameContact.result?'disabled':''}>FOUL</button>
+        <button id="gameBallBtn" class="game-pitch-btn ball" type="button">BALL</button>
+        <button id="gameStrikeBtn" class="game-pitch-btn strike" type="button">STRIKE</button>
+        <button id="gameFoulBtn" class="game-pitch-btn foul" type="button">FOUL</button>
+        <button id="gameBallInPlayBtn" class="game-pitch-btn in-play" type="button">BALL IN PLAY</button>
       </div>
-      <div class="game-pitch-types">${GAME_PITCH_TYPES.map(type=>`<button class="game-pitch-type-btn ${gamePitchType===type?'active':''}" type="button" data-game-pitch-type="${type}" ${pendingGameContact.result?'disabled':''}>${type}</button>`).join('')}</div>
+      <div class="game-pitch-types">${GAME_PITCH_TYPES.map(type=>`<button class="game-pitch-type-btn ${gamePitchType===type?'active':''}" type="button" data-game-pitch-type="${type}">${type}</button>`).join('')}</div>
       <div class="game-action-row">
         <button id="gameUndoPitchBtn" class="card-btn" type="button">UNDO PITCH</button>
         <button id="gameUndoPaBtn" class="card-btn" type="button">UNDO PA</button>
       </div>
+      <div class="game-action-row">
+        <button id="gameReportBtn" class="card-btn primary" type="button">GAME REPORT</button>
+        <button id="gameRecentPitchesBtn" class="card-btn" type="button">RECENT PITCHES</button>
+      </div>
+      <button id="gameChangePitcherScreenBtn" class="card-btn" type="button" style="width:100%;margin-top:8px">CHANGE PITCHER</button>
     </div>
 
-    <div class="game-chart-panel tight">
-      <div class="panel-title">Plate Appearance Result</div>
-      <div class="game-result-grid">${gameManualResults().map(r=>`<button class="card-btn ${pendingGameContact.result===r.code?'active':''}" type="button" data-game-result="${r.code}">${r.label}</button>`).join('')}</div>
+    <div class="game-chart-panel">
+      <div class="panel-title">Scorecard</div>
+      ${gameScorecardHtml(game)}
+      <div class="input-row" style="margin-top:10px">
+        <input id="gameNewBatterInput" class="app-input" placeholder="Add batter">
+        <button id="gameAddBatterBtn" class="mini-btn" type="button">ADD</button>
+      </div>
     </div>
 
-    ${contactChartHtml}
+    <div class="game-chart-panel">
+      <div class="panel-title">Selected At Bat</div>
+      ${gamePlateAppearanceDetailHtml(game)}
+    </div>
 
     <div class="game-chart-panel">
       <div class="panel-title">Game State</div>
@@ -3406,46 +3546,16 @@ function renderGameChart(team,players){
     </div>
 
     <div class="game-chart-panel">
-      <div class="panel-title">Pitcher</div>
-      <div class="input-row">
-        <select id="gameActivePitcherSelect" class="app-select">${gamePitcherOptions(players,pitcher.key)}</select>
-        <button id="gameChangePitcherBtn" class="mini-btn" type="button">CHANGE</button>
-      </div>
-      <input id="gameActivePitcherCustom" class="app-input" placeholder="Custom pitcher name" value="${pitcher.key.startsWith('name:')?escAttr(pitcher.name):''}" style="margin-top:8px">
-    </div>
-
-    <div class="game-chart-panel">
-      <div class="panel-title">Lineup</div>
-      <div class="game-lineup-list">${game.lineup.map((b,i)=>`<button class="game-chip ${i===game.batterIndex?'active':''}" type="button" data-game-batter-index="${i}">${i+1}. ${esc(b.name)}</button>`).join('')}</div>
-      <div class="input-row" style="margin-top:10px">
-        <input id="gameNewBatterInput" class="app-input" placeholder="Add batter">
-        <button id="gameAddBatterBtn" class="mini-btn" type="button">ADD</button>
-      </div>
-    </div>
-
-    <div class="game-chart-panel">
-      <div class="panel-title">Scorecard</div>
-      ${gameScorecardHtml(game)}
-    </div>
-
-    <div class="game-chart-panel">
-      <div class="panel-title">Selected At Bat</div>
-      ${gamePlateAppearanceDetailHtml(game)}
-    </div>
-
-    <div class="game-chart-panel">
       <div class="panel-title">Pitchers Used</div>
       <div class="game-log">${gamePitcherSummaryHtml(game,players)}</div>
     </div>
 
     <div class="game-chart-panel">
-      <div class="panel-title">Recent Pitches</div>
-      <div class="game-log">${gamePitchLogHtml(game)}</div>
+      <div class="panel-title">Game Files</div>
       <div class="game-action-row">
         <button id="gameExportBtn" class="card-btn" type="button">EXPORT GAME</button>
         <button id="gameImportBtn" class="card-btn" type="button">IMPORT GAME</button>
       </div>
-      <button id="gameReportBtn" class="card-btn primary" type="button" style="width:100%;margin-top:8px">GAME REPORT</button>
       <button id="gameFinishBtn" class="card-btn team-remove-btn" type="button" style="width:100%;margin-top:8px">FINISH GAME</button>
     </div>
   </div>`;
@@ -3497,6 +3607,8 @@ function bindGameChartSetup(team,players){
     if(game.status==='final' && !await appConfirm('Reopen Game Chart?',`Reopen ${team.name} vs ${game.opponent||'Opponent'}?`,'YES','NO')) return;
     game.status='active';
     gameReportOpen=false;
+    gameRecentPitchesOpen=false;
+    gamePitcherChangeOpen=false;
     game.updatedAt=new Date().toISOString();
     saveAppData();
     renderManager();
@@ -3516,18 +3628,39 @@ function bindActiveGameChart(team,players,game){
   document.getElementById('gameBallBtn')?.addEventListener('click',()=>recordGamePitch('B'));
   document.getElementById('gameStrikeBtn')?.addEventListener('click',()=>recordGamePitch('S'));
   document.getElementById('gameFoulBtn')?.addEventListener('click',()=>recordGamePitch('F'));
+  document.getElementById('gameBallInPlayBtn')?.addEventListener('click',()=>openGameContactEntry());
+  document.getElementById('gameRecentPitchesBtn')?.addEventListener('click',()=>{
+    gamePitcherChangeOpen=false;
+    gameRecentPitchesOpen=true;
+    renderManager();
+  });
+  document.getElementById('gameChangePitcherScreenBtn')?.addEventListener('click',()=>{
+    gameRecentPitchesOpen=false;
+    gamePitcherChangeOpen=true;
+    renderManager();
+  });
   document.querySelectorAll('[data-game-pitch-type]').forEach(btn=>btn.addEventListener('click',()=>{
     gamePitchType=GAME_PITCH_TYPES.includes(btn.dataset.gamePitchType)?btn.dataset.gamePitchType:'FB';
     renderManager();
   }));
   document.getElementById('gameUndoPitchBtn')?.addEventListener('click',()=>undoLastGamePitch());
   document.getElementById('gameUndoPaBtn')?.addEventListener('click',()=>undoLastGamePlateAppearance());
-  document.getElementById('gameChangePitcherBtn')?.addEventListener('click',()=>changeGamePitcher(players));
+  document.querySelectorAll('[data-game-pitcher-key]').forEach(btn=>btn.addEventListener('click',()=>changeGamePitcherToPlayer(btn.dataset.gamePitcherKey,players)));
   document.getElementById('gameAddBatterBtn')?.addEventListener('click',()=>addGameBatter());
   document.getElementById('gameExportBtn')?.addEventListener('click',()=>exportGameChart(game.id));
   document.getElementById('gameImportBtn')?.addEventListener('click',()=>document.getElementById('gameChartImportFile')?.click());
   document.getElementById('gameRecordContactBtn')?.addEventListener('click',()=>completePendingGameContact());
+  document.getElementById('gameCancelContactBtn')?.addEventListener('click',()=>{
+    resetPendingGameContact();
+    renderManager();
+  });
+  document.getElementById('gameCancelContactBtn2')?.addEventListener('click',()=>{
+    resetPendingGameContact();
+    renderManager();
+  });
   document.getElementById('gameReportBtn')?.addEventListener('click',()=>{
+    gameRecentPitchesOpen=false;
+    gamePitcherChangeOpen=false;
     gameReportOpen=true;
     renderManager();
   });
@@ -3611,6 +3744,8 @@ function startGameChart(team,players){
   ensureGameCharts().push(game);
   selectedGamePaId=null;
   gameReportOpen=false;
+  gameRecentPitchesOpen=false;
+  gamePitcherChangeOpen=false;
   resetPendingGameContact();
   saveAppData();
   renderManager();
@@ -3620,7 +3755,7 @@ function recordGamePitch(result){
   const game=activeGameChart(appData.selectedTeamId);
   const team=selectedTeam();
   if(!game || !team) return;
-  if(pendingGameContact.result){
+  if(gameContactEntryOpen()){
     alert('Record the pending contact result before charting another pitch.');
     return;
   }
@@ -3672,6 +3807,7 @@ function finishGamePlateAppearance(result){
   if(!game) return;
   let contact=null;
   if(GAME_BIP_RESULTS.has(result)){
+    pendingGameContact.open=true;
     pendingGameContact.result=result;
     pendingGameContact.type=null;
     pendingGameContact.x=null;
@@ -3767,14 +3903,17 @@ function undoLastGamePlateAppearance(){
   renderManager();
 }
 
-function changeGamePitcher(players){
+function changeGamePitcherToPlayer(pitcherKey,players){
   const game=activeGameChart(appData.selectedTeamId);
   if(!game) return;
-  const pitcher=gamePitcherFromSelection('gameActivePitcherSelect','gameActivePitcherCustom',players);
-  if(!pitcher){ alert('Choose or enter a pitcher.'); return; }
+  const playerId=String(pitcherKey||'').startsWith('player:') ? String(pitcherKey).slice(7) : '';
+  const player=players.find(p=>p.id===playerId);
+  if(!player){ alert('Choose a pitcher from the team roster.'); return; }
+  const pitcher={key:pitcherKeyForPlayer(player.id),playerId:player.id,name:player.name};
   addGamePitcher(game,pitcher);
   game.currentPitcherKey=pitcher.key;
   game.currentPitcherName=pitcher.name;
+  gamePitcherChangeOpen=false;
   resetPendingGameContact();
   game.updatedAt=new Date().toISOString();
   saveAppData();
