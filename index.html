@@ -3262,7 +3262,7 @@ function gamePlateAppearanceDetailHtml(game){
   selectedGamePaId=selected.id;
   const pitchRows=(game.pitches||[])
     .filter(p=>selected.pitchIds?.includes(p.id))
-    .map(p=>`${p.ballsBefore||0}-${p.strikesBefore||0} ${GAME_PITCH_LABELS[p.result]||p.result}`)
+    .map(p=>`${p.ballsBefore||0}-${p.strikesBefore||0} ${p.pitchType||'FB'} ${GAME_PITCH_LABELS[p.result]||p.result}`)
     .join(' - ') || 'No pitches assigned';
   const hasContact=gamePaHasChartedContact(selected);
   const contact=hasContact
@@ -3508,7 +3508,6 @@ function renderGameChart(team,players){
     <div class="game-chart-panel">
       <div class="game-status-row">
         <div><div class="game-status-title">${esc(team.name)} vs ${esc(game.opponent||'Opponent')}</div><div class="game-status-sub">${esc(game.gameDate||'')} - ${gameInningLabel(game)} - ${game.outs} out${game.outs===1?'':'s'}</div></div>
-        <div class="game-status-pill">Live</div>
       </div>
       <div class="game-action-row">
         <button id="gameInningBtn" class="card-btn" type="button">${gameInningLabel(game)}</button>
