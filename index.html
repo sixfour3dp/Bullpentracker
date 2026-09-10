@@ -1042,7 +1042,7 @@
   .game-status-title { font-family:'Barlow Condensed',sans-serif; font-weight:900; font-size:24px; line-height:1; text-transform:uppercase; }
   .game-status-sub { color:var(--muted); font-size:11px; margin-top:3px; }
   .game-status-pill { flex:0 1 46%; border:1px solid rgba(0,212,255,.32); border-radius:999px; color:var(--accent); background:rgba(0,212,255,.1); padding:5px 9px; font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:900; letter-spacing:.7px; text-transform:uppercase; text-align:center; }
-  .game-live-grid { display:grid; grid-template-columns:1.1fr .9fr; gap:10px; margin-top:12px; }
+  .game-live-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
   .game-current-card { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:12px; min-width:0; }
   .game-label { font-family:'Barlow Condensed',sans-serif; color:var(--muted); font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
   .game-current-name { margin-top:5px; font-family:'Barlow Condensed',sans-serif; font-size:24px; font-weight:900; line-height:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -1127,6 +1127,18 @@
   .game-log-item .strike { color:var(--green); }
   .game-log-item .ball { color:var(--accent2); }
   .game-log-item .foul { color:#7fb5ff; }
+  .game-pitcher-summary-list { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+  .game-pitcher-summary-card {
+    display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center;
+    border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,.035); padding:10px;
+  }
+  .game-pitcher-summary-card.current { border-color:rgba(0,212,255,.55); background:rgba(0,212,255,.10); box-shadow:inset 3px 0 0 var(--accent); }
+  .game-pitcher-summary-name { min-width:0; font-family:'Barlow Condensed',sans-serif; font-size:19px; font-weight:900; line-height:1; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .game-pitcher-summary-left { min-width:0; }
+  .game-pitcher-summary-meta { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; }
+  .game-pitcher-summary-pill { border:1px solid rgba(30,45,66,.9); border-radius:8px; padding:5px 8px; color:var(--muted); font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:900; letter-spacing:.7px; text-transform:uppercase; }
+  .game-pitcher-summary-pill strong { color:var(--text); font-size:16px; line-height:1; margin-right:2px; }
+  .game-pitcher-current-badge { display:block; margin-top:5px; color:var(--accent); font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:900; letter-spacing:.8px; text-transform:uppercase; }
   .game-history-row { display:flex; align-items:center; justify-content:space-between; gap:10px; border-bottom:1px solid rgba(30,45,66,.75); padding:10px 0; }
   .game-history-row:last-child { border-bottom:0; padding-bottom:0; }
   .game-history-row:first-child { padding-top:0; }
@@ -3290,7 +3302,9 @@ function gamePitcherSummaryHtml(game,players){
     const name=p.key?.startsWith('player:') ? (players.find(x=>x.id===p.key.slice(7))?.name || p.name) : p.name;
     const pitches=game.pitches.filter(x=>x.pitcherKey===p.key);
     const strikes=pitches.filter(x=>x.result!=='B').length;
-    return `<div class="game-log-item"><span><strong>${esc(name||'Pitcher')}</strong>${p.key===current.key?' <span class="game-status-sub">CURRENT</span>':''}</span><span>${pitches.length} P - ${gamePct(strikes,pitches.length)}</span></div>`;
+    const walks=gamePitcherWalks(game,p.key);
+    const active=p.key===current.key;
+    return `<div class="game-pitcher-summary-card ${active?'current':''}"><div class="game-pitcher-summary-left"><div class="game-pitcher-summary-name">${esc(name||'Pitcher')}</div>${active?'<div class="game-pitcher-current-badge">Current</div>':''}</div><div class="game-pitcher-summary-meta"><span class="game-pitcher-summary-pill"><strong>${pitches.length}</strong> P</span><span class="game-pitcher-summary-pill"><strong>${gamePct(strikes,pitches.length)}</strong> STR</span><span class="game-pitcher-summary-pill"><strong>${walks}</strong> BB</span></div></div>`;
   }).join('');
 }
 
@@ -3507,7 +3521,7 @@ function renderGameChart(team,players){
   gameChartContent.innerHTML=`<div class="game-chart-content">
     <div class="game-chart-panel">
       <div class="game-status-row">
-        <div><div class="game-status-title">${esc(team.name)} vs ${esc(game.opponent||'Opponent')}</div><div class="game-status-sub">${esc(game.gameDate||'')} - ${gameInningLabel(game)} - ${game.outs} out${game.outs===1?'':'s'}</div></div>
+        <div><div class="game-status-title">${esc(team.name)} vs ${esc(game.opponent||'Opponent')}</div><div class="game-status-sub">${esc(game.gameDate||'')}</div></div>
       </div>
       <div class="game-action-row">
         <button id="gameInningBtn" class="card-btn" type="button">${gameInningLabel(game)}</button>
@@ -3559,7 +3573,7 @@ function renderGameChart(team,players){
 
     <div class="game-chart-panel">
       <div class="panel-title">Pitchers Used</div>
-      <div class="game-log">${gamePitcherSummaryHtml(game,players)}</div>
+      <div class="game-pitcher-summary-list">${gamePitcherSummaryHtml(game,players)}</div>
     </div>
 
     <div class="game-chart-panel">
